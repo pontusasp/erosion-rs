@@ -1,10 +1,16 @@
 use ds_heightmap::Runner;
 
+#[derive(Debug)]
 struct Heightmap {
     data: Vec<Vec<f32>>,
     width: usize,
     height: usize,
     depth: f32
+}
+
+#[derive(Debug)]
+enum HeightmapError {
+    MismatchingSize
 }
 
 fn create_heightmap(size: usize, depth: f32, roughness: f32) -> Heightmap {
@@ -60,13 +66,33 @@ impl Heightmap {
         buffer
     }
 
+    fn subtract(&self, heightmap: &Heightmap) -> Result<Heightmap, HeightmapError> {
+        let mut data: Vec<Vec<f32>> = Vec::new();
+        
+        if !(self.width == heightmap.width && self.height == heightmap.height) {
+            return Err(HeightmapError::MismatchingSize)
+        }
+
+        for i in 0..self.width {
+            let mut row = Vec::new();
+            for j in 0..self.height {
+                let value = self.data[i][j] - heightmap.data[i][j] + heightmap.depth;
+                row.push(value);
+            }
+            data.push(row);
+        }
+
+        let diff = Heightmap::new(data, self.width, self.height, self.depth + heightmap.depth);
+        Ok(diff)
+    }
+
 }
 
 fn heightmap_to_image(heightmap: &Heightmap, filename: &str) -> image::ImageResult<()> {
     let buffer = heightmap.to_u8();
 
     // Save the buffer as "image.png"
-    let image_result = image::save_buffer("heightmap.png", &buffer as &[u8], heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), image::ColorType::L8);
+    let image_result = image::save_buffer(filename, &buffer as &[u8], heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), image::ColorType::L8);
 
     image_result
 }
@@ -80,8 +106,10 @@ fn main() {
 
     let heightmap = create_heightmap(size, depth, roughness);
     let heightmap_eroded = heightmap.erode();
+    let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
 
     heightmap_to_image(&heightmap, "heightmap.png").unwrap();
     heightmap_to_image(&heightmap_eroded, "heightmap_eroded.png").unwrap();
+    heightmap_to_image(&heightmap_diff, "heightmap_diff.png").unwrap();
 
 }
