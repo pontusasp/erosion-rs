@@ -5,9 +5,9 @@ pub fn erode(heightmap: &heightmap::Heightmap) -> heightmap::Heightmap {
     
     for i in 0..heightmap.width {
         for j in 0..heightmap.height {
-            if i - j < 20 {
+            if (i as isize - j as isize) < 20 {
                 data[i][j] = 0.0f32;
-            }
+            } 
         }
     }
 

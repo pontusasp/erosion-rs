@@ -22,14 +22,6 @@ impl Heightmap {
         }
     }
 
-    pub fn erode(&self) -> Heightmap {
-        let data = self.data.clone();
-        let width = self.width;
-        let height = self.height;
-        let depth = self.depth;
-        Heightmap::new(data, width, height, depth)
-    }
-
     pub fn to_u8(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -51,6 +43,12 @@ impl Heightmap {
     pub fn subtract(&self, heightmap: &Heightmap) -> Result<Heightmap, HeightmapError> {
         let mut data: Vec<Vec<f32>> = Vec::new();
         
+        let depth = if self.depth > heightmap.depth {
+            self.depth
+        } else {
+            heightmap.depth
+        };
+        
         if !(self.width == heightmap.width && self.height == heightmap.height) {
             return Err(HeightmapError::MismatchingSize)
         }
@@ -58,13 +56,13 @@ impl Heightmap {
         for i in 0..self.width {
             let mut row = Vec::new();
             for j in 0..self.height {
-                let value = self.data[i][j] - heightmap.data[i][j] + heightmap.depth;
+                let value = (self.data[i][j] - heightmap.data[i][j]).abs();
                 row.push(value);
             }
             data.push(row);
         }
 
-        let diff = Heightmap::new(data, self.width, self.height, self.depth + heightmap.depth);
+        let diff = Heightmap::new(data, self.width, self.height, depth);
         Ok(diff)
     }
 

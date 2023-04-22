@@ -37,7 +37,7 @@ fn main() {
     let roughness: f32 = 1.0;
 
     let heightmap = create_heightmap(size, depth, roughness);
-    let heightmap_eroded = heightmap.erode();
+    let heightmap_eroded = erode::erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
 
     heightmap_to_image(&heightmap, "heightmap.png").unwrap();
