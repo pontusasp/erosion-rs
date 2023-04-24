@@ -1,0 +1,73 @@
+<!DOCTYPE>
+<html>
+  <head>
+
+    <title>Heightmap Viewer</title>
+  
+    <style>
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: auto auto auto;
+      grid-template-rows: auto;
+      gap: 2em;
+      min-height: 100vh;
+      padding: 2em;
+      box-sizing: border-box;
+      background: linear-gradient(#e66465, #9198e5);
+      justify-items: center;
+      align-items: center;
+    }
+    
+    .item img {
+      width: 100%;
+      object-fit: contain;
+    }
+
+    .item span {
+      text-align: center;
+      display: inline-block;
+      position: absolute;
+    }
+
+    .item .text {
+      margin: 0 auto;
+    }
+
+    </style>
+    
+  </head>
+  <body>
+    
+    <div class="container">
+      
+      <div class="item">
+        <img src="heightmap.png"/>
+        <div class="text">
+          <span>heightmap.png</span>
+        </div>
+      </div>
+      
+      <div class="item">
+        <img src="heightmap_diff.png"/>
+        <div class="text">
+          <span>heightmap_diff.png</span>
+        </div>
+      </div>
+      
+      <div class="item">
+        <img src="heightmap_eroded.png"/>
+        <div class="text">
+          <span>heightmap_eroded.png</span>
+        </div>
+      </div>     
+      
+    </div>
+    
+  </body>
+</html>
