@@ -12,32 +12,37 @@ const P_RADIUS: usize = 3;
 const P_MIN_SLOPE: f32 = 0.05;
 const P_GRAVITY: f32 = 10.0;
 
-pub struct Drop {
-    position: Vector2<f32>,
-    sediment: f32,
-    water: f32,
-    speed: f32,
-    direction: Vector2<f32>,
-    alive: bool
+pub enum Drop {
+    Alive {
+        position: Vector2<f32>,
+        sediment: f32,
+        water: f32,
+        speed: f32,
+        direction: Vector2<f32>
+    },
+    Dead
 }
 
 impl Drop {
-    fn new(position: Vector2<f32>, sediment: f32, water: f32, speed: f32, direction: Vector2<f32>, alive: bool) -> Self {
-       Drop {
+    fn new(position: Vector2<f32>, sediment: f32, water: f32, speed: f32, direction: Vector2<f32>) -> Self {
+       Drop::Alive {
            position,
            sediment,
            water,
            speed,
-           direction,
-           alive
+           direction
        } 
     }
     
-    fn usize_position(&self) -> (usize, usize) {
-        let x = (self.position.x) as i32;
-        let y = (self.position.y) as i32;
+    fn usize_position(&self) -> Option<(usize, usize)> {
+        if let Drop::Alive{ position, .. } = self {
+            let x = (position.x) as i32;
+            let y = (position.y) as i32;
 
-        (x.try_into().unwrap(), y.try_into().unwrap())
+            Some((x.try_into().unwrap(), y.try_into().unwrap()))
+        } else {
+            None
+        }
     }
 }
 
@@ -52,16 +57,15 @@ fn create_drop(heightmap: &Heightmap, rng: &mut ThreadRng) -> Drop {
             0.0,
             0.0,
             0.0,
-            vector![direction.cos(), direction.sin()],
-            true
+            vector![direction.cos(), direction.sin()]
         )
 }
 
 fn tick(heightmap: &mut Heightmap, drop: &mut Drop) {
-        let (ix, iy) = drop.usize_position();
-        
+    if let Some((ix, iy)) = drop.usize_position() {
         println!("removing all sediment at drop position for testing");
         heightmap.set(ix, iy, 0.0);
+    }
 }
 
 pub fn erode(heightmap: &Heightmap) -> Heightmap {
@@ -74,7 +78,7 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
         
         while alive {
             tick(&mut heightmap, &mut drop);
-            alive = drop.alive;
+            alive = if let Drop::Dead = drop { false } else { true };
         }
     }
 
@@ -87,8 +91,8 @@ mod tests {
     
     #[test]
     fn test_fn_drop_usize_position() {
-        let drop = Drop::new(vector![1.1, 2.8], 0.0, 0.0, 0.0, vector![0.0, 0.0], true);
-        let usize_position = (1usize, 2usize);
+        let drop = Drop::new(vector![1.1, 2.8], 0.0, 0.0, 0.0, vector![0.0, 0.0]);
+        let usize_position = Some((1usize, 2usize));
         assert_eq!(drop.usize_position(), usize_position);
     }
     
