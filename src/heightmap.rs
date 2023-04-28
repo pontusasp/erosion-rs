@@ -1,10 +1,12 @@
+pub type HeightmapPrecision = f32;
+pub type HeightmapData = Vec<Vec<HeightmapPrecision>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Heightmap {
-    pub data: Vec<Vec<f32>>,
+    pub data: HeightmapData,
     pub width: usize,
     pub height: usize,
-    pub depth: f32
+    pub depth: HeightmapPrecision
 }
 
 #[derive(Debug)]
@@ -13,7 +15,7 @@ pub enum HeightmapError {
 }
 
 impl Heightmap {
-    pub fn new(data: Vec<Vec<f32>>, width: usize, height: usize, depth: f32) -> Heightmap {
+    pub fn new(data: HeightmapData, width: usize, height: usize, depth: HeightmapPrecision) -> Heightmap {
         Heightmap {
             data,
             width,
@@ -28,7 +30,7 @@ impl Heightmap {
         for i in 0..self.width {
             for j in 0..self.height {
                 let mut value = self.data[i][j];
-                let u8_max: f32 = 255.0;
+                let u8_max: HeightmapPrecision = 255.0;
                 value = value / (self.depth / u8_max);
                 value = value.round();
                 let value = value as i32;
@@ -41,7 +43,7 @@ impl Heightmap {
     }
 
     pub fn subtract(&self, heightmap: &Heightmap) -> Result<Heightmap, HeightmapError> {
-        let mut data: Vec<Vec<f32>> = Vec::new();
+        let mut data: HeightmapData = Vec::new();
         
         let depth = if self.depth > heightmap.depth {
             self.depth
@@ -66,5 +68,8 @@ impl Heightmap {
         Ok(diff)
     }
 
+    pub fn set(&mut self, x: usize, y: usize, z: HeightmapPrecision) {
+        self.data[x][y] = z;
+    }
 }
 
