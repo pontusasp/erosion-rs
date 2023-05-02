@@ -75,10 +75,10 @@ impl Drop {
             let fx = position.x;
             let fy = position.y;
             
-            let p_x0_y0 = heightmap.data[ix + 0][iy + 0];
-            let p_x1_y0 = heightmap.data[ix + 1][iy + 0];
-            let p_x0_y1 = heightmap.data[ix + 0][iy + 1];
-            let p_x1_y1 = heightmap.data[ix + 1][iy + 1];
+            let p_x0_y0 = heightmap.data.get(ix + 0)?.get(iy + 0)?;
+            let p_x1_y0 = heightmap.data.get(ix + 1)?.get(iy + 0)?;
+            let p_x0_y1 = heightmap.data.get(ix + 0)?.get(iy + 1)?;
+            let p_x1_y1 = heightmap.data.get(ix + 1)?.get(iy + 1)?;
 
             let v = fx - fx.floor();
             let u = fy - fy.floor();
@@ -93,14 +93,57 @@ impl Drop {
         
     }
 
-    fn set_direction(&mut self, gradient: &Vector2) {
+    fn update_direction(&mut self, gradient: &Vector2, random_angle: f32) {
         if let Drop::Alive { direction, .. } = self {
             let x_dir = direction.x;
             let y_dir = direction.y;
             
             direction.set_x(x_dir * P_INERTIA - gradient.x * (1.0 - P_INERTIA));
             direction.set_y(y_dir * P_INERTIA - gradient.y * (1.0 - P_INERTIA));
+            
+            // Check if direction is zero vector
+            if direction.x == 0.0 && direction.y == 0.0 {
+                direction.set_x(random_angle.cos());
+                direction.set_y(random_angle.sin());  
+            }
         }
+    }
+    
+    fn update_position(&mut self) {
+        if let Drop::Alive { position, direction, .. } = self {
+            position.set_x(position.x + direction.x);
+            position.set_y(position.y + direction.y);
+        }
+    }
+    
+    fn get_sediment(&self) -> f32 {
+        match self {
+            Drop::Alive { sediment, .. } => *sediment,
+            Drop::Dead => 0.0
+        }
+    }
+    
+    fn update_water(&mut self) {
+        if let Drop::Alive { water, .. } = self {
+            *water = *water * (1.0 - P_EVAPORATION);
+        }
+    }
+    
+    fn get_water(&self) -> f32 {
+        match self {
+            Drop::Alive { water, .. } => *water,
+            Drop::Dead => 0.0
+        }
+    }
+     
+    fn set_sediment(&mut self, sediment: f32) {
+        if let Drop::Alive { sediment: s, .. } = self {
+            *s = sediment;
+        }
+    }
+    
+    fn set_dead(&mut self) {
+        *self = Drop::Dead;
     }
 }
 
@@ -119,10 +162,31 @@ fn create_drop(heightmap: &Heightmap, rng: &mut ThreadRng) -> Drop {
         )
 }
 
-fn tick(heightmap: &mut Heightmap, drop: &mut Drop) {
+fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) {
     if let Some((ix, iy)) = drop.usize_position() {
-        println!("removing all sediment at drop position for testing");
+        let gradient = drop.gradient(heightmap).unwrap();
+        let random_angle: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
+        drop.update_direction(&gradient, random_angle);
+        let height_old = heightmap.get(ix, iy); // TODO: Add interpolated height
+        drop.update_position();
+
+        let height_new = if let Some((ix_new, iy_new)) = drop.usize_position() {
+            heightmap.get(ix_new, iy_new) // TODO: Add interpolated height
+        } else {
+            heightmap.get(ix, iy) // TODO: Add interpolated height
+        };
+
+        let height_delta = height_new - height_old;
+        if height_delta > P_MIN_SLOPE {
+            let drop_sediment = drop.get_sediment();
+            let sediment = height_delta.min(drop_sediment);
+            heightmap.set(ix, iy, height_old + sediment);
+            drop.set_sediment(drop_sediment - sediment);
+        } else {
+            // unimplemented!();
+        }
         heightmap.set(ix, iy, 0.0);
+        drop.set_dead();
     }
 }
 
@@ -134,7 +198,7 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
         let mut drop = create_drop(&heightmap, &mut rng);
         
         while let Drop::Alive{..} = drop {
-            tick(&mut heightmap, &mut drop)
+            tick(&mut heightmap, &mut drop, &mut rng);
         };
     }
 

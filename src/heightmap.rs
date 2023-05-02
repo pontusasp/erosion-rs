@@ -72,6 +72,10 @@ impl Heightmap {
         self.data[x][y] = z;
     }
 
+    pub fn get(&mut self, x: usize, y: usize) -> HeightmapPrecision {
+        self.data[x][y]
+    }
+
     pub fn gradient(&self, x: usize, y: usize) -> (f32, f32) {
         let dx = self.data[x][y] - self.data[x - 1][y];
         let dy = self.data[y][y] - self.data[x][y - 1];
