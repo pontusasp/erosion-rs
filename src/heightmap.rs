@@ -6,7 +6,8 @@ pub struct Heightmap {
     pub data: HeightmapData,
     pub width: usize,
     pub height: usize,
-    pub depth: HeightmapPrecision
+    pub depth: HeightmapPrecision,
+    pub original_depth: HeightmapPrecision
 }
 
 #[derive(Debug)]
@@ -16,12 +17,13 @@ pub enum HeightmapError {
 }
 
 impl Heightmap {
-    pub fn new(data: HeightmapData, width: usize, height: usize, depth: HeightmapPrecision) -> Heightmap {
+    pub fn new(data: HeightmapData, width: usize, height: usize, depth: HeightmapPrecision, original_depth: HeightmapPrecision) -> Heightmap {
         Heightmap {
             data,
             width,
             height,
-            depth
+            depth,
+            original_depth
         }
     }
 
@@ -36,7 +38,11 @@ impl Heightmap {
                 value = value.round();
                 let value = value as i32;
                 
-                buffer.push(value.try_into().unwrap());
+                if let Some(value) = value.try_into().ok() {
+                    buffer.push(value);
+                } else {
+                    panic!("Could not convert value to u8");
+                }
             }
         }
 
@@ -65,7 +71,7 @@ impl Heightmap {
             data.push(row);
         }
 
-        let diff = Heightmap::new(data, self.width, self.height, depth);
+        let diff = Heightmap::new(data, self.width, self.height, depth, heightmap.original_depth);
         Ok(diff)
     }
 

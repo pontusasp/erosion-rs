@@ -9,11 +9,11 @@ const P_EROSION: f32 = 0.9;
 const P_EVAPORATION: f32 = 0.05;
 // const P_RADIUS: usize = 3;
 const P_MIN_SLOPE: f32 = 0.05;
-const P_GRAVITY: f32 = 10.0;
+const P_GRAVITY: f32 = 0.2;
 const P_MAX_PATH: usize = 1_000;
 
 const P_MIN_WATER: f32 = 0.00005;
-const P_MIN_SPEED: f32 = 0.0000;
+const P_MIN_SPEED: f32 = 0.000001;
 
 #[derive(Debug)]
 pub struct Vector2 {
@@ -161,7 +161,11 @@ impl Drop {
     
     fn calculate_capacity(&self, height_delta: &f32) -> f32 {
         if let Drop::Alive { speed, water, .. } = self {
-            speed * *water * P_CAPACITY * P_MIN_SLOPE.max(-*height_delta)
+            let capacity = speed * *water * P_CAPACITY * P_MIN_SLOPE.max(-*height_delta);
+            if capacity < 0.0 {
+                panic!("Capacity cannot be negative");
+            }
+            capacity
         } else {
             0.0
         }
@@ -170,6 +174,10 @@ impl Drop {
     fn update_speed(&mut self, height_delta: &f32) {
         if let Drop::Alive { speed, .. } = self {
             *speed = ((*speed).powi(2) + *height_delta * P_GRAVITY).max(0.0).sqrt();
+        }
+        
+        if self.get_speed() < 0.0 {
+            panic!("Speed cannot be negative");
         }
     }
     
@@ -241,6 +249,9 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) {
         drop.update_water();
         
         if drop.get_water() < P_MIN_WATER && drop.get_speed() < P_MIN_SPEED {
+            let sediment = drop.get_sediment();
+            let height = heightmap.get(ix, iy).unwrap_or(0.0);
+            heightmap.set(ix, iy, height + sediment).unwrap();
             drop.set_dead();
         }
     }
@@ -266,7 +277,11 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
             }
         };
         
-        bar.reach_percent(((i as f32 / DROPLETS as f32) * 100.0) as i32);
+        if i % 100 == 0 {
+            bar.reach_percent((((i+1) as f32 / DROPLETS as f32) * 100.0).round() as i32);
+        } else if i == DROPLETS - 1 {
+            bar.reach_percent(100);
+        }
     }
 
     heightmap

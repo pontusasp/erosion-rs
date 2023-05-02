@@ -4,20 +4,23 @@ use std::env;
 pub mod heightmap;
 pub mod erode;
 
-fn create_heightmap(size: usize, depth: f32, roughness: f32) -> heightmap::Heightmap {
+fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightmap::Heightmap {
     let mut runner = Runner::new();
     runner.set_height(size);
     runner.set_width(size);
 
-    runner.set_depth(depth);
+    runner.set_depth(original_depth);
     runner.set_rough(roughness);
+    
+    let depth = 1.0;
     
     let output = runner.ds();
     heightmap::Heightmap {
-        data: output.data,
+        data: output.data.into_iter().map(|row| row.into_iter().map(|value| value as heightmap::HeightmapPrecision / original_depth).collect()).collect(),
         width: size,
         height: size,
-        depth
+        depth,
+        original_depth
     }
 }
 
