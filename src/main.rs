@@ -1,4 +1,5 @@
 use ds_heightmap::Runner;
+use std::env;
 
 pub mod heightmap;
 pub mod erode;
@@ -31,6 +32,8 @@ fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image
 
 
 fn main() {
+    
+    env::set_var("RUST_BACKTRACE", "1");
 
     let size: usize = 1024;
     let depth: f32 = 2000.0;

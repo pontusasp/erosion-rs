@@ -11,7 +11,8 @@ pub struct Heightmap {
 
 #[derive(Debug)]
 pub enum HeightmapError {
-    MismatchingSize
+    MismatchingSize,
+    OutOfBounds
 }
 
 impl Heightmap {
@@ -68,12 +69,21 @@ impl Heightmap {
         Ok(diff)
     }
 
-    pub fn set(&mut self, x: usize, y: usize, z: HeightmapPrecision) {
-        self.data[x][y] = z;
+    pub fn set(&mut self, x: usize, y: usize, z: HeightmapPrecision) -> Result<(), HeightmapError> {
+        if x >= self.width || y >= self.height {
+            Err(HeightmapError::OutOfBounds)
+        } else {
+            self.data[x][y] = z;
+            Ok(())
+        }
     }
 
-    pub fn get(&mut self, x: usize, y: usize) -> HeightmapPrecision {
-        self.data[x][y]
+    pub fn get(&self, x: usize, y: usize) -> Option<HeightmapPrecision> {
+        if x >= self.width || y >= self.height {
+            None
+        } else {
+            Some(self.data[x][y])
+        }
     }
 
     pub fn gradient(&self, x: usize, y: usize) -> (f32, f32) {
