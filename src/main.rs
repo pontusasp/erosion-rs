@@ -46,8 +46,8 @@ fn main() {
     let heightmap_eroded = erode::erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
 
-    heightmap_to_image(&heightmap, "heightmap.png").unwrap();
-    heightmap_to_image(&heightmap_eroded, "heightmap_eroded.png").unwrap();
-    heightmap_to_image(&heightmap_diff, "heightmap_diff.png").unwrap();
+    heightmap_to_image(&heightmap, "output/heightmap.png").unwrap();
+    heightmap_to_image(&heightmap_eroded, "output/heightmap_eroded.png").unwrap();
+    heightmap_to_image(&heightmap_diff, "output/heightmap_diff.png").unwrap();
 
 }
