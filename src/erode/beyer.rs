@@ -1,7 +1,7 @@
 use crate::heightmap::*;
 use rand::prelude::*;
 
-const DROPLETS: usize = 10_000;
+const DROPLETS: usize = 1_000;
 const P_INERTIA: f32 = 0.8;
 const P_CAPACITY: f32 = 8.0;
 const P_DEPOSITION: f32 = 0.05;
@@ -10,7 +10,7 @@ const P_EVAPORATION: f32 = 0.05;
 // const P_RADIUS: usize = 3;
 const P_MIN_SLOPE: f32 = 0.05;
 const P_GRAVITY: f32 = 0.2;
-const P_MAX_PATH: usize = 1_000;
+const P_MAX_PATH: usize = 10000;
 
 const P_MIN_WATER: f32 = 0.00005;
 const P_MIN_SPEED: f32 = 0.000001;
@@ -79,16 +79,22 @@ impl Drop {
     }
 
     fn gradient(&mut self, heightmap: &Heightmap) -> Option<Vector2> {
-        let (ix, iy) = self.usize_position()?;
+        let (mut ix, mut iy) = self.usize_position()?;
+        if ix >= heightmap.width - 1 {
+            ix -= 1;
+        }
+        if iy >= heightmap.height - 1 {
+            iy -= 1;
+        }
         
         if let Drop::Alive { position, .. } = self {
             let fx = position.x;
             let fy = position.y;
             
-            let p_x0_y0 = match heightmap.data.get(ix + 0) { Some(column) => column.get(iy + 0).unwrap_or(&0.0), None => &0.0 };
-            let p_x1_y0 = match heightmap.data.get(ix + 1) { Some(column) => column.get(iy + 0).unwrap_or(&0.0), None => &0.0 };
-            let p_x0_y1 = match heightmap.data.get(ix + 0) { Some(column) => column.get(iy + 1).unwrap_or(&0.0), None => &0.0 };
-            let p_x1_y1 = match heightmap.data.get(ix + 1) { Some(column) => column.get(iy + 1).unwrap_or(&0.0), None => &0.0 };
+            let p_x0_y0 = heightmap.data.get(ix + 0)?.get(iy + 0)?;
+            let p_x1_y0 = heightmap.data.get(ix + 1)?.get(iy + 0)?;
+            let p_x0_y1 = heightmap.data.get(ix + 0)?.get(iy + 1)?;
+            let p_x1_y1 = heightmap.data.get(ix + 1)?.get(iy + 1)?;
 
             let v = fx - fx.floor();
             let u = fy - fy.floor();
@@ -214,13 +220,17 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) {
         let gradient = drop.gradient(heightmap).unwrap();
         let random_angle: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
         drop.update_direction(&gradient, random_angle);
-        let height_old = heightmap.get(ix, iy).unwrap_or(0.0); // TODO: Add interpolated height
+        let height_old = heightmap.get(ix, iy).unwrap(); // TODO: Add interpolated height
         drop.update_position();
 
         let height_new = if let Some((ix_new, iy_new)) = drop.usize_position() {
-            heightmap.get(ix_new, iy_new).unwrap_or(0.0) // TODO: Add interpolated height
+            if ix_new >= heightmap.width || iy_new >= heightmap.height {
+                drop.set_dead();
+                return;
+            }
+            heightmap.get(ix_new, iy_new).unwrap() // TODO: Add interpolated height
         } else {
-            heightmap.get(ix, iy).unwrap_or(0.0) // TODO: Add interpolated height
+            heightmap.get(ix, iy).unwrap() // TODO: Add interpolated height
         };
 
         let height_delta = height_new - height_old;
@@ -247,10 +257,13 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) {
         }
         drop.update_speed(&height_delta);
         drop.update_water();
-        
+       
+        let height_test = heightmap.get(ix, iy).unwrap() * 0.99;
+        heightmap.set(ix, iy, height_test).unwrap();
+
         if drop.get_water() < P_MIN_WATER && drop.get_speed() < P_MIN_SPEED {
             let sediment = drop.get_sediment();
-            let height = heightmap.get(ix, iy).unwrap_or(0.0);
+            let height = heightmap.get(ix, iy).unwrap();
             heightmap.set(ix, iy, height + sediment).unwrap();
             drop.set_dead();
         }
