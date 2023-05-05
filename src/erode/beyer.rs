@@ -303,6 +303,14 @@ fn create_drop(heightmap: &Heightmap, rng: &mut ThreadRng) -> Result<Drop, DropE
     Ok(drop)
 }
 
+fn kill_drop(drop: &mut Drop, heightmap: &mut Heightmap, starting_ix: usize, starting_iy: usize) -> Result<(), DropError> {
+    let sediment = drop.get_sediment()?;
+    let height = heightmap.get(starting_ix, starting_iy).unwrap();
+    heightmap.set(starting_ix, starting_iy, height + sediment).unwrap();
+    drop.set_dead()?;
+    Ok(())
+}
+
 fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Result<(), DropError> {
     let (ix, iy) = drop.usize_position()?;
     if ix >= heightmap.width || iy >= heightmap.height {
@@ -316,14 +324,21 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
 
     let height_old = heightmap.get(ix, iy).ok_or(DropError::InvalidPosition("tick: height_old", drop.get_position()?))?; // TODO: Add interpolated height
     drop.update_position()?;
-    let (ix_new, iy_new) = drop.usize_position()?;
-    let height_new = heightmap.get(ix_new, iy_new).ok_or(DropError::InvalidPosition("tick: height_new", drop.get_position()?))?; // TODO: Add interpolated height
+
+    let (ix_new, iy_new) = if let Ok((ix, iy)) = drop.usize_position() {
+        (ix, iy)
+    } else {
+        kill_drop(drop, heightmap, ix, iy)?;
+        return Ok(());
+    };
 
     if ix_new >= heightmap.width || iy_new >= heightmap.height {
-        drop.set_dead()?;
+        kill_drop(drop, heightmap, ix, iy)?;
         return Ok(());
     }
         
+    let height_new = heightmap.get(ix_new, iy_new).ok_or(DropError::InvalidPosition("tick: height_new", drop.get_position()?))?; // TODO: Add interpolated height
+
 
     let height_delta = height_new - height_old;
     if height_delta > P_MIN_SLOPE {
@@ -355,10 +370,7 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
     // heightmap.set(ix, iy, height_test).unwrap();
 
     if drop.get_water()? < P_MIN_WATER && drop.get_speed()? < P_MIN_SPEED {
-        let sediment = drop.get_sediment()?;
-        let height = heightmap.get(ix, iy).unwrap();
-        heightmap.set(ix, iy, height + sediment).unwrap();
-        drop.set_dead()?;
+        kill_drop(drop, heightmap, ix, iy)?;
     }
 
     Ok(())
