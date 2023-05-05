@@ -258,8 +258,9 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) {
         drop.update_speed(&height_delta);
         drop.update_water();
        
-        let height_test = heightmap.get(ix, iy).unwrap() * 0.99;
-        heightmap.set(ix, iy, height_test).unwrap();
+        // println!("Running test...");
+        // let height_test = heightmap.get(ix, iy).unwrap() * 0.99;
+        // heightmap.set(ix, iy, height_test).unwrap();
 
         if drop.get_water() < P_MIN_WATER && drop.get_speed() < P_MIN_SPEED {
             let sediment = drop.get_sediment();
