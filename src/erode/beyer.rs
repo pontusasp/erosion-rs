@@ -15,7 +15,7 @@ const P_MAX_PATH: usize = 10000;
 const P_MIN_WATER: f32 = 0.00005;
 const P_MIN_SPEED: f32 = 0.000001;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Vector2 {
     x: HeightmapPrecision,
     y: HeightmapPrecision
@@ -39,7 +39,7 @@ impl Vector2 {
     
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Drop {
     Alive {
         position: Vector2,
@@ -52,16 +52,6 @@ pub enum Drop {
 }
 
 impl Drop {
-    fn new(position: Vector2, sediment: f32, water: f32, speed: f32, direction: Vector2) -> Self {
-       Drop::Alive {
-           position,
-           sediment,
-           water,
-           speed,
-           direction
-       } 
-    }
-    
     fn usize_position(&self) -> Option<(usize, usize)> {
         match self {
             Drop::Alive { position, .. } => {
@@ -144,6 +134,15 @@ impl Drop {
             *water = *water * (1.0 - P_EVAPORATION);
         }
     }
+
+    fn set_water(&mut self, water: f32) {
+        if water < 0.0 {
+            panic!("Water cannot be negative");
+        }
+        if let Drop::Alive { water: w, .. } = self {
+            *w = water;
+        }
+    }
     
     fn get_water(&self) -> f32 {
         match self {
@@ -196,18 +195,18 @@ impl Drop {
 }
 
 fn create_drop(heightmap: &Heightmap, rng: &mut ThreadRng) -> Drop {
-        let x = rng.gen::<HeightmapPrecision>() * heightmap.width as HeightmapPrecision;
-        let y = rng.gen::<HeightmapPrecision>() * heightmap.height as HeightmapPrecision;
-        
-        let direction: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
-        
-        Drop::new(
-            Vector2::new(x, y),
-            0.0,
-            1.0,
-            0.0,
-            Vector2::new(direction.cos(), direction.sin())
-        )
+    let x = rng.gen::<HeightmapPrecision>() * heightmap.width as HeightmapPrecision;
+    let y = rng.gen::<HeightmapPrecision>() * heightmap.height as HeightmapPrecision;
+    
+    let direction: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
+    
+    Drop::Alive {
+        position: Vector2::new(x, y),
+        direction: Vector2::new(direction.cos(), direction.sin()),
+        speed: 0.0,
+        water: 1.0,
+        sediment: 0.0
+    }
 }
 
 fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) {
@@ -277,6 +276,8 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
     
     let mut bar = progress::Bar::new();
     bar.set_job_title("Eroding...");
+
+    let mut killed = 0;
     
     for i in 0..DROPLETS {
         let mut drop = create_drop(&heightmap, &mut rng);
@@ -287,6 +288,7 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
 
             steps += 1;
             if steps > P_MAX_PATH {
+                killed += 1;
                 break;
             }
         };
@@ -298,21 +300,57 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
         }
     }
 
+    println!("\nKilled: {} / {}", killed, DROPLETS);
+
     heightmap
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn create_drop() -> Drop {
+        Drop::Alive {
+            position: Vector2::new(0.8, 2.5),
+            speed: 1.0,
+            water: 1.0,
+            sediment: 0.0,
+            direction: Vector2::new(1.0, 0.0)
+        }
+    }
     
     #[test]
     fn test_fn_drop_usize_position() {
-        let drop = Drop::new(Vector2::new(1.1, 2.8), 0.0, 0.0, 0.0, Vector2::new(0.0, 0.0));
+        let drop = create_drop();
         let usize_position = Some((1usize, 3usize));
         assert_eq!(drop.usize_position(), usize_position);
 
         let drop = Drop::Dead;
         assert_eq!(drop.usize_position(), None);
     }
-    
+
+    #[test]
+    fn test_drop_evaporation() {
+        let water = 1.0;
+        let mut drop = create_drop();
+        drop.set_water(water);
+
+        drop.update_water();
+        assert_eq!(drop.get_water(), water * (1.0 - P_EVAPORATION));
+
+        drop.update_water();
+        assert_eq!(drop.get_water(), water * (1.0 - P_EVAPORATION).powi(2));
+
+        drop.update_water();
+        assert_eq!(drop.get_water(), water * (1.0 - P_EVAPORATION).powi(3));
+    }
+
+    #[test]
+    fn test_drop_set_dead() {
+        let mut drop = create_drop();
+        assert_ne!(drop, Drop::Dead);
+        drop.set_dead();
+        assert_eq!(drop, Drop::Dead);
+    }
+   
 }
