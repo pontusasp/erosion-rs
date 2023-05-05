@@ -55,7 +55,7 @@ pub enum Drop {
 pub enum DropError {
     DropIsDead, 
     InvalidValue(&'static str),
-    InvalidPosition(Vector2)
+    InvalidPosition(&'static str, Vector2)
 }
 
 impl Drop {
@@ -92,13 +92,6 @@ impl Drop {
                 *d = direction;
                 Ok(())
             },
-            Drop::Dead => Err(DropError::DropIsDead)
-        }
-    }
-
-    fn get_direction(&self) -> Result<Vector2, DropError> {
-        match self {
-            Drop::Alive { direction, .. } => Ok(*direction),
             Drop::Dead => Err(DropError::DropIsDead)
         }
     }
@@ -176,13 +169,6 @@ impl Drop {
         }
     }
 
-    fn is_dead(&self) -> bool {
-        match self {
-            Drop::Alive { .. } => false,
-            Drop::Dead => true
-        }
-    }
-    
     fn usize_position(&self) -> Result<(usize, usize), DropError> {
         match self {
             Drop::Alive { position, .. } => {
@@ -192,7 +178,7 @@ impl Drop {
                 if let (Some(x), Some(y)) = (x.try_into().ok(), y.try_into().ok())  {
                     Ok((x, y))
                 } else {
-                    Err(DropError::InvalidPosition(*position))
+                    Err(DropError::InvalidPosition("usize_position", *position))
                 }
             },
             Drop::Dead => Err(DropError::DropIsDead)
@@ -213,10 +199,10 @@ impl Drop {
                 let fx = position.x;
                 let fy = position.y;
                 
-                let p_x0_y0 = heightmap.data.get(ix + 0).and_then(|v| v.get(iy + 0)).ok_or(DropError::InvalidPosition(*position))?;
-                let p_x1_y0 = heightmap.data.get(ix + 1).and_then(|v| v.get(iy + 0)).ok_or(DropError::InvalidPosition(*position))?;
-                let p_x0_y1 = heightmap.data.get(ix + 0).and_then(|v| v.get(iy + 1)).ok_or(DropError::InvalidPosition(*position))?;
-                let p_x1_y1 = heightmap.data.get(ix + 1).and_then(|v| v.get(iy + 1)).ok_or(DropError::InvalidPosition(*position))?;
+                let p_x0_y0 = heightmap.data.get(ix + 0).and_then(|v| v.get(iy + 0)).ok_or(DropError::InvalidPosition("gradient x0 y0", *position))?;
+                let p_x1_y0 = heightmap.data.get(ix + 1).and_then(|v| v.get(iy + 0)).ok_or(DropError::InvalidPosition("gradient x1 y0", *position))?;
+                let p_x0_y1 = heightmap.data.get(ix + 0).and_then(|v| v.get(iy + 1)).ok_or(DropError::InvalidPosition("gradient x0 y1", *position))?;
+                let p_x1_y1 = heightmap.data.get(ix + 1).and_then(|v| v.get(iy + 1)).ok_or(DropError::InvalidPosition("gradient x1 y1", *position))?;
 
                 let v = fx - fx.floor();
                 let u = fy - fy.floor();
@@ -328,10 +314,10 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
     let random_angle: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
     drop.update_direction(&gradient, random_angle)?;
 
-    let height_old = heightmap.get(ix, iy).ok_or(DropError::InvalidPosition(drop.get_position()?))?; // TODO: Add interpolated height
+    let height_old = heightmap.get(ix, iy).ok_or(DropError::InvalidPosition("tick: height_old", drop.get_position()?))?; // TODO: Add interpolated height
     drop.update_position()?;
     let (ix_new, iy_new) = drop.usize_position()?;
-    let height_new = heightmap.get(ix_new, iy_new).ok_or(DropError::InvalidPosition(drop.get_position()?))?; // TODO: Add interpolated height
+    let height_new = heightmap.get(ix_new, iy_new).ok_or(DropError::InvalidPosition("tick: height_new", drop.get_position()?))?; // TODO: Add interpolated height
 
     if ix_new >= heightmap.width || iy_new >= heightmap.height {
         drop.set_dead()?;
@@ -406,6 +392,7 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
 
             steps += 1;
             if steps > P_MAX_PATH {
+                drop.set_dead().unwrap();
                 killed += 1;
                 break;
             }
@@ -466,10 +453,8 @@ mod tests {
     fn test_drop_set_get_dead() {
         let mut drop = create_drop();
         assert_ne!(drop, Drop::Dead);
-        assert_eq!(drop.is_dead(), false);
         drop.set_dead().unwrap();
         assert_eq!(drop, Drop::Dead);
-        assert_eq!(drop.is_dead(), true);
     }
 
     fn test_drop_set_get_sediment(sediment: f32) {
@@ -490,10 +475,14 @@ mod tests {
         assert_eq!(drop.get_speed().unwrap(), speed);
     }
 
-    fn test_drop_set_get_direction(direction: Vector2) {
+    fn test_drop_set_get_direction(direction_: Vector2) {
         let mut drop = create_drop();
-        drop.set_direction(direction).unwrap();
-        assert_eq!(drop.get_direction().unwrap(), direction);
+        drop.set_direction(direction_).unwrap();
+        if let Drop::Alive{direction, ..} = drop {
+            assert_eq!(direction, direction_);
+        } else {
+            panic!("Drop is dead");
+        }
     }
 
     fn test_drop_set_get_position(position: Vector2) {
