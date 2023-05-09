@@ -1,19 +1,20 @@
 use crate::heightmap::*;
 use rand::prelude::*;
+use std::ops::Sub;
 
-const DROPLETS: usize = 1_000;
-const P_INERTIA: f32 = 0.8;
+const DROPLETS: usize = 10_000;
+const P_INERTIA: f32 = 0.9;
 const P_CAPACITY: f32 = 8.0;
 const P_DEPOSITION: f32 = 0.05;
 const P_EROSION: f32 = 0.9;
 const P_EVAPORATION: f32 = 0.05;
 // const P_RADIUS: usize = 3;
 const P_MIN_SLOPE: f32 = 0.05;
-const P_GRAVITY: f32 = 0.2;
+const P_GRAVITY: f32 = 9.2;
 const P_MAX_PATH: usize = 10000;
 
-const P_MIN_WATER: f32 = 0.00005;
-const P_MIN_SPEED: f32 = 0.000001;
+const P_MIN_WATER: f32 = 0.01;
+const P_MIN_SPEED: f32 = 0.01;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Vector2 {
@@ -36,7 +37,22 @@ impl Vector2 {
     fn set_y(&mut self, y: HeightmapPrecision) {
         self.y = y;
     }
+
+    fn magnitude(&self) -> HeightmapPrecision {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
     
+}
+
+impl Sub for Vector2 {
+    type Output = Vector2;
+
+    fn sub(self, other: Vector2) -> Vector2 {
+        Vector2 {
+            x: self.x - other.x,
+            y: self.y - other.y
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -391,6 +407,7 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
     bar.set_job_title("Eroding...");
 
     let mut killed = 0;
+    let mut total_distance = 0.0;
     
     for i in 0..DROPLETS {
         let mut drop = match create_drop(&heightmap, &mut rng) {
@@ -401,8 +418,11 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
             }
         };
         let mut steps = 0;
+        let initial_position = drop.get_position().unwrap();
+        let mut last_position = initial_position.clone();
         
         while let Drop::Alive{..} = drop {
+            last_position = drop.get_position().unwrap();
             let result = tick(&mut heightmap, &mut drop, &mut rng);
             if let Err(e) = result {
                 println!("Error during tick: {:?}", e);
@@ -416,8 +436,9 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
                 break;
             }
         };
+        total_distance += (last_position - initial_position).magnitude();
         
-        if i % 100 == 0 {
+        if i % 10 == 0 {
             bar.reach_percent((((i+1) as f32 / DROPLETS as f32) * 100.0).round() as i32);
         } else if i == DROPLETS - 1 {
             bar.reach_percent(100);
@@ -425,6 +446,7 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
     }
 
     println!("\nKilled: {} / {}", killed, DROPLETS);
+    println!("Average distance: {}", total_distance / DROPLETS as f32);
 
     heightmap
 }
@@ -526,6 +548,10 @@ mod tests {
         test_drop_set_get_dead();
     }
 
+    #[test]
+    fn test_vector2_ops() {
+        assert_eq!(Vector2::new(1.0, 2.0) - Vector2::new(3.0, -4.0), Vector2::new(-2.0, 6.0));
+    }
 
    
 }
