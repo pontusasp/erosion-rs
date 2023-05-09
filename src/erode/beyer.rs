@@ -169,6 +169,13 @@ impl Drop {
         }
     }
 
+    fn should_die(&self) -> Result<bool, DropError> {
+        match self {
+            Drop::Alive { .. } => Ok(self.get_water()? < P_MIN_WATER || self.get_speed()? < P_MIN_SPEED),
+            Drop::Dead => Err(DropError::DropIsDead)
+        }
+    }
+
     fn usize_position(&self) -> Result<(usize, usize), DropError> {
         match self {
             Drop::Alive { position, .. } => {
@@ -369,7 +376,7 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
     // let height_test = heightmap.get(ix, iy).unwrap() * 0.99;
     // heightmap.set(ix, iy, height_test).unwrap();
 
-    if drop.get_water()? < P_MIN_WATER && drop.get_speed()? < P_MIN_SPEED {
+    if drop.should_die().unwrap() {
         kill_drop(drop, heightmap, ix, iy)?;
     }
 
@@ -437,7 +444,7 @@ mod tests {
     }
     
     #[test]
-    fn test_fn_drop_usize_position() {
+    fn test_drop_usize_position() {
         let drop = create_drop();
         let usize_position = (1usize, 3usize);
         assert_eq!(drop.usize_position().unwrap(), usize_position);
