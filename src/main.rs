@@ -3,6 +3,7 @@ use std::env;
 
 pub mod heightmap;
 pub mod erode;
+pub mod math;
 
 fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightmap::Heightmap {
     let mut runner = Runner::new();

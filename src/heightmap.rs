@@ -1,3 +1,5 @@
+use crate::math::Vector2;
+
 pub type HeightmapPrecision = f32;
 pub type HeightmapData = Vec<Vec<HeightmapPrecision>>;
 
@@ -92,11 +94,83 @@ impl Heightmap {
         }
     }
 
-    pub fn gradient(&self, x: usize, y: usize) -> (f32, f32) {
-        let dx = self.data[x][y] - self.data[x - 1][y];
-        let dy = self.data[y][y] - self.data[x][y - 1];
-        
-        (dx, dy)
+    pub fn get_clamped(&self, x: i32, y: i32) -> HeightmapPrecision {
+        let mut x = x;
+        let mut y = y;
+
+        if x >= self.width as i32 {
+            x = (self.width - 1) as i32;
+        }
+
+        if y >= self.height as i32 {
+            y = (self.height - 1) as i32;
+        }
+
+        if x < 0 {
+            x = 0;
+        }
+
+        if y < 0 {
+            y = 0;
+        }
+
+        self.data[x as usize][y as usize]
     }
+
+    pub fn gradient(&self, x: usize, y: usize) -> Option<Vector2> {
+        // if x == 0 || y == 0 {
+        //     return None
+        // }
+
+        let dx = self.get_clamped(x as i32, y as i32) as HeightmapPrecision - self.get_clamped(x as i32 - 1, y as i32) as HeightmapPrecision;
+        let dy = self.get_clamped(x as i32, y as i32) as HeightmapPrecision - self.get_clamped(x as i32, y as i32 - 1) as HeightmapPrecision;
+        
+        Some(Vector2::new(dx, dy))
+    }
+
+    pub fn interpolated_gradient(&self, position: &Vector2) -> Option<Vector2> {
+        let (fx, fy) = position.to_tuple();
+
+        let (x, y) = match position.to_usize() {
+            Ok(t) => t,
+            Err(_) => (0, 0) // TODO fix this!!
+            // Err(_) => return None TODO fix this!!
+        };
+
+        let frac_x = fx - fx.floor();
+        let frac_y = fy - fy.floor();
+
+        let tl = self.gradient(x + 0, y + 0)?;
+        let tr = self.gradient(x + 1, y + 0)?;
+        let bl = self.gradient(x + 0, y + 1)?;
+        let br = self.gradient(x + 1, y + 1)?;
+        
+        let interpolate_l = tl.interpolate(&bl, frac_y);
+        let interpolate_r = tr.interpolate(&br, frac_y);
+        Some(interpolate_l.interpolate(&interpolate_r, frac_x))
+    }
+
+    pub fn interpolated_height(&self, position: &Vector2) -> Option<HeightmapPrecision> {
+        let (fx, fy) = position.to_tuple();
+
+        let (x, y) = match position.to_usize() {
+            Ok(t) => t,
+            Err(_) => (0, 0) // TODO fix this!!
+            // Err(_) => return None TODO fix this!!
+        };
+
+        let frac_x = fx - fx.floor();
+        let frac_y = fy - fy.floor();
+
+        let tl = self.get_clamped(x as i32 + 0, y as i32 + 0);
+        let tr = self.get_clamped(x as i32 + 1, y as i32 + 0);
+        let bl = self.get_clamped(x as i32 + 0, y as i32 + 1);
+        let br = self.get_clamped(x as i32 + 1, y as i32 + 1);
+        
+        let interpolate_l = (1.0 - frac_y) * tl + frac_y * bl;
+        let interpolate_r = (1.0 - frac_y) * tr + frac_y * br;
+        Some((1.0 - frac_x) * interpolate_l + frac_x * interpolate_r)
+    }
+
 }
 
