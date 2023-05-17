@@ -31,6 +31,7 @@ impl Heightmap {
 
     pub fn to_u8(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
+        let mut errors: Vec<i32> = Vec::new();
 
         for i in 0..self.width {
             for j in 0..self.height {
@@ -43,9 +44,17 @@ impl Heightmap {
                 if let Some(value) = value.try_into().ok() {
                     buffer.push(value);
                 } else {
-                    panic!("Could not convert value to u8");
+                    errors.push(value);
+                    buffer.push(if value < 0 {
+                            0
+                        } else {
+                            255
+                        });
                 }
             }
+        }
+        if errors.len() > 0 {
+            eprintln!("heightmap.rs: Could not convert {} / {} ({:.5}%) values to u8 ({:?})", errors.len(), buffer.len(), errors.len() as f32 / buffer.len() as f32, errors);
         }
 
         buffer
