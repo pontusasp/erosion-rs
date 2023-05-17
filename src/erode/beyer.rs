@@ -146,6 +146,13 @@ impl Drop {
         }
     }
 
+    fn get_angle(&self) -> Result<f32, DropError> {
+        match self {
+            Drop::Alive { direction, .. } => Ok(direction.y.atan2(direction.x)),
+            Drop::Dead => Err(DropError::DropIsDead)
+        }
+    }
+
     fn should_die(&self) -> Result<bool, DropError> {
         match self {
             Drop::Alive { .. } => Ok(self.get_water()? < P_MIN_WATER || self.get_speed()? < P_MIN_SPEED),
@@ -256,7 +263,7 @@ impl Drop {
     fn update_speed(&mut self, height_delta: &f32) -> Result<(), DropError> {
         match self {
             Drop::Alive { speed, .. } => {
-                let new_speed = ((*speed).powi(2) + *height_delta * P_GRAVITY).max(0.0).sqrt();
+                let new_speed = ((*speed).powi(2) + *height_delta * P_GRAVITY).sqrt();
                 if new_speed < 0.0 {
                     Err(DropError::InvalidValue("Speed cannot be negative".to_string()))
                 } else {
@@ -270,11 +277,12 @@ impl Drop {
     
 }
 
-fn create_drop(heightmap: &Heightmap, rng: &mut ThreadRng) -> Result<Drop, DropError> {
+fn create_drop(heightmap: &Heightmap, rng: &mut ThreadRng, total_angle: &mut f32) -> Result<Drop, DropError> {
     let x = rng.gen::<HeightmapPrecision>() * heightmap.width as HeightmapPrecision;
     let y = rng.gen::<HeightmapPrecision>() * heightmap.height as HeightmapPrecision;
     
     let direction: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
+    *total_angle += direction;
     
     let mut drop = Drop::new();
     drop.set_position(Vector2::new(x, y))?;
@@ -468,24 +476,28 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
 
     let mut killed = 0;
     let mut total_distance = 0.0;
+    let mut total_starting_angle = 0.0;
+    let mut total_ending_angle = 0.0;
     
     for i in 0..DROPLETS {
-        let mut drop = match create_drop(&heightmap, &mut rng) {
+        let mut drop = match create_drop(&heightmap, &mut rng, &mut total_starting_angle) {
             Ok(drop) => drop,
             Err(e) => {
-                println!("Error while creating drop: {:?}", e);
+                eprintln!("Error while creating drop: {:?}", e);
                 break;
             }
         };
         let mut steps = 0;
         let initial_position = drop.get_position().unwrap();
         let mut last_position = initial_position.clone();
+        let mut last_angle = drop.get_angle().unwrap();
         
         while let Drop::Alive{..} = drop {
             last_position = drop.get_position().unwrap();
+            last_angle = drop.get_angle().unwrap();
             let result = tick(&mut heightmap, &mut drop, &mut rng);
             if let Err(e) = result {
-                println!("Error during tick: {:?}", e);
+                eprintln!("Error during tick: {:?}", e);
                 break;
             }
 
@@ -496,6 +508,7 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
                 break;
             }
         };
+        total_ending_angle += last_angle;
         total_distance += (last_position - initial_position).magnitude();
         
         if i % 10 == 0 {
@@ -507,6 +520,8 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
 
     println!("\nKilled: {} / {}", killed, DROPLETS);
     println!("Average distance: {}", total_distance / DROPLETS as f32);
+    println!("Average starting angle: {}", total_starting_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0);
+    println!("Average ending angle: {}", total_ending_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0);
 
     heightmap
 }
