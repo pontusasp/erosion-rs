@@ -36,11 +36,11 @@
     }
     
     .diff:hover {
-      filter: brightness(1);
+      /* filter: brightness(0); */
     }
 
     .diff {
-      filter: brightness(500);
+      /* filter: brightness(50); */
       transition: 500ms ease all;
     }
 
@@ -49,28 +49,26 @@
     }
 
     </style>
-    
+
   </head>
   <body>
-    
+    <div id="indicator" style="position: absolute; top: 1em; left: 1em; font-size: 2em"></div>
     <div class="container">
       
       <div class="item">
-        <img src="heightmap.png"/>
+        <img maxbrightness="2" src="heightmap.png"/>
         <div class="text">
           <span>heightmap.png</span>
         </div>
       </div>
       
       <div class="item diff">
-        <img src="heightmap_diff.png"/>
+        <img maxbrightness="250" id="diff" src="heightmap_diff.png"/>
         <div class="text">
           <span>heightmap_diff.png</span>
         </div>
       </div>
-      
-      <div class="item">
-        <img src="heightmap_eroded.png"/>
+      <div class="item"> <img maxbrightness="2" src="heightmap_eroded.png"/>
         <div class="text">
           <span>heightmap_eroded.png</span>
         </div>
@@ -79,4 +77,27 @@
     </div>
     
   </body>
+  <script>
+    const indicator = document.getElementById("indicator");
+
+    function setBrightness(element, brightness) {
+      element.style.filter = `brightness(${brightness})`;
+      indicator.innerText = `x${Math.round(brightness*100)/100}`;
+    }
+
+    const diff = document.getElementById("diff");
+    setBrightness(diff, 25);
+
+    const items = document.querySelectorAll(".item img");
+    items.forEach ((item) => {
+      const MAX_BRIGHTNESS = Number(item.getAttribute("maxbrightness"));
+      function handleMouseMove(e) {
+        const w = item.offsetWidth;
+        const x = e.pageX - item.offsetLeft;
+        const brightness = 1 + (x / w) * (MAX_BRIGHTNESS - 1);
+        setBrightness(item, brightness);
+      }
+      item.addEventListener('mousemove', handleMouseMove);
+    });
+  </script>
 </html>
