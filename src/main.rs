@@ -25,13 +25,30 @@ fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightm
     }
 }
 
+fn create_heightmap_from_closure(size: usize, original_depth: f32, closure: &dyn Fn(usize, usize) -> heightmap::HeightmapPrecision) -> heightmap::Heightmap {
+    let mut data: Vec<Vec<heightmap::HeightmapPrecision>> = Vec::new();
+    for i in 0..size {
+        let mut row = Vec::new();
+        for j in 0..size {
+            row.push(closure(i, j));
+        }
+        data.push(row);
+    }
+
+    heightmap::Heightmap {
+        data,
+        width: size,
+        height: size,
+        depth: 1.0,
+        original_depth
+    }
+}
+
 fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image::ImageResult<()> {
     let buffer = heightmap.to_u8();
 
     // Save the buffer as "image.png"
-    let image_result = image::save_buffer(filename, &buffer as &[u8], heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), image::ColorType::L8);
-
-    image_result
+    image::save_buffer(filename, &buffer as &[u8], heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), image::ColorType::L8)
 }
 
 
@@ -43,7 +60,11 @@ fn main() {
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
 
-    let heightmap = create_heightmap(size, depth, roughness);
+    let debug = true;
+    let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
+    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| 1.0 - y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
+
+    let heightmap = if debug { debug_heightmap } else { create_heightmap(size, depth, roughness) };
     let heightmap_eroded = erode::erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
 
