@@ -464,6 +464,10 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
     drop.update_speed(&height_delta)?;
     drop.update_water()?;
 
+    if drop.should_die().unwrap() {
+        kill_drop(drop, heightmap, ix, iy)?;
+    }
+
     Ok(())
 }
 
@@ -543,7 +547,7 @@ mod tests {
     #[test]
     fn test_drop_usize_position() {
         let drop = create_drop();
-        let usize_position = (1usize, 3usize);
+        let usize_position = (0usize, 2usize);
         assert_eq!(drop.usize_position().unwrap(), usize_position);
 
         let drop = Drop::Dead;
