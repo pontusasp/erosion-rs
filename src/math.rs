@@ -45,12 +45,13 @@ impl Vector2 {
         *self * (1.0 - t) + *other * t
     }
 
-    pub fn normalize(&self) -> Vector2 {
+    pub fn normalize(&mut self) {
         let magnitude = self.magnitude();
-        Vector2 {
-            x: self.x / magnitude,
-            y: self.y / magnitude
+        if magnitude <= 0.0 {
+            panic!("Trying to normalize a zero length vector!");
         }
+        self.x = self.x / magnitude;
+        self.y = self.y / magnitude;
     }
 
 }

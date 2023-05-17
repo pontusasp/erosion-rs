@@ -263,8 +263,8 @@ impl Drop {
     fn update_speed(&mut self, height_delta: &f32) -> Result<(), DropError> {
         match self {
             Drop::Alive { speed, .. } => {
-                let new_speed = ((*speed).powi(2) + *height_delta * P_GRAVITY).sqrt();
-                if new_speed < 0.0 {
+                let new_speed = ((*speed).powi(2) + *height_delta * P_GRAVITY).abs().sqrt();
+                if new_speed < 0.0 || new_speed.is_nan() {
                     Err(DropError::InvalidValue("Speed cannot be negative".to_string()))
                 } else {
                     *speed = new_speed;
