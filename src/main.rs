@@ -56,7 +56,7 @@ fn main() {
     
     env::set_var("RUST_BACKTRACE", "1");
 
-    let size: usize = 1024;
+    let size: usize = 512;
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
 

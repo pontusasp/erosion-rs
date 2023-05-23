@@ -14,6 +14,13 @@ impl Vector2 {
         }
     }
 
+    pub fn from_usize_tuple(tuple: (usize, usize)) -> Vector2 {
+        Vector2 {
+            x: tuple.0 as f32,
+            y: tuple.1 as f32
+        }
+    }
+
     pub fn set_x(&mut self, x: f32) {
         self.x = x;
     }
