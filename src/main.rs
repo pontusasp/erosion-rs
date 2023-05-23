@@ -47,7 +47,7 @@ fn create_heightmap_from_closure(size: usize, original_depth: f32, closure: &dyn
 fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image::ImageResult<()> {
     let buffer = heightmap.to_u8();
 
-    // Save the buffer as "image.png"
+    // Save the buffer as filename on disk
     image::save_buffer(filename, &buffer as &[u8], heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), image::ColorType::L8)
 }
 
@@ -64,7 +64,8 @@ fn main() {
     let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
     // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| 1.0 - y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
 
-    let heightmap = if debug { debug_heightmap } else { create_heightmap(size, depth, roughness) };
+    let mut heightmap = if debug { debug_heightmap } else { create_heightmap(size, depth, roughness) };
+    heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
     let heightmap_eroded = erode::erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
 

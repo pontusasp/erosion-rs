@@ -29,6 +29,34 @@ impl Heightmap {
         }
     }
 
+    pub fn get_range(&self) -> (HeightmapPrecision, HeightmapPrecision) {
+        let mut min = self.data[0][0];
+        let mut max = self.data[0][0];
+        for i in 0..self.width {
+            for j in 0..self.height {
+                let value = self.data[i][j];
+                if value < min {
+                    min = value;
+                }
+                if value > max {
+                    max = value;
+                }
+            }
+        }
+        (min, max)
+    }
+
+    pub fn normalize(&mut self) {
+        let (min, max) = self.get_range();
+        let range = max - min;
+        for i in 0..self.width {
+            for j in 0..self.height {
+                let value = self.data[i][j];
+                self.data[i][j] = (value - min) / range;
+            }
+        }
+    }
+
     pub fn to_u8(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
         let mut errors: Vec<i32> = Vec::new();
