@@ -9,7 +9,7 @@ const P_DEPOSITION: f32 = 0.05;
 const P_EROSION: f32 = 0.9;
 const P_EVAPORATION: f32 = 0.05;
 const P_RADIUS: usize = 3;
-const P_MIN_SLOPE: f32 = 0.01;
+const P_MIN_SLOPE: f32 = 0.00000001;
 const P_GRAVITY: f32 = 9.2;
 const P_MAX_PATH: usize = 10000;
 
@@ -304,6 +304,15 @@ fn get_random_angle(rng: &mut ThreadRng) -> f32 {
 }
 
 fn deposit(drop: &mut Drop, heightmap: &mut Heightmap, position_start: Vector2, height_delta: HeightmapPrecision) -> Result<(), DropError> {
+
+    fn _place(heightmap: &mut Heightmap, pos: (usize, usize), deposition: f32, height: HeightmapPrecision, fraction: Vector2) -> Result<(), HeightmapError> {
+        heightmap.set(pos.0 + 0, pos.1 + 0, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height)?;
+        heightmap.set(pos.0 + 1, pos.1 + 0, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height)?;
+        heightmap.set(pos.0 + 0, pos.1 + 1, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height)?;
+        heightmap.set(pos.0 + 1, pos.1 + 1, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height)?;
+        Ok(())
+    }
+
     let pos_i = position_start.to_usize().unwrap();
     let fraction = position_start - Vector2::from_usize_tuple(pos_i);
     let height = match heightmap.get(pos_i.0, pos_i.1) {
@@ -321,12 +330,12 @@ fn deposit(drop: &mut Drop, heightmap: &mut Heightmap, position_start: Vector2, 
     };
     drop.set_sediment(sediment - deposition)?;
 
-    heightmap.set(pos_i.0 + 0, pos_i.1 + 0, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height).unwrap();
-    heightmap.set(pos_i.0 + 1, pos_i.1 + 0, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height).unwrap();
-    heightmap.set(pos_i.0 + 0, pos_i.1 + 1, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height).unwrap();
-    heightmap.set(pos_i.0 + 1, pos_i.1 + 1, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height).unwrap();
-
-    Ok(())
+    match _place(heightmap, pos_i, deposition, height, fraction) {
+        // Err(HeightmapError::OutOfBounds) => panic!("deposit: heightmap.set returned OutOfBounds"),
+        Err(HeightmapError::OutOfBounds) => Err(DropError::InvalidPosition("deposit: heightmap.set".to_string(), position_start)),
+        Err(HeightmapError::MismatchingSize) => unreachable!("deposit: heightmap.set returned MismatchingSize"),
+        Ok(()) => Ok(())
+    }
 }
 
 fn erode(drop: &mut Drop, heightmap: &mut Heightmap, position_start: Vector2, height_delta: HeightmapPrecision) -> Result<(), DropError> {
@@ -367,10 +376,17 @@ fn erode(drop: &mut Drop, heightmap: &mut Heightmap, position_start: Vector2, he
                 // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
             };
             let radius = (((ix as i32 - pos_i.0 as i32).pow(2) + (iy as i32 - pos_i.1 as i32).pow(2)) as f32).sqrt();
+            if radius.is_nan() {
+                panic!("erode: radius is NaN at ({}, {})", ix, iy);
+            }
             let weight = P_RADIUS as f32 - radius;
             kernel[ix - x0][iy - y0] = weight;
             sum += weight;
         }
+    }
+
+    if sum == 0.0 {
+        return Ok(());
     }
 
     for ix in x0..x1 {
