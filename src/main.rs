@@ -60,7 +60,7 @@ fn main() {
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
 
-    let debug = true;
+    let debug = false;
     let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
     // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| 1.0 - y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
 
@@ -69,8 +69,15 @@ fn main() {
     let heightmap_eroded = erode::erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
 
+    println!("Exporting heightmap images...");
     heightmap_to_image(&heightmap, "output/heightmap.png").unwrap();
     heightmap_to_image(&heightmap_eroded, "output/heightmap_eroded.png").unwrap();
     heightmap_to_image(&heightmap_diff, "output/heightmap_diff.png").unwrap();
 
+    println!("Exporting heightmap json...");
+    heightmap::io::export(&heightmap, "output/heightmap.json").unwrap();
+    heightmap::io::export(&heightmap_eroded, "output/heightmap_eroded.json").unwrap();
+    heightmap::io::export(&heightmap_diff, "output/heightmap_diff.json").unwrap();
+
+    println!("Done!");
 }
