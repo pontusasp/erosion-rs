@@ -1,9 +1,12 @@
+use serde::{Serialize, Deserialize};
+
 use crate::math::Vector2;
+pub mod io;
 
 pub type HeightmapPrecision = f32;
 pub type HeightmapData = Vec<Vec<HeightmapPrecision>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Heightmap {
     pub data: HeightmapData,
     pub width: usize,
