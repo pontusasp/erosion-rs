@@ -155,7 +155,14 @@ impl Drop {
 
     fn get_capacity(&self, height_delta: HeightmapPrecision) -> Result<f32, DropError> {
         match self {
-            Drop::Alive { speed, water, .. } => Ok(P_MIN_SLOPE.max(-height_delta) * self.get_speed()? * self.get_water()? * P_CAPACITY),
+            Drop::Alive { speed, water, .. } => {
+                let capacity = P_MIN_SLOPE.max(-height_delta) * speed * water * P_CAPACITY;
+                if capacity < 0.0 {
+                    Err(DropError::InvalidValue("Capacity cannot be negative".to_string()))
+                } else {
+                    Ok(capacity)
+                }
+            },
             Drop::Dead => Err(DropError::DropIsDead)
         }
     }
@@ -247,26 +254,6 @@ impl Drop {
         }
     }
 
-    fn calculate_capacity(&self, height_delta: &f32) -> Result<f32, DropError> {
-        if let Drop::Alive { speed, water, .. } = self {
-            let capacity = speed * *water * P_CAPACITY * P_MIN_SLOPE.max(-*height_delta);
-            if capacity < 0.0 {
-                Err(DropError::InvalidValue("Capacity cannot be negative".to_string()))
-            } else {
-                Ok(capacity)
-            }
-        } else {
-            Err(DropError::DropIsDead)
-        }
-    }
-
-    fn get_sediment_capacity(&self, height_delta: HeightmapPrecision) -> Result<f32, DropError> {
-        match self {
-            Drop::Alive { speed, water, .. } => Ok(P_MIN_SLOPE.max(-height_delta) * *speed * *water * P_CAPACITY),
-            Drop::Dead => Err(DropError::DropIsDead)
-        }
-    }
-
     fn update_speed(&mut self, height_delta: &f32) -> Result<(), DropError> {
         match self {
             Drop::Alive { speed, .. } => {
@@ -325,7 +312,7 @@ fn deposit(drop: &mut Drop, heightmap: &mut Heightmap, position_start: Vector2, 
         // None => return Err(DropError::InvalidPosition("deposit: height".to_string(), position_start))
     };
     let sediment = drop.get_sediment()?;
-    let capacity = drop.get_sediment_capacity(height_delta)?;
+    let capacity = drop.get_capacity(height_delta)?;
 
     let deposition = if height_delta > P_MIN_SLOPE {
         height_delta.min(sediment)
@@ -444,7 +431,7 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
 
     let height_delta = height_new - height_old;
 
-    let capacity = drop.get_sediment_capacity(height_delta)?;
+    let capacity = drop.get_capacity(height_delta)?;
     let sediment = drop.get_sediment()?;
 
     if height_delta > P_MIN_SLOPE && sediment > capacity {
