@@ -56,13 +56,29 @@ fn main() {
     
     env::set_var("RUST_BACKTRACE", "1");
 
-    let size: usize = 512;
+    let size: usize = 128;
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
 
-    let debug = false;
-    let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
+    let debug = true;
+
+    // Y gradient
+    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
+
+    // Inverted Y gradient
     // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| 1.0 - y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
+
+    // Y hyperbola gradient
+    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| {
+        // let gradient = y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision;
+        // gradient.powi(2)
+    // });
+
+    // Centered hill gradient
+    let debug_heightmap = create_heightmap_from_closure(size, depth, &|x: usize, y: usize| {
+        let gradient = (x as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0).powi(2) + (y as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0).powi(2);
+        1.0 - gradient / (size as heightmap::HeightmapPrecision / 2.0).powi(2)
+    });
 
     let mut heightmap = if debug { debug_heightmap } else { create_heightmap(size, depth, roughness) };
     heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0

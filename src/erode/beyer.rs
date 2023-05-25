@@ -477,6 +477,7 @@ pub fn simulate(heightmap: &Heightmap) -> Heightmap {
     let mut total_distance = 0.0;
     let mut total_starting_angle = 0.0;
     let mut total_ending_angle = 0.0;
+    let mut total_movement = Vector2::new(0.0, 0.0);
     
     for i in 0..DROPLETS {
         let mut drop = match create_drop(&heightmap, &mut rng, &mut total_starting_angle) {
@@ -509,6 +510,7 @@ pub fn simulate(heightmap: &Heightmap) -> Heightmap {
         };
         total_ending_angle += last_angle;
         total_distance += (last_position - initial_position).magnitude();
+        total_movement = total_movement + last_position - initial_position;
         
         if i % 10 == 0 {
             bar.reach_percent((((i+1) as f32 / DROPLETS as f32) * 100.0).round() as i32);
@@ -521,6 +523,7 @@ pub fn simulate(heightmap: &Heightmap) -> Heightmap {
     println!("Average distance: {}", total_distance / DROPLETS as f32);
     println!("Average starting angle: {}", total_starting_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0);
     println!("Average ending angle: {}", total_ending_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0);
+    println!("Average movement: {:?}", total_movement * (1.0 / DROPLETS as f32));
 
     heightmap
 }
