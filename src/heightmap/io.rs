@@ -9,7 +9,7 @@ pub enum HeightmapIOError {
 }
 
 pub fn export(heightmap: &Heightmap, filename: &str) -> Result<(), HeightmapIOError> {
-    fn _export(heightmap: &Heightmap, filename: &str) -> std::io::Result<()>  {
+    fn _export(heightmap: &Heightmap, filename: &str) -> std::io::Result<()> {
         let data = serde_json::to_string(&heightmap).unwrap();
         let mut file = File::create(filename)?;
         file.write_all(data.as_bytes())?;
@@ -18,12 +18,12 @@ pub fn export(heightmap: &Heightmap, filename: &str) -> Result<(), HeightmapIOEr
 
     match _export(heightmap, filename) {
         Ok(_) => Ok(()),
-        Err(_) => Err(HeightmapIOError::FileExportError)
+        Err(_) => Err(HeightmapIOError::FileExportError),
     }
 }
 
 pub fn import(filename: &str) -> Result<Heightmap, HeightmapIOError> {
-    fn _import(filename: &str) -> std::io::Result<Heightmap>  {
+    fn _import(filename: &str) -> std::io::Result<Heightmap> {
         let mut data = String::new();
         {
             let mut file = File::open(filename)?;
@@ -36,6 +36,6 @@ pub fn import(filename: &str) -> Result<Heightmap, HeightmapIOError> {
     }
     match _import(filename) {
         Ok(heightmap) => Ok(heightmap),
-        Err(_) => Err(HeightmapIOError::FileImportError)
+        Err(_) => Err(HeightmapIOError::FileImportError),
     }
 }

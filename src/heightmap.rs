@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::math::Vector2;
@@ -14,24 +14,30 @@ pub struct Heightmap {
     pub height: usize,
     pub depth: HeightmapPrecision,
     pub original_depth: HeightmapPrecision,
-    pub metadata: Option<HashMap<String, String>>
+    pub metadata: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug)]
 pub enum HeightmapError {
     MismatchingSize,
-    OutOfBounds
+    OutOfBounds,
 }
 
 impl Heightmap {
-    pub fn new(data: HeightmapData, width: usize, height: usize, depth: HeightmapPrecision, original_depth: HeightmapPrecision) -> Heightmap {
+    pub fn new(
+        data: HeightmapData,
+        width: usize,
+        height: usize,
+        depth: HeightmapPrecision,
+        original_depth: HeightmapPrecision,
+    ) -> Heightmap {
         Heightmap {
             data,
             width,
             height,
             depth,
             original_depth,
-            metadata: None
+            metadata: None,
         }
     }
 
@@ -74,21 +80,23 @@ impl Heightmap {
                 value = value / (self.depth / u8_max);
                 value = value.round();
                 let value = value as i32;
-                
+
                 if let Some(value) = value.try_into().ok() {
                     buffer.push(value);
                 } else {
                     errors.push(value);
-                    buffer.push(if value < 0 {
-                            0
-                        } else {
-                            255
-                        });
+                    buffer.push(if value < 0 { 0 } else { 255 });
                 }
             }
         }
         if errors.len() > 0 {
-            eprintln!("heightmap.rs: Could not convert {} / {} ({:.5}%) values to u8 ({:?})", errors.len(), buffer.len(), errors.len() as f32 / buffer.len() as f32, errors);
+            eprintln!(
+                "heightmap.rs: Could not convert {} / {} ({:.5}%) values to u8 ({:?})",
+                errors.len(),
+                buffer.len(),
+                errors.len() as f32 / buffer.len() as f32,
+                errors
+            );
         }
 
         buffer
@@ -96,15 +104,15 @@ impl Heightmap {
 
     pub fn subtract(&self, heightmap: &Heightmap) -> Result<Heightmap, HeightmapError> {
         let mut data: HeightmapData = Vec::new();
-        
+
         let depth = if self.depth > heightmap.depth {
             self.depth
         } else {
             heightmap.depth
         };
-        
+
         if !(self.width == heightmap.width && self.height == heightmap.height) {
-            return Err(HeightmapError::MismatchingSize)
+            return Err(HeightmapError::MismatchingSize);
         }
 
         for i in 0..self.width {
@@ -116,7 +124,13 @@ impl Heightmap {
             data.push(row);
         }
 
-        let diff = Heightmap::new(data, self.width, self.height, depth, heightmap.original_depth);
+        let diff = Heightmap::new(
+            data,
+            self.width,
+            self.height,
+            depth,
+            heightmap.original_depth,
+        );
         Ok(diff)
     }
 
@@ -165,9 +179,11 @@ impl Heightmap {
         //     return None
         // }
 
-        let dx = self.get_clamped(x as i32, y as i32) as HeightmapPrecision - self.get_clamped(x as i32 - 1, y as i32) as HeightmapPrecision;
-        let dy = self.get_clamped(x as i32, y as i32) as HeightmapPrecision - self.get_clamped(x as i32, y as i32 - 1) as HeightmapPrecision;
-        
+        let dx = self.get_clamped(x as i32, y as i32) as HeightmapPrecision
+            - self.get_clamped(x as i32 - 1, y as i32) as HeightmapPrecision;
+        let dy = self.get_clamped(x as i32, y as i32) as HeightmapPrecision
+            - self.get_clamped(x as i32, y as i32 - 1) as HeightmapPrecision;
+
         Some(Vector2::new(dx, dy))
     }
 
@@ -176,8 +192,8 @@ impl Heightmap {
 
         let (x, y) = match position.to_usize() {
             Ok(t) => t,
-            Err(_) => (0, 0) // TODO fix this!!
-            // Err(_) => return None TODO fix this!!
+            Err(_) => (0, 0), // TODO fix this!!
+                              // Err(_) => return None TODO fix this!!
         };
 
         let frac_x = fx - fx.floor();
@@ -187,7 +203,7 @@ impl Heightmap {
         let tr = self.gradient(x + 1, y + 0)?;
         let bl = self.gradient(x + 0, y + 1)?;
         let br = self.gradient(x + 1, y + 1)?;
-        
+
         let interpolate_l = tl.interpolate(&bl, frac_y);
         let interpolate_r = tr.interpolate(&br, frac_y);
         Some(interpolate_l.interpolate(&interpolate_r, frac_x))
@@ -198,8 +214,8 @@ impl Heightmap {
 
         let (x, y) = match position.to_usize() {
             Ok(t) => t,
-            Err(_) => (0, 0) // TODO fix this!!
-            // Err(_) => return None TODO fix this!!
+            Err(_) => (0, 0), // TODO fix this!!
+                              // Err(_) => return None TODO fix this!!
         };
 
         let frac_x = fx - fx.floor();
@@ -224,6 +240,4 @@ impl Heightmap {
             self.metadata = Some(hashmap);
         }
     }
-
 }
-

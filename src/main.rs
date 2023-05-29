@@ -1,8 +1,8 @@
 use ds_heightmap::Runner;
 use std::env;
 
-pub mod heightmap;
 pub mod erode;
+pub mod heightmap;
 pub mod math;
 
 fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightmap::Heightmap {
@@ -12,21 +12,33 @@ fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightm
 
     runner.set_depth(original_depth);
     runner.set_rough(roughness);
-    
+
     let depth = 1.0;
-    
+
     let output = runner.ds();
     heightmap::Heightmap {
-        data: output.data.into_iter().map(|row| row.into_iter().map(|value| value as heightmap::HeightmapPrecision / original_depth).collect()).collect(),
+        data: output
+            .data
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|value| value as heightmap::HeightmapPrecision / original_depth)
+                    .collect()
+            })
+            .collect(),
         width: size,
         height: size,
         depth,
         original_depth,
-        metadata: None
+        metadata: None,
     }
 }
 
-fn create_heightmap_from_closure(size: usize, original_depth: f32, closure: &dyn Fn(usize, usize) -> heightmap::HeightmapPrecision) -> heightmap::Heightmap {
+fn create_heightmap_from_closure(
+    size: usize,
+    original_depth: f32,
+    closure: &dyn Fn(usize, usize) -> heightmap::HeightmapPrecision,
+) -> heightmap::Heightmap {
     let mut data: Vec<Vec<heightmap::HeightmapPrecision>> = Vec::new();
     for i in 0..size {
         let mut row = Vec::new();
@@ -42,7 +54,7 @@ fn create_heightmap_from_closure(size: usize, original_depth: f32, closure: &dyn
         height: size,
         depth: 1.0,
         original_depth,
-        metadata: None
+        metadata: None,
     }
 }
 
@@ -50,12 +62,16 @@ fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image
     let buffer = heightmap.to_u8();
 
     // Save the buffer as filename on disk
-    image::save_buffer(filename, &buffer as &[u8], heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), image::ColorType::L8)
+    image::save_buffer(
+        filename,
+        &buffer as &[u8],
+        heightmap.width.try_into().unwrap(),
+        heightmap.height.try_into().unwrap(),
+        image::ColorType::L8,
+    )
 }
 
-
 fn main() {
-    
     env::set_var("RUST_BACKTRACE", "1");
 
     let size: usize = 128;
@@ -72,17 +88,25 @@ fn main() {
 
     // Y hyperbola gradient
     // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| {
-        // let gradient = y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision;
-        // gradient.powi(2)
+    // let gradient = y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision;
+    // gradient.powi(2)
     // });
 
     // Centered hill gradient
     let debug_heightmap = create_heightmap_from_closure(size, depth, &|x: usize, y: usize| {
-        let gradient = (x as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0).powi(2) + (y as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0).powi(2);
+        let gradient = (x as heightmap::HeightmapPrecision
+            - size as heightmap::HeightmapPrecision / 2.0)
+            .powi(2)
+            + (y as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0)
+                .powi(2);
         1.0 - gradient / (size as heightmap::HeightmapPrecision / 2.0).powi(2)
     });
 
-    let mut heightmap = if debug { debug_heightmap } else { create_heightmap(size, depth, roughness) };
+    let mut heightmap = if debug {
+        debug_heightmap
+    } else {
+        create_heightmap(size, depth, roughness)
+    };
     heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
     let heightmap_eroded = erode::erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
