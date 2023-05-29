@@ -21,7 +21,8 @@ fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightm
         width: size,
         height: size,
         depth,
-        original_depth
+        original_depth,
+        metadata: None
     }
 }
 
@@ -40,7 +41,8 @@ fn create_heightmap_from_closure(size: usize, original_depth: f32, closure: &dyn
         width: size,
         height: size,
         depth: 1.0,
-        original_depth
+        original_depth,
+        metadata: None
     }
 }
 

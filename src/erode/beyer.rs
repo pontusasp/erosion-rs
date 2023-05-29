@@ -519,6 +519,26 @@ pub fn simulate(heightmap: &Heightmap) -> Heightmap {
         }
     }
 
+
+    heightmap.metadata_add("DROPLETS", DROPLETS.to_string());
+    heightmap.metadata_add("P_INERTIA", P_INERTIA.to_string());
+    heightmap.metadata_add("P_CAPACITY", P_CAPACITY.to_string());
+    heightmap.metadata_add("P_DEPOSITION", P_DEPOSITION.to_string());
+    heightmap.metadata_add("P_EROSION", P_EROSION.to_string());
+    heightmap.metadata_add("P_EVAPORATION", P_EVAPORATION.to_string());
+    heightmap.metadata_add("P_RADIUS", P_RADIUS.to_string());
+    heightmap.metadata_add("P_MIN_SLOPE", P_MIN_SLOPE.to_string());
+    heightmap.metadata_add("P_GRAVITY", P_GRAVITY.to_string());
+    heightmap.metadata_add("P_MAX_PATH", P_MAX_PATH.to_string());
+    heightmap.metadata_add("P_MIN_WATER", P_MIN_WATER.to_string());
+    heightmap.metadata_add("P_MIN_SPEED", P_MIN_SPEED.to_string());
+
+    heightmap.metadata_add("killed", killed.to_string());
+    heightmap.metadata_add("average_distance", (total_distance / DROPLETS as f32).to_string());
+    heightmap.metadata_add("average_starting_angle", (total_starting_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0).to_string());
+    heightmap.metadata_add("average_ending_angle", (total_ending_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0).to_string());
+    heightmap.metadata_add("average_movement", format!("{:?}", total_movement * (1.0 / DROPLETS as f32)));
+
     println!("\nKilled: {} / {}", killed, DROPLETS);
     println!("Average distance: {}", total_distance / DROPLETS as f32);
     println!("Average starting angle: {}", total_starting_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0);

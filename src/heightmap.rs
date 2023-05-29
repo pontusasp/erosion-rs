@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 
 use crate::math::Vector2;
 pub mod io;
@@ -12,7 +13,8 @@ pub struct Heightmap {
     pub width: usize,
     pub height: usize,
     pub depth: HeightmapPrecision,
-    pub original_depth: HeightmapPrecision
+    pub original_depth: HeightmapPrecision,
+    pub metadata: Option<HashMap<String, String>>
 }
 
 #[derive(Debug)]
@@ -28,7 +30,8 @@ impl Heightmap {
             width,
             height,
             depth,
-            original_depth
+            original_depth,
+            metadata: None
         }
     }
 
@@ -206,10 +209,20 @@ impl Heightmap {
         let tr = self.get_clamped(x as i32 + 1, y as i32 + 0);
         let bl = self.get_clamped(x as i32 + 0, y as i32 + 1);
         let br = self.get_clamped(x as i32 + 1, y as i32 + 1);
-        
+
         let interpolate_l = (1.0 - frac_y) * tl + frac_y * bl;
         let interpolate_r = (1.0 - frac_y) * tr + frac_y * br;
         Some((1.0 - frac_x) * interpolate_l + frac_x * interpolate_r)
+    }
+
+    pub fn metadata_add(&mut self, key: &str, value: String) {
+        if let Some(hashmap) = &mut self.metadata {
+            hashmap.insert(key.to_string(), value);
+        } else {
+            let mut hashmap = HashMap::new();
+            hashmap.insert(key.to_string(), value);
+            self.metadata = Some(hashmap);
+        }
     }
 
 }
