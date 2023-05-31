@@ -57,7 +57,7 @@ async fn debug() {
     while !is_quit_requested() {
         clear_background(BLACK);
 
-        if is_key_down(KeyCode::J) {
+        if is_key_down(KeyCode::J) || is_key_pressed(KeyCode::Right) {
             state_index += 1;
             if state_index >= states.len() {
                 let State { mut drop, mut heightmap } = states.last().unwrap().clone();
@@ -66,7 +66,7 @@ async fn debug() {
                 }
                 states.push(State { drop, heightmap });
             }
-        } else if is_key_down(KeyCode::K) {
+        } else if is_key_down(KeyCode::K) || is_key_pressed(KeyCode::Left) {
             if state_index > 0 {
                 state_index -= 1;
             }
@@ -105,10 +105,11 @@ async fn debug() {
 
         match drop {
             erode::beyer::Drop::Alive { position, .. } => {
-                draw_circle(
+                draw_circle_lines(
                     position.x / heightmap_.width as f32 * screen_width(),
                     position.y / heightmap_.height as f32 * screen_height(),
                     erode::beyer::P_RADIUS as f32 * screen_width() / heightmap_.width as f32,
+                    1.5,
                     RED,
                 );
             }
