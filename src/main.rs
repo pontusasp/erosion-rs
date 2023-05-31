@@ -74,7 +74,7 @@ fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let size: usize = 128;
+    let size: usize = 256;
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
 
@@ -93,13 +93,32 @@ fn main() {
     // });
 
     // Centered hill gradient
+    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|x: usize, y: usize| {
+    //     let gradient = (x as heightmap::HeightmapPrecision
+    //         - size as heightmap::HeightmapPrecision / 2.0)
+    //         .powi(2)
+    //         + (y as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0)
+    //         .powi(2);
+    //     1.0 - gradient / (size as heightmap::HeightmapPrecision / 2.0).powi(2)
+    // });
+
+    // Centered small hill gradient
     let debug_heightmap = create_heightmap_from_closure(size, depth, &|x: usize, y: usize| {
-        let gradient = (x as heightmap::HeightmapPrecision
-            - size as heightmap::HeightmapPrecision / 2.0)
-            .powi(2)
-            + (y as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0)
-                .powi(2);
-        1.0 - gradient / (size as heightmap::HeightmapPrecision / 2.0).powi(2)
+        let radius = size as heightmap::HeightmapPrecision / 2.0;
+        let x = x as heightmap::HeightmapPrecision;
+        let y = y as heightmap::HeightmapPrecision;
+        let distance = ((x - radius).powf(2.0) + (y - radius).powf(2.0)).sqrt();
+
+        let hill_radius = 0.75;
+
+        if distance < radius * hill_radius {
+            let to = radius * hill_radius;
+            let from = 0.0;
+            let gradient = (distance - from) / (to - from);
+            ((std::f32::consts::PI * gradient).cos() + 1.0) / 2.0
+        } else {
+            0.0
+        }
     });
 
     let mut heightmap = if debug {
