@@ -2,19 +2,19 @@ use crate::heightmap::*;
 use crate::math::*;
 use rand::prelude::*;
 
-const DROPLETS: usize = 10_000;
+const DROPLETS: usize = 100_000;
 const P_INERTIA: f32 = 0.9;
 const P_CAPACITY: f32 = 8.0;
 const P_DEPOSITION: f32 = 0.05;
 const P_EROSION: f32 = 0.9;
 const P_EVAPORATION: f32 = 0.05;
-// const P_RADIUS: usize = 3;
-const P_MIN_SLOPE: f32 = 0.05;
+const P_RADIUS: usize = 3;
+const P_MIN_SLOPE: f32 = 0.00000001;
 const P_GRAVITY: f32 = 9.2;
 const P_MAX_PATH: usize = 10000;
 
-const P_MIN_WATER: f32 = 0.01;
-const P_MIN_SPEED: f32 = 0.01;
+const P_MIN_WATER: f32 = 0.001;
+const P_MIN_SPEED: f32 = 0.001;
 
 #[derive(Debug, PartialEq)]
 pub enum Drop {
@@ -23,27 +23,26 @@ pub enum Drop {
         direction: Vector2,
         speed: f32,
         water: f32,
-        sediment: f32
+        sediment: f32,
     },
-    Dead
+    Dead,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum DropError {
-    DropIsDead, 
+    DropIsDead,
     InvalidValue(String),
-    InvalidPosition(String, Vector2)
+    InvalidPosition(String, Vector2),
 }
 
 impl Drop {
-
     fn new() -> Drop {
         Drop::Alive {
             position: Vector2::new(0.0, 0.0),
             direction: Vector2::new(0.0, 0.0),
             speed: 0.0,
             water: 0.0,
-            sediment: 0.0
+            sediment: 0.0,
         }
     }
 
@@ -59,7 +58,7 @@ impl Drop {
     fn get_position(&self) -> Result<Vector2, DropError> {
         match self {
             Drop::Alive { position, .. } => Ok(*position),
-            Drop::Dead => Err(DropError::DropIsDead)
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
@@ -68,21 +67,23 @@ impl Drop {
             Drop::Alive { direction: d, .. } => {
                 *d = direction;
                 Ok(())
-            },
-            Drop::Dead => Err(DropError::DropIsDead)
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
     fn set_speed(&mut self, speed: f32) -> Result<(), DropError> {
         if speed < 0.0 {
-            Err(DropError::InvalidValue("Speed cannot be negative".to_string()))
+            Err(DropError::InvalidValue(
+                "Speed cannot be negative".to_string(),
+            ))
         } else {
             match self {
                 Drop::Alive { speed: s, .. } => {
                     *s = speed;
                     Ok(())
-                },
-                Drop::Dead => Err(DropError::DropIsDead)
+                }
+                Drop::Dead => Err(DropError::DropIsDead),
             }
         }
     }
@@ -90,20 +91,22 @@ impl Drop {
     fn get_speed(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { speed, .. } => Ok(*speed),
-            Drop::Dead => Err(DropError::DropIsDead)
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
-     
+
     fn set_water(&mut self, water: f32) -> Result<(), DropError> {
         if water < 0.0 {
-            Err(DropError::InvalidValue("Water cannot be negative".to_string()))
+            Err(DropError::InvalidValue(
+                "Water cannot be negative".to_string(),
+            ))
         } else {
             match self {
                 Drop::Alive { water: w, .. } => {
                     *w = water;
                     Ok(())
-                },
-                Drop::Dead => Err(DropError::DropIsDead)
+                }
+                Drop::Dead => Err(DropError::DropIsDead),
             }
         }
     }
@@ -111,65 +114,88 @@ impl Drop {
     fn get_water(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { water, .. } => Ok(*water),
-            Drop::Dead => Err(DropError::DropIsDead)
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
     fn set_sediment(&mut self, sediment: f32) -> Result<(), DropError> {
         if sediment < 0.0 {
-            Err(DropError::InvalidValue("Sediment cannot be negative".to_string()))
+            Err(DropError::InvalidValue(
+                "Sediment cannot be negative".to_string(),
+            ))
         } else {
             match self {
                 Drop::Alive { sediment: s, .. } => {
                     *s = sediment;
                     Ok(())
-                },
-                Drop::Dead => Err(DropError::DropIsDead)
+                }
+                Drop::Dead => Err(DropError::DropIsDead),
             }
         }
     }
-    
+
     fn get_sediment(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { sediment, .. } => Ok(*sediment),
-            Drop::Dead => Err(DropError::DropIsDead)
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
-    
+
     fn set_dead(&mut self) -> Result<(), DropError> {
         match self {
             Drop::Alive { .. } => {
                 *self = Drop::Dead;
                 Ok(())
-            },
-            Drop::Dead => Err(DropError::DropIsDead)
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
     fn get_angle(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { direction, .. } => Ok(direction.y.atan2(direction.x)),
-            Drop::Dead => Err(DropError::DropIsDead)
+            Drop::Dead => Err(DropError::DropIsDead),
+        }
+    }
+
+    fn get_capacity(&self, height_delta: HeightmapPrecision) -> Result<f32, DropError> {
+        match self {
+            Drop::Alive { speed, water, .. } => {
+                let capacity = P_MIN_SLOPE.max(-height_delta) * speed * water * P_CAPACITY;
+                if capacity < 0.0 {
+                    Err(DropError::InvalidValue(
+                        "Capacity cannot be negative".to_string(),
+                    ))
+                } else {
+                    Ok(capacity)
+                }
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
     fn should_die(&self) -> Result<bool, DropError> {
         match self {
-            Drop::Alive { .. } => Ok(self.get_water()? < P_MIN_WATER || self.get_speed()? < P_MIN_SPEED),
-            Drop::Dead => Err(DropError::DropIsDead)
+            Drop::Alive { .. } => {
+                Ok(self.get_water()? < P_MIN_WATER || self.get_speed()? < P_MIN_SPEED)
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
     fn usize_position(&self) -> Result<(usize, usize), DropError> {
         match self {
             Drop::Alive { position, .. } => {
-                if let Ok(usize_pos) = position.to_usize()  {
+                if let Ok(usize_pos) = position.to_usize() {
                     Ok(usize_pos)
                 } else {
-                    Err(DropError::InvalidPosition("usize_position".to_string(), *position))
+                    Err(DropError::InvalidPosition(
+                        "usize_position".to_string(),
+                        *position,
+                    ))
                 }
-            },
-            Drop::Dead => Err(DropError::DropIsDead)
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
@@ -181,7 +207,7 @@ impl Drop {
         // if iy >= heightmap.height - 1 {
         //     iy -= 1;
         // }
-        
+
         // match self {
         //     Drop::Alive { position, .. } => {
         //         let grad = heightmap.gradient(position);
@@ -193,7 +219,7 @@ impl Drop {
         //     },
         //     Drop::Dead => Err(DropError::DropIsDead)
         // }
-        
+
         todo!();
     }
 
@@ -202,61 +228,45 @@ impl Drop {
             Drop::Alive { direction, .. } => {
                 let x_dir = direction.x;
                 let y_dir = direction.y;
-                
+
                 direction.set_x(x_dir * P_INERTIA - gradient.x * (1.0 - P_INERTIA));
                 direction.set_y(y_dir * P_INERTIA - gradient.y * (1.0 - P_INERTIA));
-                
+
                 // Check if direction is zero vector
                 if direction.x == 0.0 && direction.y == 0.0 {
                     direction.set_x(random_angle.cos());
-                    direction.set_y(random_angle.sin());  
+                    direction.set_y(random_angle.sin());
                 } else {
                     direction.normalize();
                 }
                 Ok(())
-            },
-            Drop::Dead => Err(DropError::DropIsDead)
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
-    
+
     fn update_position(&mut self) -> Result<(), DropError> {
         match self {
-            Drop::Alive { position, direction, .. } => {
+            Drop::Alive {
+                position,
+                direction,
+                ..
+            } => {
                 position.set_x(position.x + direction.x);
                 position.set_y(position.y + direction.y);
                 Ok(())
-            },
-            Drop::Dead => Err(DropError::DropIsDead)
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
-    
+
     fn update_water(&mut self) -> Result<(), DropError> {
         match self {
             Drop::Alive { water, .. } => {
                 *water *= 1.0 - P_EVAPORATION;
                 Ok(())
-            },
-            Drop::Dead => Err(DropError::DropIsDead)
-        }
-    }
-
-    fn calculate_capacity(&self, height_delta: &f32) -> Result<f32, DropError> {
-        if let Drop::Alive { speed, water, .. } = self {
-            let capacity = speed * *water * P_CAPACITY * P_MIN_SLOPE.max(-*height_delta);
-            if capacity < 0.0 {
-                Err(DropError::InvalidValue("Capacity cannot be negative".to_string()))
-            } else {
-                Ok(capacity)
             }
-        } else {
-            Err(DropError::DropIsDead)
-        }
-    }
-
-    fn get_sediment_capacity(&self, height_delta: HeightmapPrecision) -> Result<f32, DropError> {
-        match self {
-            Drop::Alive { speed, water, .. } => Ok(P_MIN_SLOPE.max(-height_delta) * *speed * *water * P_CAPACITY),
-            Drop::Dead => Err(DropError::DropIsDead)
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
@@ -265,160 +275,253 @@ impl Drop {
             Drop::Alive { speed, .. } => {
                 let new_speed = ((*speed).powi(2) + *height_delta * P_GRAVITY).abs().sqrt();
                 if new_speed < 0.0 || new_speed.is_nan() {
-                    Err(DropError::InvalidValue("Speed cannot be negative".to_string()))
+                    Err(DropError::InvalidValue(
+                        "Speed cannot be negative".to_string(),
+                    ))
                 } else {
                     *speed = new_speed;
                     Ok(())
                 }
-            },
-            Drop::Dead => Err(DropError::DropIsDead)
+            }
+            Drop::Dead => Err(DropError::DropIsDead),
         }
     }
-    
 }
 
-fn create_drop(heightmap: &Heightmap, rng: &mut ThreadRng, total_angle: &mut f32) -> Result<Drop, DropError> {
+fn random_position(heightmap: &Heightmap, rng: &mut ThreadRng) -> Vector2 {
     let x = rng.gen::<HeightmapPrecision>() * heightmap.width as HeightmapPrecision;
     let y = rng.gen::<HeightmapPrecision>() * heightmap.height as HeightmapPrecision;
-    
-    let direction: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
-    *total_angle += direction;
-    
+    Vector2::new(x, y)
+}
+
+fn create_drop(
+    position: Vector2,
+    random_angle: f32,
+    total_angle: &mut f32,
+) -> Result<Drop, DropError> {
+    *total_angle += random_angle;
+
     let mut drop = Drop::new();
-    drop.set_position(Vector2::new(x, y))?;
-    drop.set_direction(Vector2::new(direction.cos(), direction.sin()))?;
+    drop.set_position(position)?;
+    drop.set_direction(Vector2::new(random_angle.cos(), random_angle.sin()))?;
     drop.set_speed(0.0)?;
     drop.set_water(1.0)?;
     drop.set_sediment(0.0)?;
     Ok(drop)
 }
 
-fn kill_drop(drop: &mut Drop, heightmap: &mut Heightmap, starting_ix: usize, starting_iy: usize) -> Result<(), DropError> {
+fn kill_drop(
+    drop: &mut Drop,
+    heightmap: &mut Heightmap,
+    starting_ix: usize,
+    starting_iy: usize,
+) -> Result<(), DropError> {
     let sediment = drop.get_sediment()?;
     let height = match heightmap.get(starting_ix, starting_iy) {
         Some(h) => h,
-        None => panic!("kill_drop: heightmap.get returned None at ({}, {})", starting_ix, starting_iy)
-        // None => return Err(DropError::InvalidPosition("kill_drop: height".to_string(), drop.get_position()?))
+        None => panic!(
+            "kill_drop: heightmap.get returned None at ({}, {})",
+            starting_ix, starting_iy
+        ), // None => return Err(DropError::InvalidPosition("kill_drop: height".to_string(), drop.get_position()?))
     };
-    heightmap.set(starting_ix, starting_iy, height + sediment).unwrap();
+    heightmap
+        .set(starting_ix, starting_iy, height + sediment)
+        .unwrap();
     drop.set_dead()?;
     Ok(())
 }
-
-// fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Result<(), DropError> {
-//     let (ix, iy) = drop.usize_position()?;
-//     if ix >= heightmap.width || iy >= heightmap.height {
-//         drop.set_dead()?;
-//         return Ok(());
-//     }
-
-//     let gradient = drop.gradient(heightmap)?;
-//     let random_angle: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
-//     drop.update_direction(&gradient, random_angle)?;
-
-//     let height_old = heightmap.get(ix, iy).ok_or(DropError::InvalidPosition("tick: height_old".to_string(), drop.get_position()?))?; // TODO: Add interpolated height
-//     drop.update_position()?;
-
-//     let (ix_new, iy_new) = if let Ok((ix, iy)) = drop.usize_position() {
-//         (ix, iy)
-//     } else {
-//         kill_drop(drop, heightmap, ix, iy)?;
-//         return Ok(());
-//     };
-
-//     if ix_new >= heightmap.width || iy_new >= heightmap.height {
-//         kill_drop(drop, heightmap, ix, iy)?;
-//         return Ok(());
-//     }
-//         
-//     let height_new = heightmap.get(ix_new, iy_new).ok_or(DropError::InvalidPosition("tick: height_new".to_string(), drop.get_position()?))?; // TODO: Add interpolated height
-
-
-//     let height_delta = height_new - height_old;
-//     if height_delta > P_MIN_SLOPE {
-//         let drop_sediment = drop.get_sediment()?;
-//         let sediment = height_delta.min(drop_sediment);
-//         heightmap.set(ix, iy, height_old + sediment).unwrap();
-//         drop.set_sediment(drop_sediment - sediment)?;
-//     } else {
-//         let c = drop.calculate_capacity(&height_delta)?;
-//         let sediment = drop.get_sediment()?;
-
-//         if c < sediment {
-//             let deposit = (sediment - c) * P_DEPOSITION;
-//             heightmap.set(ix, iy, height_old + deposit).unwrap();
-//             drop.set_sediment(sediment - deposit)?;
-//         } else {
-//             // We need to make sure height_delta is <= 0.0 or we will 
-//             // get negative erosion if P_MIN_SLOPE is set above 0.0.
-//             let erosion = (-height_delta.min(0.0)).min((c - sediment) * P_EROSION);
-//             heightmap.set(ix, iy, height_old - erosion).unwrap();
-//             drop.set_sediment(sediment + erosion)?;
-//         }
-//     }
-//     drop.update_speed(&height_delta)?;
-//     drop.update_water()?;
-//    
-//     // println!("Running test...");
-//     // let height_test = heightmap.get(ix, iy).unwrap() * 0.99;
-//     // heightmap.set(ix, iy, height_test).unwrap();
-
-//     if drop.should_die().unwrap() {
-//         kill_drop(drop, heightmap, ix, iy)?;
-//     }
-
-//     Ok(())
-// }
-
-// fn gradient_old(heightmap: &Heightmap, position: &Vector2) -> Result<Vector2, String> {
-//     let (mut ix, mut iy) = position.to_usize()?;
-//     if ix >= heightmap.width - 1 {
-//         ix -= 1;
-//     }
-//     if iy >= heightmap.height - 1 {
-//         iy -= 1;
-//     }
-//     
-//     let fx = position.x;
-//     let fy = position.y;
-//     
-//     let p_x0_y0 = heightmap.data.get(ix + 0).and_then(|v| v.get(iy + 0)).ok_or(format!("gradient x0 y0 {:?}", *position))?;
-//     let p_x1_y0 = heightmap.data.get(ix + 1).and_then(|v| v.get(iy + 0)).ok_or(format!("gradient x1 y0 {:?}", *position))?;
-//     let p_x0_y1 = heightmap.data.get(ix + 0).and_then(|v| v.get(iy + 1)).ok_or(format!("gradient x0 y1 {:?}", *position))?;
-//     let p_x1_y1 = heightmap.data.get(ix + 1).and_then(|v| v.get(iy + 1)).ok_or(format!("gradient x1 y1 {:?}", *position))?;
-
-//     let v = fx - fx.floor();
-//     let u = fy - fy.floor();
-
-//     let x0 = (p_x1_y0 - p_x0_y0) * (1.0 - v) + (p_x1_y1 - p_x0_y1) * v;
-//     let x1 = (p_x0_y1 - p_x0_y0) * (1.0 - u) + (p_x1_y1 - p_x1_y0) * u;
-//     
-//     Ok(Vector2::new(x0, x1))
-// }
 
 fn get_random_angle(rng: &mut ThreadRng) -> f32 {
     rng.gen::<f32>() * std::f32::consts::PI * 2.0
 }
 
-fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Result<(), DropError> {
+fn deposit(
+    drop: &mut Drop,
+    heightmap: &mut Heightmap,
+    position_start: Vector2,
+    height_delta: HeightmapPrecision,
+) -> Result<(), DropError> {
+    fn _place(
+        heightmap: &mut Heightmap,
+        pos: (usize, usize),
+        deposition: f32,
+        height: HeightmapPrecision,
+        fraction: Vector2,
+    ) -> Result<(), HeightmapError> {
+        heightmap.set(
+            pos.0 + 0,
+            pos.1 + 0,
+            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
+        )?;
+        heightmap.set(
+            pos.0 + 1,
+            pos.1 + 0,
+            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
+        )?;
+        heightmap.set(
+            pos.0 + 0,
+            pos.1 + 1,
+            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
+        )?;
+        heightmap.set(
+            pos.0 + 1,
+            pos.1 + 1,
+            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
+        )?;
+        Ok(())
+    }
+
+    let pos_i = position_start.to_usize().unwrap();
+    let fraction = position_start - Vector2::from_usize_tuple(pos_i);
+    let height = match heightmap.get(pos_i.0, pos_i.1) {
+        Some(h) => h,
+        None => panic!(
+            "deposit: heightmap.get returned None at ({}, {})",
+            pos_i.0, pos_i.1
+        ), // None => return Err(DropError::InvalidPosition("deposit: height".to_string(), position_start))
+    };
+    let sediment = drop.get_sediment()?;
+    let capacity = drop.get_capacity(height_delta)?;
+
+    let deposition = if height_delta > P_MIN_SLOPE {
+        height_delta.min(sediment)
+    } else {
+        (sediment - capacity) * P_DEPOSITION
+    };
+    drop.set_sediment(sediment - deposition)?;
+
+    match _place(heightmap, pos_i, deposition, height, fraction) {
+        // Err(HeightmapError::OutOfBounds) => panic!("deposit: heightmap.set returned OutOfBounds"),
+        Err(HeightmapError::OutOfBounds) => Err(DropError::InvalidPosition(
+            "deposit: heightmap.set".to_string(),
+            position_start,
+        )),
+        Err(HeightmapError::MismatchingSize) => {
+            unreachable!("deposit: heightmap.set returned MismatchingSize")
+        }
+        Ok(()) => Ok(()),
+    }
+}
+
+fn erode(
+    drop: &mut Drop,
+    heightmap: &mut Heightmap,
+    position_start: Vector2,
+    height_delta: HeightmapPrecision,
+) -> Result<(), DropError> {
+    let pos_i = position_start.to_usize().unwrap();
+    let fraction = position_start - Vector2::from_usize_tuple(pos_i);
+    let height = match heightmap.get(pos_i.0, pos_i.1) {
+        Some(h) => h,
+        None => panic!(
+            "erode: heightmap.get returned None at ({}, {})",
+            pos_i.0, pos_i.1
+        ), // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
+    };
+    let sediment = drop.get_sediment()?;
+    let capacity = drop.get_capacity(height_delta)?;
+
+    let erosion = (-height_delta.min(0.0)).min((capacity - sediment) * P_EROSION);
+    drop.set_sediment(sediment + erosion)?;
+    //    heightmap.set(ix, iy, height_old - erosion).unwrap();
+
+    let x0 = if pos_i.0 > P_RADIUS {
+        pos_i.0 - P_RADIUS
+    } else {
+        0
+    };
+    let x1 = if pos_i.0 + P_RADIUS + 1 < heightmap.width {
+        pos_i.0 + P_RADIUS + 1
+    } else {
+        heightmap.width
+    };
+
+    let y0 = if pos_i.1 > P_RADIUS {
+        pos_i.1 - P_RADIUS
+    } else {
+        0
+    };
+    let y1 = if pos_i.1 + P_RADIUS + 1 < heightmap.height {
+        pos_i.1 + P_RADIUS + 1
+    } else {
+        heightmap.height
+    };
+
+    //    let erosion = if height_delta > P_MIN_SLOPE {
+    //        height_delta.min(sediment)
+    //    } else {
+    //        (sediment - capacity) * P_DEPOSITION
+    //    };
+    //    drop.set_sediment(sediment - deposition)?;
+
+    let mut kernel = [[0.0; P_RADIUS * 2 + 1]; P_RADIUS * 2 + 1];
+    let mut sum = 0.0;
+    for ix in x0..x1 {
+        for iy in y0..y1 {
+            let h = match heightmap.get(ix, iy) {
+                Some(h) => h,
+                None => panic!("erode: heightmap.get returned None at ({}, {})", ix, iy), // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
+            };
+            let radius = (((ix as i32 - pos_i.0 as i32).pow(2)
+                + (iy as i32 - pos_i.1 as i32).pow(2)) as f32)
+                .sqrt();
+            if radius.is_nan() {
+                panic!("erode: radius is NaN at ({}, {})", ix, iy);
+            }
+            let weight = P_RADIUS as f32 - radius;
+            kernel[ix - x0][iy - y0] = weight;
+            sum += weight;
+        }
+    }
+
+    if sum == 0.0 {
+        return Ok(());
+    }
+
+    for ix in x0..x1 {
+        for iy in y0..y1 {
+            let height = match heightmap.get(ix, iy) {
+                Some(h) => h,
+                None => panic!("erode: heightmap.get returned None at ({}, {})", ix, iy), // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
+            };
+            heightmap
+                .set(
+                    ix,
+                    iy,
+                    height - erosion * kernel[ix - x0][iy - y0] / sum as HeightmapPrecision,
+                )
+                .unwrap();
+        }
+    }
+
+    Ok(())
+}
+
+fn tick(heightmap: &mut Heightmap, drop: &mut Drop, random_angle: f32) -> Result<(), DropError> {
     let position_old: Vector2 = drop.get_position()?;
     let (ix_old, iy_old) = position_old.to_usize().unwrap();
 
     let gradient = match heightmap.interpolated_gradient(&position_old) {
         Some(gradient) => gradient,
         None => {
-            return Err(DropError::InvalidPosition("tick: gradient".to_string(), drop.get_position()?));
+            return Err(DropError::InvalidPosition(
+                "tick: gradient".to_string(),
+                drop.get_position()?,
+            ));
         }
     };
 
     let height_old = match heightmap.interpolated_height(&position_old) {
         Some(height) => height,
         None => {
-            return Err(DropError::InvalidPosition("tick: height_old".to_string(), position_old));
+            return Err(DropError::InvalidPosition(
+                "tick: height_old".to_string(),
+                position_old,
+            ));
         }
     };
 
-    drop.update_direction(&gradient, get_random_angle(rng))?;
+    drop.update_direction(&gradient, random_angle)?;
 
     drop.update_position()?;
 
@@ -438,27 +541,22 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
     let height_new = match heightmap.interpolated_height(&position_new) {
         Some(height) => height,
         None => {
-            return Err(DropError::InvalidPosition("tick: height_new".to_string(), position_new));
+            return Err(DropError::InvalidPosition(
+                "tick: height_new".to_string(),
+                position_new,
+            ));
         }
     };
 
     let height_delta = height_new - height_old;
 
-    let capacity = drop.get_sediment_capacity(height_delta)?;
+    let capacity = drop.get_capacity(height_delta)?;
     let sediment = drop.get_sediment()?;
 
     if height_delta > P_MIN_SLOPE && sediment > capacity {
-        let deposit = if height_delta > P_MIN_SLOPE {
-            height_delta.min(sediment)
-        } else {
-            (sediment - capacity) * P_DEPOSITION
-        };
-        drop.set_sediment(sediment - deposit)?;
-        heightmap.set(ix, iy, height_old + deposit).unwrap();
+        deposit(drop, heightmap, position_old, height_delta)?;
     } else {
-        let erosion = (-height_delta.min(0.0)).min((capacity - sediment) * P_EROSION);
-        drop.set_sediment(sediment + erosion)?;
-        heightmap.set(ix, iy, height_old - erosion).unwrap();
+        erode(drop, heightmap, position_old, height_delta)?;
     }
 
     drop.update_speed(&height_delta)?;
@@ -471,10 +569,10 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
     Ok(())
 }
 
-pub fn erode(heightmap: &Heightmap) -> Heightmap {
+pub fn simulate(heightmap: &Heightmap) -> Heightmap {
     let mut heightmap = heightmap.clone();
     let mut rng = rand::thread_rng();
-    
+
     let mut bar = progress::Bar::new();
     bar.set_job_title("Eroding...");
 
@@ -482,9 +580,10 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
     let mut total_distance = 0.0;
     let mut total_starting_angle = 0.0;
     let mut total_ending_angle = 0.0;
-    
+    let mut total_movement = Vector2::new(0.0, 0.0);
+
     for i in 0..DROPLETS {
-        let mut drop = match create_drop(&heightmap, &mut rng, &mut total_starting_angle) {
+        let mut drop = match create_drop(random_position(&heightmap, &mut rng), get_random_angle(&mut rng), &mut total_starting_angle) {
             Ok(drop) => drop,
             Err(e) => {
                 eprintln!("Error while creating drop: {:?}", e);
@@ -495,11 +594,11 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
         let initial_position = drop.get_position().unwrap();
         let mut last_position = initial_position.clone();
         let mut last_angle = drop.get_angle().unwrap();
-        
-        while let Drop::Alive{..} = drop {
+
+        while let Drop::Alive { .. } = drop {
             last_position = drop.get_position().unwrap();
             last_angle = drop.get_angle().unwrap();
-            let result = tick(&mut heightmap, &mut drop, &mut rng);
+            let result = tick(&mut heightmap, &mut drop, get_random_angle(&mut rng));
             if let Err(e) = result {
                 eprintln!("Error during tick: {:?}", e);
                 break;
@@ -511,21 +610,63 @@ pub fn erode(heightmap: &Heightmap) -> Heightmap {
                 killed += 1;
                 break;
             }
-        };
+        }
         total_ending_angle += last_angle;
         total_distance += (last_position - initial_position).magnitude();
-        
+        total_movement = total_movement + last_position - initial_position;
+
         if i % 10 == 0 {
-            bar.reach_percent((((i+1) as f32 / DROPLETS as f32) * 100.0).round() as i32);
+            bar.reach_percent((((i + 1) as f32 / DROPLETS as f32) * 100.0).round() as i32);
         } else if i == DROPLETS - 1 {
             bar.reach_percent(100);
         }
     }
 
+    heightmap.metadata_add("DROPLETS", DROPLETS.to_string());
+    heightmap.metadata_add("P_INERTIA", P_INERTIA.to_string());
+    heightmap.metadata_add("P_CAPACITY", P_CAPACITY.to_string());
+    heightmap.metadata_add("P_DEPOSITION", P_DEPOSITION.to_string());
+    heightmap.metadata_add("P_EROSION", P_EROSION.to_string());
+    heightmap.metadata_add("P_EVAPORATION", P_EVAPORATION.to_string());
+    heightmap.metadata_add("P_RADIUS", P_RADIUS.to_string());
+    heightmap.metadata_add("P_MIN_SLOPE", P_MIN_SLOPE.to_string());
+    heightmap.metadata_add("P_GRAVITY", P_GRAVITY.to_string());
+    heightmap.metadata_add("P_MAX_PATH", P_MAX_PATH.to_string());
+    heightmap.metadata_add("P_MIN_WATER", P_MIN_WATER.to_string());
+    heightmap.metadata_add("P_MIN_SPEED", P_MIN_SPEED.to_string());
+
+    heightmap.metadata_add("killed", killed.to_string());
+    heightmap.metadata_add(
+        "average_distance",
+        (total_distance / DROPLETS as f32).to_string(),
+    );
+    heightmap.metadata_add(
+        "average_starting_angle",
+        (total_starting_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0).to_string(),
+    );
+    heightmap.metadata_add(
+        "average_ending_angle",
+        (total_ending_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0).to_string(),
+    );
+    heightmap.metadata_add(
+        "average_movement",
+        format!("{:?}", total_movement * (1.0 / DROPLETS as f32)),
+    );
+
     println!("\nKilled: {} / {}", killed, DROPLETS);
     println!("Average distance: {}", total_distance / DROPLETS as f32);
-    println!("Average starting angle: {}", total_starting_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0);
-    println!("Average ending angle: {}", total_ending_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0);
+    println!(
+        "Average starting angle: {}",
+        total_starting_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0
+    );
+    println!(
+        "Average ending angle: {}",
+        total_ending_angle / DROPLETS as f32 / std::f32::consts::PI * 180.0
+    );
+    println!(
+        "Average movement: {:?}",
+        total_movement * (1.0 / DROPLETS as f32)
+    );
 
     heightmap
 }
@@ -540,10 +681,10 @@ mod tests {
             speed: 1.0,
             water: 1.0,
             sediment: 0.0,
-            direction: Vector2::new(1.0, 0.0)
+            direction: Vector2::new(1.0, 0.0),
         }
     }
-    
+
     #[test]
     fn test_drop_usize_position() {
         let drop = create_drop();
@@ -564,10 +705,16 @@ mod tests {
         assert_eq!(drop.get_water().unwrap(), water * (1.0 - P_EVAPORATION));
 
         drop.update_water().unwrap();
-        assert_eq!(drop.get_water().unwrap(), water * (1.0 - P_EVAPORATION).powi(2));
+        assert_eq!(
+            drop.get_water().unwrap(),
+            water * (1.0 - P_EVAPORATION).powi(2)
+        );
 
         drop.update_water().unwrap();
-        assert_eq!(drop.get_water().unwrap(), water * (1.0 - P_EVAPORATION).powi(3));
+        assert_eq!(
+            drop.get_water().unwrap(),
+            water * (1.0 - P_EVAPORATION).powi(3)
+        );
     }
 
     fn test_drop_set_get_dead() {
@@ -598,7 +745,7 @@ mod tests {
     fn test_drop_set_get_direction(direction_: Vector2) {
         let mut drop = create_drop();
         drop.set_direction(direction_).unwrap();
-        if let Drop::Alive{direction, ..} = drop {
+        if let Drop::Alive { direction, .. } = drop {
             assert_eq!(direction, direction_);
         } else {
             panic!("Drop is dead");
@@ -618,7 +765,7 @@ mod tests {
         let speed = 1.0;
         let direction = Vector2::new(1.0, 0.0);
         let position = Vector2::new(0.8, 2.5);
-        
+
         test_drop_set_get_sediment(sediment);
         test_drop_set_get_water(water);
         test_drop_set_get_speed(speed);
@@ -629,8 +776,40 @@ mod tests {
 
     #[test]
     fn test_vector2_ops() {
-        assert_eq!(Vector2::new(1.0, 2.0) - Vector2::new(3.0, -4.0), Vector2::new(-2.0, 6.0));
+        assert_eq!(
+            Vector2::new(1.0, 2.0) - Vector2::new(3.0, -4.0),
+            Vector2::new(-2.0, 6.0)
+        );
     }
 
-   
+    #[test]
+    fn test_erosion() {
+        let width = 10usize;
+        let height = 10usize;
+        let x = width as f32 * 0.4;
+        let y = height as f32 * 0.4;
+
+        let mut drop = Drop::new();
+        drop.set_position(Vector2::new(x, y)).unwrap();
+        drop.set_direction(Vector2::new(1.0, 0.0)).unwrap();
+        drop.set_speed(1.0).unwrap();
+        drop.set_water(1.0).unwrap();
+        drop.set_sediment(0.0).unwrap();
+
+        let mut data = Vec::new();
+        let radius = ((width.pow(2) + height.pow(2)) as f32).sqrt();
+        for x in 0..width {
+            let mut row = Vec::new();
+            for y in 0..height {
+                let distance = ((x as f32 - width as f32 / 2.0).powi(2) + (y as f32 - height as f32 / 2.0).powi(2)).sqrt();
+                row.push(distance / radius);
+            }
+            data.push(row);
+        }
+
+        let mut heightmap = Heightmap::new(data.clone(), width, height, 1.0, 1.0);
+        tick(&mut heightmap, &mut drop, 0.0).unwrap();
+
+        assert_ne!(heightmap.data, data);
+    }
 }
