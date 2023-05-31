@@ -73,8 +73,8 @@ impl Heightmap {
         let mut buffer: Vec<u8> = Vec::new();
         let mut errors: Vec<i32> = Vec::new();
 
-        for i in 0..self.width {
-            for j in 0..self.height {
+        for j in 0..self.height {
+            for i in 0..self.width {
                 let mut value = self.data[i][j];
                 let u8_max: HeightmapPrecision = 255.0;
                 value = value / (self.depth / u8_max);
@@ -112,8 +112,8 @@ impl Heightmap {
         let mut buffer: Vec<u8> = Vec::new();
         let mut errors: Vec<i32> = Vec::new();
 
-        for i in 0..self.width {
-            for j in 0..self.height {
+        for j in 0..self.height {
+            for i in 0..self.width {
                 let mut value = self.data[i][j];
                 let u8_max: HeightmapPrecision = 255.0;
                 value = value / (self.depth / u8_max);

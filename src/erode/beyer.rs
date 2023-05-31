@@ -1,22 +1,23 @@
 use crate::heightmap::*;
 use crate::math::*;
 use rand::prelude::*;
+use rand::thread_rng;
 
-const DROPLETS: usize = 1_000;
-const P_INERTIA: f32 = 0.9;
-const P_CAPACITY: f32 = 8.0;
-const P_DEPOSITION: f32 = 0.05;
-const P_EROSION: f32 = 0.9;
-const P_EVAPORATION: f32 = 0.05;
-const P_RADIUS: usize = 3;
-const P_MIN_SLOPE: f32 = 0.00000001;
-const P_GRAVITY: f32 = 9.2;
-const P_MAX_PATH: usize = 10000;
+pub const DROPLETS: usize = 1_000;
+pub const P_INERTIA: f32 = 0.9;
+pub const P_CAPACITY: f32 = 8.0;
+pub const P_DEPOSITION: f32 = 0.05;
+pub const P_EROSION: f32 = 0.9;
+pub const P_EVAPORATION: f32 = 0.05;
+pub const P_RADIUS: usize = 3;
+pub const P_MIN_SLOPE: f32 = 0.00000001;
+pub const P_GRAVITY: f32 = 9.2;
+pub const P_MAX_PATH: usize = 10000;
 
-const P_MIN_WATER: f32 = 0.001;
-const P_MIN_SPEED: f32 = 0.001;
+pub const P_MIN_WATER: f32 = 0.001;
+pub const P_MIN_SPEED: f32 = 0.001;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Drop {
     Alive {
         position: Vector2,
@@ -36,7 +37,7 @@ pub enum DropError {
 }
 
 impl Drop {
-    fn new() -> Drop {
+    pub fn new() -> Drop {
         Drop::Alive {
             position: Vector2::new(0.0, 0.0),
             direction: Vector2::new(0.0, 0.0),
@@ -46,7 +47,7 @@ impl Drop {
         }
     }
 
-    fn set_position(&mut self, position: Vector2) -> Result<(), DropError> {
+    pub fn set_position(&mut self, position: Vector2) -> Result<(), DropError> {
         if let Drop::Alive { position: p, .. } = self {
             *p = position;
             Ok(())
@@ -55,14 +56,14 @@ impl Drop {
         }
     }
 
-    fn get_position(&self) -> Result<Vector2, DropError> {
+    pub fn get_position(&self) -> Result<Vector2, DropError> {
         match self {
             Drop::Alive { position, .. } => Ok(*position),
             Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
-    fn set_direction(&mut self, direction: Vector2) -> Result<(), DropError> {
+    pub fn set_direction(&mut self, direction: Vector2) -> Result<(), DropError> {
         match self {
             Drop::Alive { direction: d, .. } => {
                 *d = direction;
@@ -72,7 +73,7 @@ impl Drop {
         }
     }
 
-    fn set_speed(&mut self, speed: f32) -> Result<(), DropError> {
+    pub fn set_speed(&mut self, speed: f32) -> Result<(), DropError> {
         if speed < 0.0 {
             Err(DropError::InvalidValue(
                 "Speed cannot be negative".to_string(),
@@ -88,14 +89,14 @@ impl Drop {
         }
     }
 
-    fn get_speed(&self) -> Result<f32, DropError> {
+    pub fn get_speed(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { speed, .. } => Ok(*speed),
             Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
-    fn set_water(&mut self, water: f32) -> Result<(), DropError> {
+    pub fn set_water(&mut self, water: f32) -> Result<(), DropError> {
         if water < 0.0 {
             Err(DropError::InvalidValue(
                 "Water cannot be negative".to_string(),
@@ -111,14 +112,14 @@ impl Drop {
         }
     }
 
-    fn get_water(&self) -> Result<f32, DropError> {
+    pub fn get_water(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { water, .. } => Ok(*water),
             Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
-    fn set_sediment(&mut self, sediment: f32) -> Result<(), DropError> {
+    pub fn set_sediment(&mut self, sediment: f32) -> Result<(), DropError> {
         if sediment < 0.0 {
             Err(DropError::InvalidValue(
                 "Sediment cannot be negative".to_string(),
@@ -134,14 +135,14 @@ impl Drop {
         }
     }
 
-    fn get_sediment(&self) -> Result<f32, DropError> {
+    pub fn get_sediment(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { sediment, .. } => Ok(*sediment),
             Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
-    fn set_dead(&mut self) -> Result<(), DropError> {
+    pub fn set_dead(&mut self) -> Result<(), DropError> {
         match self {
             Drop::Alive { .. } => {
                 *self = Drop::Dead;
@@ -151,14 +152,14 @@ impl Drop {
         }
     }
 
-    fn get_angle(&self) -> Result<f32, DropError> {
+    pub fn get_angle(&self) -> Result<f32, DropError> {
         match self {
             Drop::Alive { direction, .. } => Ok(direction.y.atan2(direction.x)),
             Drop::Dead => Err(DropError::DropIsDead),
         }
     }
 
-    fn get_capacity(&self, height_delta: HeightmapPrecision) -> Result<f32, DropError> {
+    pub fn get_capacity(&self, height_delta: HeightmapPrecision) -> Result<f32, DropError> {
         match self {
             Drop::Alive { speed, water, .. } => {
                 let capacity = P_MIN_SLOPE.max(-height_delta) * speed * water * P_CAPACITY;
@@ -174,7 +175,7 @@ impl Drop {
         }
     }
 
-    fn should_die(&self) -> Result<bool, DropError> {
+    pub fn should_die(&self) -> Result<bool, DropError> {
         match self {
             Drop::Alive { .. } => {
                 Ok(self.get_water()? < P_MIN_WATER || self.get_speed()? < P_MIN_SPEED)
@@ -183,7 +184,7 @@ impl Drop {
         }
     }
 
-    fn usize_position(&self) -> Result<(usize, usize), DropError> {
+    pub fn usize_position(&self) -> Result<(usize, usize), DropError> {
         match self {
             Drop::Alive { position, .. } => {
                 if let Ok(usize_pos) = position.to_usize() {
@@ -199,7 +200,7 @@ impl Drop {
         }
     }
 
-    fn gradient(&mut self, heightmap: &Heightmap) -> Result<Vector2, DropError> {
+    pub fn gradient(&mut self, heightmap: &Heightmap) -> Result<Vector2, DropError> {
         // let (mut ix, mut iy) = self.usize_position()?;
         // if ix >= heightmap.width - 1 {
         //     ix -= 1;
@@ -223,7 +224,11 @@ impl Drop {
         todo!();
     }
 
-    fn update_direction(&mut self, gradient: &Vector2, random_angle: f32) -> Result<(), DropError> {
+    pub fn update_direction(
+        &mut self,
+        gradient: &Vector2,
+        random_angle: f32,
+    ) -> Result<(), DropError> {
         match self {
             Drop::Alive { direction, .. } => {
                 let x_dir = direction.x;
@@ -245,7 +250,7 @@ impl Drop {
         }
     }
 
-    fn update_position(&mut self) -> Result<(), DropError> {
+    pub fn update_position(&mut self) -> Result<(), DropError> {
         match self {
             Drop::Alive {
                 position,
@@ -260,7 +265,7 @@ impl Drop {
         }
     }
 
-    fn update_water(&mut self) -> Result<(), DropError> {
+    pub fn update_water(&mut self) -> Result<(), DropError> {
         match self {
             Drop::Alive { water, .. } => {
                 *water *= 1.0 - P_EVAPORATION;
@@ -270,7 +275,7 @@ impl Drop {
         }
     }
 
-    fn update_speed(&mut self, height_delta: &f32) -> Result<(), DropError> {
+    pub fn update_speed(&mut self, height_delta: &f32) -> Result<(), DropError> {
         match self {
             Drop::Alive { speed, .. } => {
                 let new_speed = ((*speed).powi(2) + *height_delta * P_GRAVITY).abs().sqrt();
@@ -288,13 +293,13 @@ impl Drop {
     }
 }
 
-fn random_position(heightmap: &Heightmap, rng: &mut ThreadRng) -> Vector2 {
+pub fn random_position(heightmap: &Heightmap, rng: &mut ThreadRng) -> Vector2 {
     let x = rng.gen::<HeightmapPrecision>() * heightmap.width as HeightmapPrecision;
     let y = rng.gen::<HeightmapPrecision>() * heightmap.height as HeightmapPrecision;
     Vector2::new(x, y)
 }
 
-fn create_drop(
+pub fn create_drop(
     position: Vector2,
     random_angle: f32,
     total_angle: &mut f32,
@@ -310,7 +315,7 @@ fn create_drop(
     Ok(drop)
 }
 
-fn kill_drop(
+pub fn kill_drop(
     drop: &mut Drop,
     heightmap: &mut Heightmap,
     starting_ix: usize,
@@ -331,17 +336,17 @@ fn kill_drop(
     Ok(())
 }
 
-fn get_random_angle(rng: &mut ThreadRng) -> f32 {
+pub fn get_random_angle(rng: &mut ThreadRng) -> f32 {
     rng.gen::<f32>() * std::f32::consts::PI * 2.0
 }
 
-fn deposit(
+pub fn deposit(
     drop: &mut Drop,
     heightmap: &mut Heightmap,
     position_start: Vector2,
     height_delta: HeightmapPrecision,
 ) -> Result<(), DropError> {
-    fn _place(
+    pub fn _place(
         heightmap: &mut Heightmap,
         pos: (usize, usize),
         deposition: f32,
@@ -403,7 +408,7 @@ fn deposit(
     }
 }
 
-fn erode(
+pub fn erode(
     drop: &mut Drop,
     heightmap: &mut Heightmap,
     position_start: Vector2,
@@ -497,7 +502,11 @@ fn erode(
     Ok(())
 }
 
-fn tick(heightmap: &mut Heightmap, drop: &mut Drop, random_angle: f32) -> Result<(), DropError> {
+pub fn tick(
+    heightmap: &mut Heightmap,
+    drop: &mut Drop,
+    random_angle: f32,
+) -> Result<(), DropError> {
     let position_old: Vector2 = drop.get_position()?;
     let (ix_old, iy_old) = position_old.to_usize().unwrap();
 

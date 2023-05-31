@@ -24,27 +24,96 @@ async fn main() {
     debug().await;
 }
 
+#[derive(Debug, Clone)]
+struct State {
+    heightmap: heightmap::Heightmap,
+    drop: erode::beyer::Drop,
+}
+
 async fn debug() {
     env::set_var("RUST_BACKTRACE", "1");
     prevent_quit();
 
-    let mut heightmap = initialize_heightmap();
-    heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+    let mut rng = ::rand::thread_rng();
+
+    let mut heightmap_ = initialize_heightmap();
+    heightmap_.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+
+    let mut drop = erode::beyer::create_drop(
+        math::Vector2::new(heightmap_.width as f32 / 2.0, heightmap_.height as f32 / 2.0),
+        erode::beyer::get_random_angle(&mut rng),
+        &mut 0.0,
+    )
+    .unwrap();
+
+    let state_ = State {
+        heightmap: heightmap_.clone(),
+        drop,
+    };
+
+    let mut states = vec![state_.clone()];
+    let mut state_index = 0;
 
     while !is_quit_requested() {
         clear_background(BLACK);
 
-        // Draw heightmap
-        draw_texture_ex(
-            heightmap_to_texture(&heightmap),
-            0.0,
-            0.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(screen_width(), screen_height())),
-                ..Default::default()
-            },
-        );
+        if is_key_down(KeyCode::J) {
+            state_index += 1;
+            if state_index >= states.len() {
+                let State { mut drop, mut heightmap } = states.last().unwrap().clone();
+                if drop != erode::beyer::Drop::Dead {
+                    erode::beyer::tick(&mut heightmap, &mut drop, 2.0).unwrap();
+                }
+                states.push(State { drop, heightmap });
+            }
+        } else if is_key_down(KeyCode::K) {
+            if state_index > 0 {
+                state_index -= 1;
+            }
+        };
+
+        let State { drop, heightmap } = states.get(state_index).unwrap();
+
+        if !is_key_down(KeyCode::Space) {
+            // Draw heightmap
+            draw_texture_ex(
+                heightmap_to_texture(&heightmap),
+                0.0,
+                0.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(screen_width(), screen_height())),
+                    ..Default::default()
+                },
+            );
+        } else {
+            let mut diff = heightmap.subtract(&heightmap_).unwrap();
+            diff.normalize();
+
+            // Draw heightmap
+            draw_texture_ex(
+                heightmap_to_texture(&diff),
+                0.0,
+                0.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(screen_width(), screen_height())),
+                    ..Default::default()
+                },
+            );
+        }
+
+        match drop {
+            erode::beyer::Drop::Alive { position, .. } => {
+                draw_circle(
+                    position.x / heightmap_.width as f32 * screen_width(),
+                    position.y / heightmap_.height as f32 * screen_height(),
+                    erode::beyer::P_RADIUS as f32 * screen_width() / heightmap_.width as f32,
+                    RED,
+                );
+            }
+            erode::beyer::Drop::Dead => {}
+        }
 
         if screen_width() != screen_height() {
             request_new_screen_size(
