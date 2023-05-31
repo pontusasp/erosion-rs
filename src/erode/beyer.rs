@@ -781,4 +781,35 @@ mod tests {
             Vector2::new(-2.0, 6.0)
         );
     }
+
+    #[test]
+    fn test_erosion() {
+        let width = 10usize;
+        let height = 10usize;
+        let x = width as f32 * 0.4;
+        let y = height as f32 * 0.4;
+
+        let mut drop = Drop::new();
+        drop.set_position(Vector2::new(x, y)).unwrap();
+        drop.set_direction(Vector2::new(1.0, 0.0)).unwrap();
+        drop.set_speed(1.0).unwrap();
+        drop.set_water(1.0).unwrap();
+        drop.set_sediment(0.0).unwrap();
+
+        let mut data = Vec::new();
+        let radius = ((width.pow(2) + height.pow(2)) as f32).sqrt();
+        for x in 0..width {
+            let mut row = Vec::new();
+            for y in 0..height {
+                let distance = ((x as f32 - width as f32 / 2.0).powi(2) + (y as f32 - height as f32 / 2.0).powi(2)).sqrt();
+                row.push(distance / radius);
+            }
+            data.push(row);
+        }
+
+        let mut heightmap = Heightmap::new(data.clone(), width, height, 1.0, 1.0);
+        tick(&mut heightmap, &mut drop, 0.0).unwrap();
+
+        assert_ne!(heightmap.data, data);
+    }
 }
