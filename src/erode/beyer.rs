@@ -288,20 +288,22 @@ impl Drop {
     }
 }
 
-fn create_drop(
-    heightmap: &Heightmap,
-    rng: &mut ThreadRng,
-    total_angle: &mut f32,
-) -> Result<Drop, DropError> {
+fn random_position(heightmap: &Heightmap, rng: &mut ThreadRng) -> Vector2 {
     let x = rng.gen::<HeightmapPrecision>() * heightmap.width as HeightmapPrecision;
     let y = rng.gen::<HeightmapPrecision>() * heightmap.height as HeightmapPrecision;
+    Vector2::new(x, y)
+}
 
-    let direction: f32 = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
-    *total_angle += direction;
+fn create_drop(
+    position: Vector2,
+    random_angle: f32,
+    total_angle: &mut f32,
+) -> Result<Drop, DropError> {
+    *total_angle += random_angle;
 
     let mut drop = Drop::new();
-    drop.set_position(Vector2::new(x, y))?;
-    drop.set_direction(Vector2::new(direction.cos(), direction.sin()))?;
+    drop.set_position(position)?;
+    drop.set_direction(Vector2::new(random_angle.cos(), random_angle.sin()))?;
     drop.set_speed(0.0)?;
     drop.set_water(1.0)?;
     drop.set_sediment(0.0)?;
@@ -495,7 +497,7 @@ fn erode(
     Ok(())
 }
 
-fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Result<(), DropError> {
+fn tick(heightmap: &mut Heightmap, drop: &mut Drop, random_angle: f32) -> Result<(), DropError> {
     let position_old: Vector2 = drop.get_position()?;
     let (ix_old, iy_old) = position_old.to_usize().unwrap();
 
@@ -519,7 +521,7 @@ fn tick(heightmap: &mut Heightmap, drop: &mut Drop, rng: &mut ThreadRng) -> Resu
         }
     };
 
-    drop.update_direction(&gradient, get_random_angle(rng))?;
+    drop.update_direction(&gradient, random_angle)?;
 
     drop.update_position()?;
 
@@ -581,7 +583,7 @@ pub fn simulate(heightmap: &Heightmap) -> Heightmap {
     let mut total_movement = Vector2::new(0.0, 0.0);
 
     for i in 0..DROPLETS {
-        let mut drop = match create_drop(&heightmap, &mut rng, &mut total_starting_angle) {
+        let mut drop = match create_drop(random_position(&heightmap, &mut rng), get_random_angle(&mut rng), &mut total_starting_angle) {
             Ok(drop) => drop,
             Err(e) => {
                 eprintln!("Error while creating drop: {:?}", e);
@@ -596,7 +598,7 @@ pub fn simulate(heightmap: &Heightmap) -> Heightmap {
         while let Drop::Alive { .. } = drop {
             last_position = drop.get_position().unwrap();
             last_angle = drop.get_angle().unwrap();
-            let result = tick(&mut heightmap, &mut drop, &mut rng);
+            let result = tick(&mut heightmap, &mut drop, get_random_angle(&mut rng));
             if let Err(e) = result {
                 eprintln!("Error during tick: {:?}", e);
                 break;
