@@ -11,7 +11,7 @@ pub enum HeightmapIOError {
 pub fn export(heightmap: &Heightmap, filename: &str) -> Result<(), HeightmapIOError> {
     fn _export(heightmap: &Heightmap, filename: &str) -> std::io::Result<()> {
         let data = serde_json::to_string(&heightmap).unwrap();
-        let mut file = File::create(filename)?;
+        let mut file = File::create(format!("{}.json", filename))?;
         file.write_all(data.as_bytes())?;
         Ok(())
     }

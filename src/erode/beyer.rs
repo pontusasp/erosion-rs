@@ -2,7 +2,7 @@ use crate::heightmap::*;
 use crate::math::*;
 use rand::prelude::*;
 
-const DROPLETS: usize = 100_000;
+const DROPLETS: usize = 1_000;
 const P_INERTIA: f32 = 0.9;
 const P_CAPACITY: f32 = 8.0;
 const P_DEPOSITION: f32 = 0.05;
@@ -583,7 +583,11 @@ pub fn simulate(heightmap: &Heightmap) -> Heightmap {
     let mut total_movement = Vector2::new(0.0, 0.0);
 
     for i in 0..DROPLETS {
-        let mut drop = match create_drop(random_position(&heightmap, &mut rng), get_random_angle(&mut rng), &mut total_starting_angle) {
+        let mut drop = match create_drop(
+            random_position(&heightmap, &mut rng),
+            get_random_angle(&mut rng),
+            &mut total_starting_angle,
+        ) {
             Ok(drop) => drop,
             Err(e) => {
                 eprintln!("Error while creating drop: {:?}", e);
@@ -801,7 +805,9 @@ mod tests {
         for x in 0..width {
             let mut row = Vec::new();
             for y in 0..height {
-                let distance = ((x as f32 - width as f32 / 2.0).powi(2) + (y as f32 - height as f32 / 2.0).powi(2)).sqrt();
+                let distance = ((x as f32 - width as f32 / 2.0).powi(2)
+                    + (y as f32 - height as f32 / 2.0).powi(2))
+                .sqrt();
                 row.push(distance / radius);
             }
             data.push(row);

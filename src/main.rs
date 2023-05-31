@@ -1,9 +1,92 @@
 use ds_heightmap::Runner;
+use macroquad::prelude::*;
 use std::env;
 
 pub mod erode;
 pub mod heightmap;
 pub mod math;
+
+const WIDTH: u32 = 800;
+const HEIGHT: u32 = 800;
+
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Erosion RS".to_owned(),
+        window_width: WIDTH.try_into().unwrap(),
+        window_height: HEIGHT.try_into().unwrap(),
+        window_resizable: true,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    debug().await;
+}
+
+async fn debug() {
+    env::set_var("RUST_BACKTRACE", "1");
+    prevent_quit();
+
+    let mut heightmap = initialize_heightmap();
+    heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+
+    while !is_quit_requested() {
+        clear_background(BLACK);
+
+        // Draw heightmap
+        draw_texture_ex(
+            heightmap_to_texture(&heightmap),
+            0.0,
+            0.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
+            },
+        );
+
+        if screen_width() != screen_height() {
+            request_new_screen_size(
+                screen_width().min(screen_height()),
+                screen_width().min(screen_height()),
+            );
+        }
+
+        next_frame().await
+    }
+
+    println!("Bye!");
+}
+
+fn run_simulation() {
+    env::set_var("RUST_BACKTRACE", "1");
+
+    let mut heightmap = initialize_heightmap();
+    heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+
+    let heightmap_eroded = erode::erode(&heightmap);
+    let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
+
+    export_heightmaps(
+        vec![&heightmap, &heightmap_eroded, &heightmap_diff],
+        vec![
+            "output/heightmap",
+            "output/heightmap_eroded",
+            "output/heightmap_diff",
+        ],
+    );
+
+    println!("Done!");
+}
+
+fn export_heightmaps(heightmaps: Vec<&heightmap::Heightmap>, filenames: Vec<&str>) {
+    println!("Exporting heightmaps...");
+    for (heightmap, filename) in heightmaps.iter().zip(filenames.iter()) {
+        heightmap_to_image(heightmap, filename).unwrap();
+        heightmap::io::export(heightmap, filename).unwrap();
+    }
+}
 
 fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightmap::Heightmap {
     let mut runner = Runner::new();
@@ -58,22 +141,7 @@ fn create_heightmap_from_closure(
     }
 }
 
-fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image::ImageResult<()> {
-    let buffer = heightmap.to_u8();
-
-    // Save the buffer as filename on disk
-    image::save_buffer(
-        filename,
-        &buffer as &[u8],
-        heightmap.width.try_into().unwrap(),
-        heightmap.height.try_into().unwrap(),
-        image::ColorType::L8,
-    )
-}
-
-fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
-
+fn initialize_heightmap() -> heightmap::Heightmap {
     let size: usize = 256;
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
@@ -121,24 +189,34 @@ fn main() {
         }
     });
 
-    let mut heightmap = if debug {
+    if debug {
         debug_heightmap
     } else {
         create_heightmap(size, depth, roughness)
+    }
+}
+
+fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image::ImageResult<()> {
+    let buffer = heightmap.to_u8();
+
+    // Save the buffer as filename on disk
+    image::save_buffer(
+        format!("{}.png", filename),
+        &buffer as &[u8],
+        heightmap.width.try_into().unwrap(),
+        heightmap.height.try_into().unwrap(),
+        image::ColorType::L8,
+    )
+}
+
+fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
+    let buffer = heightmap.to_u8_rgba();
+
+    let image = Image {
+        bytes: buffer,
+        width: heightmap.width.try_into().unwrap(),
+        height: heightmap.height.try_into().unwrap(),
     };
-    heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
-    let heightmap_eroded = erode::erode(&heightmap);
-    let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
 
-    println!("Exporting heightmap images...");
-    heightmap_to_image(&heightmap, "output/heightmap.png").unwrap();
-    heightmap_to_image(&heightmap_eroded, "output/heightmap_eroded.png").unwrap();
-    heightmap_to_image(&heightmap_diff, "output/heightmap_diff.png").unwrap();
-
-    println!("Exporting heightmap json...");
-    heightmap::io::export(&heightmap, "output/heightmap.json").unwrap();
-    heightmap::io::export(&heightmap_eroded, "output/heightmap_eroded.json").unwrap();
-    heightmap::io::export(&heightmap_diff, "output/heightmap_diff.json").unwrap();
-
-    println!("Done!");
+    Texture2D::from_image(&image)
 }
