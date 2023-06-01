@@ -3,14 +3,14 @@ use crate::math::*;
 use rand::prelude::*;
 use rand::thread_rng;
 
-pub const DROPLETS: usize = 1_000;
-pub const P_INERTIA: f32 = 0.9;
-pub const P_CAPACITY: f32 = 8.0;
-pub const P_DEPOSITION: f32 = 0.05;
-pub const P_EROSION: f32 = 0.9;
-pub const P_EVAPORATION: f32 = 0.05;
-pub const P_RADIUS: usize = 3;
-pub const P_MIN_SLOPE: f32 = 0.00000001;
+pub const DROPLETS: usize = 10_000;
+pub const P_INERTIA: f32 = 0.025; // 0.025, 0.1, 0.4 [0.1] -
+pub const P_CAPACITY: f32 = 8.0; // 2, 8, 32 [8] +
+pub const P_DEPOSITION: f32 = 0.05; // 0.01, 0.1, 1.0 [0.1] +
+pub const P_EROSION: f32 = 0.1; // 0.01, 0.1, 0.9 [0.1] +
+pub const P_EVAPORATION: f32 = 0.05; // 0.0125, 0.05, 0.1 [0.05] -
+pub const P_RADIUS: usize = 3; // 2, 4, 6 [4] -
+pub const P_MIN_SLOPE: f32 = 0.00000001; // 0.0001, 0.01, 0.05 [0.0001] -
 pub const P_GRAVITY: f32 = 9.2;
 pub const P_MAX_PATH: usize = 10000;
 
@@ -353,24 +353,32 @@ pub fn deposit(
         height: HeightmapPrecision,
         fraction: Vector2,
     ) -> Result<(), HeightmapError> {
+        assert_eq!(
+            heightmap.width, heightmap.height,
+            "Assumption failed: heightmap.width == heightmap.height"
+        );
+        let adjust = (
+            if pos.0 >= heightmap.width - 1 { 1 } else { 0 },
+            if pos.1 >= heightmap.height - 1 { 1 } else { 0 },
+        );
         heightmap.set(
             pos.0 + 0,
             pos.1 + 0,
             deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
         )?;
         heightmap.set(
-            pos.0 + 1,
+            pos.0 + 1 - adjust.0,
             pos.1 + 0,
             deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
         )?;
         heightmap.set(
             pos.0 + 0,
-            pos.1 + 1,
+            pos.1 + 1 - adjust.1,
             deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
         )?;
         heightmap.set(
-            pos.0 + 1,
-            pos.1 + 1,
+            pos.0 + 1 - adjust.0,
+            pos.1 + 1 - adjust.1,
             deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
         )?;
         Ok(())
