@@ -108,13 +108,26 @@ async fn debug() {
 
             match drop {
                 erode::beyer::Drop::Alive { position, .. } => {
+                    let theta = drop.get_angle().unwrap();
+                    let x = position.x / heightmap_.width as f32 * screen_width();
+                    let y = position.y / heightmap_.height as f32 * screen_height();
+                    let r = erode::beyer::P_RADIUS as f32 * screen_width() / heightmap_.width as f32;
                     draw_circle_lines(
-                        position.x / heightmap_.width as f32 * screen_width(),
-                        position.y / heightmap_.height as f32 * screen_height(),
-                        erode::beyer::P_RADIUS as f32 * screen_width() / heightmap_.width as f32,
+                        x,
+                        y,
+                        r,
                         1.5,
                         RED,
                     );
+                    draw_line(
+                        x + r * theta.cos(),
+                        y + r * theta.sin(),
+                        x + r * theta.cos() * 3.0,
+                        y + r * theta.sin() * 3.0,
+                        1.5,
+                        RED,
+                    );
+
                 }
                 erode::beyer::Drop::Dead => {}
             }
