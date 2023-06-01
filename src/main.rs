@@ -22,12 +22,15 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     debug().await;
+    // run_simulation();
 }
 
 #[derive(Debug, Clone)]
 struct State {
     heightmap: heightmap::Heightmap,
     drop: erode::beyer::Drop,
+    iteration: usize,
+    drop_count: usize,
 }
 
 async fn debug() {
@@ -37,12 +40,11 @@ async fn debug() {
     let mut rng = ::rand::thread_rng();
 
     while !is_quit_requested() {
-
         let mut heightmap_ = initialize_heightmap();
         heightmap_.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
 
         let mut drop = erode::beyer::create_drop(
-            math::Vector2::new(heightmap_.width as f32 / 2.0, heightmap_.height as f32 / 2.0),
+            erode::beyer::random_position(&heightmap_, &mut rng),
             erode::beyer::get_random_angle(&mut rng),
             &mut 0.0,
         )
@@ -51,23 +53,83 @@ async fn debug() {
         let state_ = State {
             heightmap: heightmap_.clone(),
             drop,
+            iteration: 0,
+            drop_count: 0,
         };
 
         let mut states = vec![state_.clone()];
         let mut state_index = 0;
+
+        let mut last_state = state_index + 1;
+        let mut last_heightmap_texture = heightmap_to_texture(&heightmap_);
+
         next_frame().await;
 
         while !is_quit_requested() && !is_key_pressed(KeyCode::R) {
             clear_background(BLACK);
 
+            let mut steps = 1;
+            if is_key_down(KeyCode::Key2) {
+                steps *= 2;
+            }
+            if is_key_down(KeyCode::Key3) {
+                steps *= 3;
+            }
+            if is_key_down(KeyCode::Key4) {
+                steps *= 4;
+            }
+            if is_key_down(KeyCode::Key5) {
+                steps *= 5;
+            }
+            if is_key_down(KeyCode::Key6) {
+                steps *= 6;
+            }
+            if is_key_down(KeyCode::Key7) {
+                steps *= 7;
+            }
+            if is_key_down(KeyCode::Key8) {
+                steps *= 8;
+            }
+            if is_key_down(KeyCode::Key9) {
+                steps *= 9;
+            }
+            if is_key_down(KeyCode::Key0) {
+                steps *= 1000;
+            }
+
+            if is_key_pressed(KeyCode::P) {
+                states.truncate(state_index + 1);
+            }
+
             if is_key_down(KeyCode::J) || is_key_pressed(KeyCode::Right) {
                 state_index += 1;
                 if state_index >= states.len() {
-                    let State { mut drop, mut heightmap } = states.last().unwrap().clone();
-                    if drop != erode::beyer::Drop::Dead {
-                        erode::beyer::tick(&mut heightmap, &mut drop, 2.0).unwrap();
+                    let State {
+                        mut drop,
+                        mut heightmap,
+                        mut iteration,
+                        mut drop_count,
+                    } = states.last().unwrap().clone();
+                    for _ in 0..steps {
+                        if drop != erode::beyer::Drop::Dead {
+                            erode::beyer::tick(&mut heightmap, &mut drop, 2.0).unwrap();
+                        } else {
+                            drop = erode::beyer::create_drop(
+                                erode::beyer::random_position(&heightmap_, &mut rng),
+                                erode::beyer::get_random_angle(&mut rng),
+                                &mut 0.0,
+                            )
+                            .unwrap();
+                            drop_count += 1;
+                        }
+                        iteration += 1;
                     }
-                    states.push(State { drop, heightmap });
+                    states.push(State {
+                        drop,
+                        heightmap,
+                        iteration,
+                        drop_count,
+                    });
                 }
             } else if is_key_down(KeyCode::K) || is_key_pressed(KeyCode::Left) {
                 if state_index > 0 {
@@ -75,12 +137,20 @@ async fn debug() {
                 }
             };
 
-            let State { drop, heightmap } = states.get(state_index).unwrap();
+            let State {
+                drop,
+                heightmap,
+                iteration,
+                drop_count,
+            } = states.get(state_index).unwrap();
 
             if !is_key_down(KeyCode::Space) {
+                if last_state != state_index {
+                    last_heightmap_texture = heightmap_to_texture(&heightmap);
+                }
                 // Draw heightmap
                 draw_texture_ex(
-                    heightmap_to_texture(&heightmap),
+                    last_heightmap_texture,
                     0.0,
                     0.0,
                     WHITE,
@@ -111,14 +181,9 @@ async fn debug() {
                     let theta = drop.get_angle().unwrap();
                     let x = position.x / heightmap_.width as f32 * screen_width();
                     let y = position.y / heightmap_.height as f32 * screen_height();
-                    let r = erode::beyer::P_RADIUS as f32 * screen_width() / heightmap_.width as f32;
-                    draw_circle_lines(
-                        x,
-                        y,
-                        r,
-                        1.5,
-                        RED,
-                    );
+                    let r =
+                        erode::beyer::P_RADIUS as f32 * screen_width() / heightmap_.width as f32;
+                    draw_circle_lines(x, y, r, 1.5, RED);
                     draw_line(
                         x + r * theta.cos(),
                         y + r * theta.sin(),
@@ -127,10 +192,24 @@ async fn debug() {
                         1.5,
                         RED,
                     );
-
                 }
                 erode::beyer::Drop::Dead => {}
             }
+
+            draw_text(
+                &format!("Iteration: {}", iteration),
+                10.0,
+                20.0,
+                20.0,
+                WHITE,
+            );
+            draw_text(
+                &format!("Drop count: {}", drop_count),
+                10.0,
+                40.0,
+                20.0,
+                WHITE,
+            );
 
             if screen_width() != screen_height() {
                 request_new_screen_size(
@@ -139,6 +218,7 @@ async fn debug() {
                 );
             }
 
+            last_state = state_index;
             next_frame().await
         }
         if is_key_pressed(KeyCode::R) {
@@ -236,7 +316,7 @@ fn initialize_heightmap() -> heightmap::Heightmap {
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
 
-    let debug = true;
+    let debug = false;
 
     // Y gradient
     // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
