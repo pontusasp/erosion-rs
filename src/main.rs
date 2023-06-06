@@ -1,6 +1,7 @@
 use ds_heightmap::Runner;
 use macroquad::prelude::*;
 use std::env;
+use macroquad::ui::root_ui;
 
 pub mod erode;
 pub mod heightmap;
@@ -21,8 +22,12 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    debug().await;
-    // run_simulation();
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        debug().await;
+    } else {
+        run_simulation();
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -147,6 +152,7 @@ async fn debug() {
             if !is_key_down(KeyCode::Space) {
                 if last_state != state_index {
                     last_heightmap_texture = heightmap_to_texture(&heightmap);
+                    last_heightmap_texture.set_filter(FilterMode::Nearest);
                 }
                 // Draw heightmap
                 draw_texture_ex(
@@ -163,9 +169,11 @@ async fn debug() {
                 let mut diff = heightmap.subtract(&heightmap_).unwrap();
                 diff.normalize();
 
+                let diff_texture = heightmap_to_texture(&diff);
+                diff_texture.set_filter(FilterMode::Nearest);
                 // Draw heightmap
                 draw_texture_ex(
-                    heightmap_to_texture(&diff),
+                    diff_texture,
                     0.0,
                     0.0,
                     WHITE,
@@ -196,20 +204,20 @@ async fn debug() {
                 erode::beyer::Drop::Dead => {}
             }
 
-            draw_text(
-                &format!("Iteration: {}", iteration),
-                10.0,
-                20.0,
-                20.0,
-                WHITE,
-            );
-            draw_text(
-                &format!("Drop count: {}", drop_count),
-                10.0,
-                40.0,
-                20.0,
-                WHITE,
-            );
+            // draw_text(
+            //     &format!("Iteration: {}", iteration),
+            //     10.0,
+            //     20.0,
+            //     20.0,
+            //     WHITE,
+            // );
+            // draw_text(
+            //     &format!("Drop count: {}", drop_count),
+            //     10.0,
+            //     40.0,
+            //     20.0,
+            //     WHITE,
+            // );
 
             if screen_width() != screen_height() {
                 request_new_screen_size(
@@ -217,6 +225,27 @@ async fn debug() {
                     screen_width().min(screen_height()),
                 );
             }
+
+            egui_macroquad::ui(|egui_ctx| {
+                egui::Window::new("Erosion")
+                    // .default_size(egui::vec2(200.0, 100.0))
+                    .show(egui_ctx, |ui| {
+                        ui.label(&format!("Iteration: {}", iteration));
+                        ui.label(&format!("Drop count: {}", drop_count));
+                        ui.label(&format!("State: {}", state_index));
+                        ui.label(&format!("Speed: {}", steps));
+                        ui.label("");
+                        ui.label("Controls:");
+                        ui.label("Space: Show difference");
+                        ui.label("J: Next state");
+                        ui.label("K: Previous state");
+                        ui.label("P: Reset");
+                        ui.label("R: Restart");
+                        ui.label("1-9: Speed");
+                    });
+            });
+
+            egui_macroquad::draw();
 
             last_state = state_index;
             next_frame().await
