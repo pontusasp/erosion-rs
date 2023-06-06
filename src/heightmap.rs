@@ -90,7 +90,6 @@ impl Heightmap {
                     buffer.push(if value < 0 { 0 } else { 255 });
                     buffer.push(if value < 0 { 0 } else { 255 });
                     buffer.push(if value < 0 { 0 } else { 255 });
-                    buffer.push(if value < 0 { 0 } else { 255 });
                 }
                 buffer.push(255);
             }
