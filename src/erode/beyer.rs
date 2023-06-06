@@ -6,10 +6,10 @@ use rand::thread_rng;
 pub const DROPLETS: usize = 10_000;
 pub const P_INERTIA: f32 = 0.025; // 0.025, 0.1, 0.4 [0.1] -
 pub const P_CAPACITY: f32 = 8.0; // 2, 8, 32 [8] +
-pub const P_DEPOSITION: f32 = 0.05; // 0.01, 0.1, 1.0 [0.1] +
-pub const P_EROSION: f32 = 0.1; // 0.01, 0.1, 0.9 [0.1] +
+pub const P_DEPOSITION: f32 = 0.1; // 0.01, 0.1, 1.0 [0.1] +
+pub const P_EROSION: f32 = 0.5; // 0.01, 0.1, 0.9 [0.1] +
 pub const P_EVAPORATION: f32 = 0.05; // 0.0125, 0.05, 0.1 [0.05] -
-pub const P_RADIUS: usize = 3; // 2, 4, 6 [4] -
+pub const P_RADIUS: usize = 2; // 2, 4, 6 [4] -
 pub const P_MIN_SLOPE: f32 = 0.00000001; // 0.0001, 0.01, 0.05 [0.0001] -
 pub const P_GRAVITY: f32 = 9.2;
 pub const P_MAX_PATH: usize = 10000;
@@ -200,30 +200,6 @@ impl Drop {
         }
     }
 
-    pub fn gradient(&mut self, heightmap: &Heightmap) -> Result<Vector2, DropError> {
-        // let (mut ix, mut iy) = self.usize_position()?;
-        // if ix >= heightmap.width - 1 {
-        //     ix -= 1;
-        // }
-        // if iy >= heightmap.height - 1 {
-        //     iy -= 1;
-        // }
-
-        // match self {
-        //     Drop::Alive { position, .. } => {
-        //         let grad = heightmap.gradient(position);
-
-        //         match grad {
-        //             Ok(g) => Ok(g),
-        //             Err(e) => Err(DropError::InvalidPosition(e, *position))
-        //         }
-        //     },
-        //     Drop::Dead => Err(DropError::DropIsDead)
-        // }
-
-        todo!();
-    }
-
     pub fn update_direction(
         &mut self,
         gradient: &Vector2,
@@ -358,29 +334,42 @@ pub fn deposit(
             "Assumption failed: heightmap.width == heightmap.height"
         );
         let adjust = (
-            if pos.0 >= heightmap.width - 1 { 1 } else { 0 },
-            if pos.1 >= heightmap.height - 1 { 1 } else { 0 },
+            if fraction.x < 0.5 && pos.0 > 0 { 1 } else { 0 },
+            if fraction.y < 0.5 && pos.1 > 0 { 1 } else { 0 },
+        );
+        let fraction = Vector2::new(
+            if fraction.x < 0.5 && pos.0 > 0 {
+                fraction.x + 0.5
+            } else {
+                fraction.x - 0.5
+            },
+            if fraction.y < 0.5 && pos.1 > 0 {
+                fraction.y + 0.5
+            } else {
+                fraction.y - 0.5
+            }
+        );
+        // heightmap.set(pos.0, pos.1, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height)?;
+        heightmap.set(
+            pos.0 + 0 - adjust.0,
+            pos.1 + 0 - adjust.1,
+            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
         );
         heightmap.set(
-            pos.0 + 0,
-            pos.1 + 0,
-            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
-        )?;
-        heightmap.set(
             pos.0 + 1 - adjust.0,
-            pos.1 + 0,
-            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
-        )?;
+            pos.1 + 0 - adjust.1,
+            deposition * fraction.x * (1.0 - fraction.y) + height,
+        );
         heightmap.set(
-            pos.0 + 0,
+            pos.0 + 0 - adjust.0,
             pos.1 + 1 - adjust.1,
-            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
-        )?;
+            deposition * (1.0 - fraction.x) * fraction.y + height,
+        );
         heightmap.set(
             pos.0 + 1 - adjust.0,
             pos.1 + 1 - adjust.1,
-            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
-        )?;
+            deposition * fraction.x * fraction.y + height,
+        );
         Ok(())
     }
 
