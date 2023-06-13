@@ -1,3 +1,4 @@
+use ds_heightmap::Runner;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -277,5 +278,123 @@ impl Heightmap {
             hashmap.insert(key.to_string(), value);
             self.metadata = Some(hashmap);
         }
+    }
+}
+
+pub enum HeightmapPresets {
+    // Flat,
+    // Random,
+    YGradient,
+    InvertedYGradient,
+    YHyperbolaGradient,
+    CenteredHillGradient,
+    CenteredHillSmallGradient,
+}
+
+pub fn create_heightmap_from_preset(preset: HeightmapPresets, size: usize) -> Heightmap {
+    match preset {
+        HeightmapPresets::YGradient => create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| y as HeightmapPrecision / size as HeightmapPrecision),
+        HeightmapPresets::InvertedYGradient => create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| 1.0 - y as HeightmapPrecision / size as HeightmapPrecision),
+        HeightmapPresets::YHyperbolaGradient => create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| {
+            let gradient = y as HeightmapPrecision / size as HeightmapPrecision;
+            gradient.powi(2)
+        }),
+        HeightmapPresets::CenteredHillGradient => create_heightmap_from_closure(size, 1.0, &|x: usize, y: usize| {
+            let gradient = (x as HeightmapPrecision - size as HeightmapPrecision / 2.0)
+                .powi(2) + (y as HeightmapPrecision - size as HeightmapPrecision / 2.0) .powi(2);
+            1.0 - gradient / (size as HeightmapPrecision / 2.0).powi(2)
+        }),
+        HeightmapPresets::CenteredHillSmallGradient => create_heightmap_from_closure(size, 1.0, &|x: usize, y: usize| {
+            let radius = size as HeightmapPrecision / 2.0;
+            let x = x as HeightmapPrecision;
+            let y = y as HeightmapPrecision;
+            let distance = ((x - radius).powf(2.0) + (y - radius).powf(2.0)).sqrt();
+
+            let hill_radius = 0.75;
+
+            if distance < radius * hill_radius {
+                let to = radius * hill_radius;
+                let from = 0.0;
+                let gradient = (distance - from) / (to - from);
+                ((std::f32::consts::PI * gradient).cos() + 1.0) / 2.0
+            } else {
+                0.0
+            }
+        }),
+    }
+}
+
+pub fn heightmap_to_image(heightmap: &Heightmap, filename: &str) -> image::ImageResult<()> {
+    let buffer = heightmap.to_u8();
+
+    // Save the buffer as filename on disk
+    image::save_buffer(
+        format!("{}.png", filename),
+        &buffer as &[u8],
+        heightmap.width.try_into().unwrap(),
+        heightmap.height.try_into().unwrap(),
+        image::ColorType::L8,
+    )
+}
+
+
+pub fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> Heightmap {
+    let mut runner = Runner::new();
+    runner.set_height(size);
+    runner.set_width(size);
+
+    runner.set_depth(original_depth);
+    runner.set_rough(roughness);
+
+    let depth = 1.0;
+
+    let output = runner.ds();
+    Heightmap {
+        data: output
+            .data
+            .into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|value| value as HeightmapPrecision / original_depth)
+                    .collect()
+            })
+            .collect(),
+        width: size,
+        height: size,
+        depth,
+        original_depth,
+        metadata: None,
+    }
+}
+
+pub fn create_heightmap_from_closure(
+    size: usize,
+    original_depth: f32,
+    closure: &dyn Fn(usize, usize) -> HeightmapPrecision,
+) -> Heightmap {
+    let mut data: Vec<Vec<HeightmapPrecision>> = Vec::new();
+    for i in 0..size {
+        let mut row = Vec::new();
+        for j in 0..size {
+            row.push(closure(i, j));
+        }
+        data.push(row);
+    }
+
+    Heightmap {
+        data,
+        width: size,
+        height: size,
+        depth: 1.0,
+        original_depth,
+        metadata: None,
+    }
+}
+
+pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, filenames: Vec<&str>) {
+    println!("Exporting heightmaps...");
+    for (heightmap, filename) in heightmaps.iter().zip(filenames.iter()) {
+        heightmap_to_image(heightmap, filename).unwrap();
+        io::export(heightmap, filename).unwrap();
     }
 }
