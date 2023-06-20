@@ -1,144 +1,33 @@
-use ds_heightmap::Runner;
+use macroquad::prelude::*;
 use std::env;
 
 pub mod erode;
 pub mod heightmap;
 pub mod math;
+pub mod visualize;
 
-fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> heightmap::Heightmap {
-    let mut runner = Runner::new();
-    runner.set_height(size);
-    runner.set_width(size);
+const WIDTH: u32 = 800;
+const HEIGHT: u32 = 800;
 
-    runner.set_depth(original_depth);
-    runner.set_rough(roughness);
-
-    let depth = 1.0;
-
-    let output = runner.ds();
-    heightmap::Heightmap {
-        data: output
-            .data
-            .into_iter()
-            .map(|row| {
-                row.into_iter()
-                    .map(|value| value as heightmap::HeightmapPrecision / original_depth)
-                    .collect()
-            })
-            .collect(),
-        width: size,
-        height: size,
-        depth,
-        original_depth,
-        metadata: None,
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Erosion RS".to_owned(),
+        window_width: WIDTH.try_into().unwrap(),
+        window_height: HEIGHT.try_into().unwrap(),
+        window_resizable: true,
+        ..Default::default()
     }
 }
 
-fn create_heightmap_from_closure(
-    size: usize,
-    original_depth: f32,
-    closure: &dyn Fn(usize, usize) -> heightmap::HeightmapPrecision,
-) -> heightmap::Heightmap {
-    let mut data: Vec<Vec<heightmap::HeightmapPrecision>> = Vec::new();
-    for i in 0..size {
-        let mut row = Vec::new();
-        for j in 0..size {
-            row.push(closure(i, j));
-        }
-        data.push(row);
-    }
-
-    heightmap::Heightmap {
-        data,
-        width: size,
-        height: size,
-        depth: 1.0,
-        original_depth,
-        metadata: None,
-    }
-}
-
-fn heightmap_to_image(heightmap: &heightmap::Heightmap, filename: &str) -> image::ImageResult<()> {
-    let buffer = heightmap.to_u8();
-
-    // Save the buffer as filename on disk
-    image::save_buffer(
-        filename,
-        &buffer as &[u8],
-        heightmap.width.try_into().unwrap(),
-        heightmap.height.try_into().unwrap(),
-        image::ColorType::L8,
-    )
-}
-
-fn main() {
+#[macroquad::main(window_conf)]
+async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let size: usize = 256;
-    let depth: f32 = 2000.0;
-    let roughness: f32 = 1.0;
-
-    let debug = true;
-
-    // Y gradient
-    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
-
-    // Inverted Y gradient
-    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| 1.0 - y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision);
-
-    // Y hyperbola gradient
-    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|_: usize, y: usize| {
-    // let gradient = y as heightmap::HeightmapPrecision / size as heightmap::HeightmapPrecision;
-    // gradient.powi(2)
-    // });
-
-    // Centered hill gradient
-    // let debug_heightmap = create_heightmap_from_closure(size, depth, &|x: usize, y: usize| {
-    //     let gradient = (x as heightmap::HeightmapPrecision
-    //         - size as heightmap::HeightmapPrecision / 2.0)
-    //         .powi(2)
-    //         + (y as heightmap::HeightmapPrecision - size as heightmap::HeightmapPrecision / 2.0)
-    //         .powi(2);
-    //     1.0 - gradient / (size as heightmap::HeightmapPrecision / 2.0).powi(2)
-    // });
-
-    // Centered small hill gradient
-    let debug_heightmap = create_heightmap_from_closure(size, depth, &|x: usize, y: usize| {
-        let radius = size as heightmap::HeightmapPrecision / 2.0;
-        let x = x as heightmap::HeightmapPrecision;
-        let y = y as heightmap::HeightmapPrecision;
-        let distance = ((x - radius).powf(2.0) + (y - radius).powf(2.0)).sqrt();
-
-        let hill_radius = 0.75;
-
-        if distance < radius * hill_radius {
-            let to = radius * hill_radius;
-            let from = 0.0;
-            let gradient = (distance - from) / (to - from);
-            ((std::f32::consts::PI * gradient).cos() + 1.0) / 2.0
-        } else {
-            0.0
-        }
-    });
-
-    let mut heightmap = if debug {
-        debug_heightmap
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        erode::run_simulation();
     } else {
-        create_heightmap(size, depth, roughness)
-    };
-    heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
-    let heightmap_eroded = erode::erode(&heightmap);
-    let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
-
-    println!("Exporting heightmap images...");
-    heightmap_to_image(&heightmap, "output/heightmap.png").unwrap();
-    heightmap_to_image(&heightmap_eroded, "output/heightmap_eroded.png").unwrap();
-    heightmap_to_image(&heightmap_diff, "output/heightmap_diff.png").unwrap();
-
-    println!("Exporting heightmap json...");
-    heightmap::io::export(&heightmap, "output/heightmap.json").unwrap();
-    heightmap::io::export(&heightmap_eroded, "output/heightmap_eroded.json").unwrap();
-    heightmap::io::export(&heightmap_diff, "output/heightmap_diff.json").unwrap();
-
-    println!("Done!");
+        visualize::run().await;
+    }
 }
+

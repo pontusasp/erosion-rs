@@ -7,7 +7,10 @@ edition = "2021"
 
 [dependencies]
 ds-heightmap = "0.1.2"
+egui = "0.21.0"
+egui-macroquad = "0.15.0"
 image = "0.24.6"
+macroquad = "0.3.25"
 nalgebra-macros = "0.2.0"
 progress = "0.2.0"
 rand = "0.8.5"
