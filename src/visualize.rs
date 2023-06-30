@@ -6,7 +6,7 @@ pub mod lague;
 
 
 pub async fn run() {
-    lague::visualize().await
+    lague::visualize().await;
 }
 
 fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {

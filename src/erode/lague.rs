@@ -63,7 +63,7 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters) {
 
     initialize(&mut state, heightmap.width);
 
-    for iteration in 0..params.num_iterations {
+    for _iteration in 0..params.num_iterations {
         let mut pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
         let mut pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);
         let mut dir_x = 0.0;
@@ -72,7 +72,7 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters) {
         let mut water = state.params.initial_water_volume;
         let mut sediment = 0.0;
 
-        for lifetime in 0..params.max_droplet_lifetime {
+        for _lifetime in 0..params.max_droplet_lifetime {
             let node_x = pos_x.floor() as usize;
             let node_y = pos_y.floor() as usize;
             let droplet_index = node_y * heightmap.width + node_x;
@@ -80,10 +80,10 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters) {
             let cell_offset_x = pos_x - node_x as f32;
             let cell_offset_y = pos_y - node_y as f32;
 
-            let height_and_gradient = calculate_height_and_gradient(&state, heightmap, heightmap.width, pos_x, pos_y);
+            let height_and_gradient = calculate_height_and_gradient(heightmap, pos_x, pos_y);
 
-            dir_x = (dir_x * state.params.inertia - height_and_gradient.gradient_x * (1.0 - state.params.inertia));
-            dir_y = (dir_y * state.params.inertia - height_and_gradient.gradient_y * (1.0 - state.params.inertia));
+            dir_x = dir_x * state.params.inertia - height_and_gradient.gradient_x * (1.0 - state.params.inertia);
+            dir_y = dir_y * state.params.inertia - height_and_gradient.gradient_y * (1.0 - state.params.inertia);
 
             let len = (dir_x * dir_x + dir_y * dir_y).sqrt();
             if len != 0.0 {
@@ -97,7 +97,7 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters) {
                 break;
             }
 
-            let new_height = calculate_height_and_gradient(&state, heightmap, heightmap.width, pos_x, pos_y).height;
+            let new_height = calculate_height_and_gradient(heightmap, pos_x, pos_y).height;
             let delta_height = new_height - height_and_gradient.height;
 
             let sediment_capacity = (-delta_height * speed * water * state.params.sediment_capacity_factor).max(state.params.min_sediment_capacity);
@@ -145,7 +145,7 @@ fn initialize(state: &mut State, map_size: usize) {
 
 }
 
-fn calculate_height_and_gradient(state: &State, heightmap: &Heightmap, map_size: usize, pos_x: f32, pos_y: f32) -> HeightAndGradient {
+fn calculate_height_and_gradient(heightmap: &Heightmap, pos_x: f32, pos_y: f32) -> HeightAndGradient {
     let coord_x = pos_x as usize;
     let coord_y = pos_y as usize;
 

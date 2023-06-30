@@ -353,22 +353,22 @@ pub fn deposit(
             pos.0 + 0 - adjust.0,
             pos.1 + 0 - adjust.1,
             deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
-        );
+        ).expect("Failed to get heightmap value");
         heightmap.set(
             pos.0 + 1 - adjust.0,
             pos.1 + 0 - adjust.1,
             deposition * fraction.x * (1.0 - fraction.y) + height,
-        );
+        ).expect("Failed to get heightmap value");
         heightmap.set(
             pos.0 + 0 - adjust.0,
             pos.1 + 1 - adjust.1,
             deposition * (1.0 - fraction.x) * fraction.y + height,
-        );
+        ).expect("Failed to get heightmap value");
         heightmap.set(
             pos.0 + 1 - adjust.0,
             pos.1 + 1 - adjust.1,
             deposition * fraction.x * fraction.y + height,
-        );
+        ).expect("Failed to get heightmap value");
         Ok(())
     }
 
@@ -411,14 +411,14 @@ pub fn erode(
     height_delta: HeightmapPrecision,
 ) -> Result<(), DropError> {
     let pos_i = position_start.to_usize().unwrap();
-    let fraction = position_start - Vector2::from_usize_tuple(pos_i);
-    let height = match heightmap.get(pos_i.0, pos_i.1) {
-        Some(h) => h,
-        None => panic!(
-            "erode: heightmap.get returned None at ({}, {})",
-            pos_i.0, pos_i.1
-        ), // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
-    };
+    // let fraction = position_start - Vector2::from_usize_tuple(pos_i); // TODO check why this is unused
+    // let height = match heightmap.get(pos_i.0, pos_i.1) {
+    //     Some(h) => h,
+    //     None => panic!(
+    //         "erode: heightmap.get returned None at ({}, {})",
+    //         pos_i.0, pos_i.1
+    //     ), // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
+    // }; // TODO check why this is unused
     let sediment = drop.get_sediment()?;
     let capacity = drop.get_capacity(height_delta)?;
 
@@ -459,10 +459,10 @@ pub fn erode(
     let mut sum = 0.0;
     for ix in x0..x1 {
         for iy in y0..y1 {
-            let h = match heightmap.get(ix, iy) {
-                Some(h) => h,
-                None => panic!("erode: heightmap.get returned None at ({}, {})", ix, iy), // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
-            };
+            // let h = match heightmap.get(ix, iy) {
+            //     Some(h) => h,
+            //     None => panic!("erode: heightmap.get returned None at ({}, {})", ix, iy), // None => return Err(DropError::InvalidPosition("erode: height".to_string(), position_start))
+            // }; // TODO check why this is unused
             let radius = (((ix as i32 - pos_i.0 as i32).pow(2)
                 + (iy as i32 - pos_i.1 as i32).pow(2)) as f32)
                 .sqrt();
