@@ -28,7 +28,7 @@ pub async fn visualize() {
 
             draw_texture_ex(
                 if is_key_down(KeyCode::Space) {
-                    heightmap_eroded_texture
+                    heightmap_texture
                 } else if is_key_down(KeyCode::D) {
                     if is_key_down(KeyCode::LeftShift) {
                         heightmap_diff_normalized
@@ -36,7 +36,7 @@ pub async fn visualize() {
                         heightmap_diff_texture
                     }
                 } else {
-                    heightmap_texture
+                    heightmap_eroded_texture
                 },
                 // heightmap_texture,
                 0.0,
