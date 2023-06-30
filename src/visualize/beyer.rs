@@ -2,6 +2,7 @@ use macroquad::prelude::*;
 
 use crate::heightmap;
 use crate::erode;
+use crate::visualize::heightmap_to_texture;
 
 #[derive(Debug, Clone)]
 struct State {
@@ -213,16 +214,4 @@ pub async fn debug() {
             println!("Bye!");
         }
     }
-}
-
-fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
-    let buffer = heightmap.to_u8_rgba();
-
-    let image = Image {
-        bytes: buffer,
-        width: heightmap.width.try_into().unwrap(),
-        height: heightmap.height.try_into().unwrap(),
-    };
-
-    Texture2D::from_image(&image)
 }

@@ -1,7 +1,6 @@
 use crate::heightmap::*;
 use crate::math::*;
 use rand::prelude::*;
-use rand::thread_rng;
 
 pub const DROPLETS: usize = 10_000;
 pub const P_INERTIA: f32 = 0.025; // 0.025, 0.1, 0.4 [0.1] -

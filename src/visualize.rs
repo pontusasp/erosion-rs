@@ -1,5 +1,22 @@
+use macroquad::prelude::*;
+use crate::heightmap;
+
 pub mod beyer;
+pub mod lague;
+
 
 pub async fn run() {
-    beyer::debug().await
+    lague::visualize().await
+}
+
+fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
+    let buffer = heightmap.to_u8_rgba();
+
+    let image = Image {
+        bytes: buffer,
+        width: heightmap.width.try_into().unwrap(),
+        height: heightmap.height.try_into().unwrap(),
+    };
+
+    Texture2D::from_image(&image)
 }
