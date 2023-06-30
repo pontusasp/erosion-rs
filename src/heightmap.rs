@@ -70,6 +70,18 @@ impl Heightmap {
         }
     }
 
+    pub fn set_range(&mut self, min: HeightmapPrecision, max: HeightmapPrecision) {
+        let (old_min, old_max) = self.get_range();
+        let old_range = old_max - old_min;
+        let new_range = max - min;
+        for i in 0..self.width {
+            for j in 0..self.height {
+                let value = self.data[i][j];
+                self.data[i][j] = ((value - old_min) / old_range) * new_range + min;
+            }
+        }
+    }
+
     pub fn to_u8_rgba(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
         let mut errors: Vec<i32> = Vec::new();
