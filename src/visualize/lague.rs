@@ -15,7 +15,7 @@ pub async fn visualize() {
         heightmap.normalize();
         let heightmap_original = heightmap.clone();
         let mut params = lague::DEFAULT_PARAMS;
-        params.num_iterations = 1000;
+        params.num_iterations = 100000;
         lague::erode(&mut heightmap, &params);
         let heightmap_eroded_texture = heightmap_to_texture(&heightmap);
         let heightmap_texture = heightmap_to_texture(&heightmap_original);
