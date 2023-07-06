@@ -32,7 +32,7 @@ pub const DEFAULT_PARAMS: Parameters = Parameters {
     num_iterations: 1,
 };
 
-struct State {
+pub struct State {
     params: Parameters,
     current_map_size: usize,
     current_erosion_radius: usize,
@@ -62,6 +62,7 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters) {
     };
 
     initialize(&mut state, heightmap.width);
+    add_metadata(&mut state, heightmap);
 
     for _iteration in 0..params.num_iterations {
         let mut pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
@@ -236,4 +237,20 @@ struct HeightAndGradient {
     height: f32,
     gradient_x: f32,
     gradient_y: f32,
+}
+
+pub fn add_metadata(state: &State, heightmap: &mut Heightmap) {
+    heightmap.metadata_add("EROSION_TYPE", "LAGUE".to_string());
+    heightmap.metadata_add("EROSION_RADIUS", state.params.erosion_radius.to_string());
+    heightmap.metadata_add("INERTIA", state.params.inertia.to_string());
+    heightmap.metadata_add("SEDIMENT_CAPACITY_FACTOR", state.params.sediment_capacity_factor.to_string());
+    heightmap.metadata_add("MIN_SEDIMENT_CAPACITY", state.params.min_sediment_capacity.to_string());
+    heightmap.metadata_add("ERODE_SPEED", state.params.erode_speed.to_string());
+    heightmap.metadata_add("DEPOSIT_SPEED", state.params.deposit_speed.to_string());
+    heightmap.metadata_add("EVAPORATE_SPEED", state.params.evaporate_speed.to_string());
+    heightmap.metadata_add("GRAVITY", state.params.gravity.to_string());
+    heightmap.metadata_add("MAX_DROPLET_LIFETIME", state.params.max_droplet_lifetime.to_string());
+    heightmap.metadata_add("INITIAL_WATER_VOLUME", state.params.initial_water_volume.to_string());
+    heightmap.metadata_add("INITIAL_SPEED", state.params.initial_speed.to_string());
+    heightmap.metadata_add("NUM_ITERATIONS", state.params.num_iterations.to_string());
 }

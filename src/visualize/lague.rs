@@ -2,6 +2,7 @@ use macroquad::prelude::*;
 
 use crate::erode;
 use crate::erode::lague;
+use crate::heightmap;
 use crate::visualize::heightmap_to_texture;
 
 pub async fn visualize() {
@@ -10,26 +11,26 @@ pub async fn visualize() {
 
     while restart {
         restart = false;
+        let mut eroded = false;
 
         let mut heightmap = erode::initialize_heightmap();
         heightmap.normalize();
         let heightmap_original = heightmap.clone();
-        let mut params = lague::DEFAULT_PARAMS;
-        params.num_iterations = 100000;
-        lague::erode(&mut heightmap, &params);
-        let heightmap_eroded_texture = heightmap_to_texture(&heightmap);
         let heightmap_texture = heightmap_to_texture(&heightmap_original);
+        let mut params = lague::DEFAULT_PARAMS;
+        params.num_iterations = 1000000;
+        let mut heightmap_eroded_texture = None;
         let mut heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
-        let heightmap_diff_texture = heightmap_to_texture(&heightmap_diff);
+        let mut heightmap_diff_texture = None;
         heightmap_diff.normalize();
-        let heightmap_diff_normalized = heightmap_to_texture(&heightmap_diff);
+        let mut heightmap_diff_normalized = None;
 
         while !is_quit_requested() && !restart {
 
             draw_texture_ex(
                 if is_key_down(KeyCode::Space) {
                     heightmap_texture
-                } else if is_key_down(KeyCode::D) {
+                } else if let Some(texture) = if is_key_down(KeyCode::D) {
                     if is_key_down(KeyCode::LeftShift) {
                         heightmap_diff_normalized
                     } else {
@@ -37,7 +38,7 @@ pub async fn visualize() {
                     }
                 } else {
                     heightmap_eroded_texture
-                },
+                } { texture } else { heightmap_texture },
                 // heightmap_texture,
                 0.0,
                 0.0,
@@ -48,8 +49,34 @@ pub async fn visualize() {
                 },
             );
 
+            if is_key_pressed(KeyCode::E) {
+                if !eroded {
+                    println!("Eroding...");
+                    lague::erode(&mut heightmap, &params);
+                    println!("Done!");
+                    heightmap_eroded_texture = Some(heightmap_to_texture(&heightmap));
+                    heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
+                    heightmap_diff_texture = Some(heightmap_to_texture(&heightmap_diff));
+                    heightmap_diff.normalize();
+                    heightmap_diff_normalized = Some(heightmap_to_texture(&heightmap_diff));
+                }
+                eroded = true;
+            }
+
             if is_key_pressed(KeyCode::R) {
                 restart = true;
+            }
+
+            if is_key_pressed(KeyCode::S) {
+                heightmap::export_heightmaps(
+                    vec![&heightmap_original, &heightmap, &heightmap_diff],
+                    vec![
+                        "output/heightmap",
+                        "output/heightmap_eroded",
+                        "output/heightmap_diff",
+                    ],
+                );
+
             }
 
             next_frame().await;

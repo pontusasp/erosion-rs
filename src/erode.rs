@@ -27,7 +27,7 @@ pub fn run_simulation() {
 }
 
 pub fn initialize_heightmap() -> heightmap::Heightmap {
-    let size: usize = 256;
+    let size: usize = 512;
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
 
