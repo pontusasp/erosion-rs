@@ -54,14 +54,19 @@ pub async fn visualize() {
             if is_key_pressed(KeyCode::E) {
                 if !eroded {
                     println!("Eroding...");
-                    let size = UVector2 { x: heightmap.width / 2, y: heightmap.height / 2 };
-                    let partitions = vec![
-                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: 0, y: 0 }, &size))),
-                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: size.x, y: 0 }, &size))),
-                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: 0, y: size.y }, &size))),
-                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: size.x, y: size.y }, &size))),
-                    ];
-                    let mut handles = vec![];
+                    let subdivisions = 2;
+                    let slice_amount = 2_usize.pow(subdivisions);
+                    let slices = UVector2 { x: slice_amount, y: slice_amount };
+                    let size = UVector2 { x: heightmap.width / slices.x, y: heightmap.height / slices.y };
+                    let mut partitions = Vec::new();
+                    for x in 0..slices.x {
+                        for y in 0..slices.y {
+                            let anchor = UVector2 { x: x * size.x, y: y * size.y };
+                            let partition = Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &anchor, &size)));
+                            partitions.push(partition);
+                        }
+                    }
+                    let mut handles = Vec::new();
 
                     let mut params = params.clone();
                     params.num_iterations /= partitions.len();
