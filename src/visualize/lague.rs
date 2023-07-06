@@ -1,8 +1,11 @@
 use macroquad::prelude::*;
+use std::thread;
+use std::sync::{Arc, Mutex};
 
 use crate::erode;
 use crate::erode::lague;
 use crate::heightmap;
+use crate::math::UVector2;
 use crate::visualize::heightmap_to_texture;
 
 pub async fn visualize() {
@@ -26,7 +29,6 @@ pub async fn visualize() {
         let mut heightmap_diff_normalized = None;
 
         while !is_quit_requested() && !restart {
-
             draw_texture_ex(
                 if is_key_down(KeyCode::Space) {
                     heightmap_texture
@@ -52,7 +54,33 @@ pub async fn visualize() {
             if is_key_pressed(KeyCode::E) {
                 if !eroded {
                     println!("Eroding...");
-                    lague::erode(&mut heightmap, &params);
+                    let size = UVector2 { x: heightmap.width / 2, y: heightmap.height / 2 };
+                    let partitions = vec![
+                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: 0, y: 0 }, &size))),
+                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: size.x, y: 0 }, &size))),
+                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: 0, y: size.y }, &size))),
+                        Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &UVector2 { x: size.x, y: size.y }, &size))),
+                    ];
+                    let mut handles = vec![];
+
+                    let mut params = params.clone();
+                    params.num_iterations /= partitions.len();
+                    for i in 0..partitions.len() {
+                        let partition = Arc::clone(&partitions[i]);
+                        let handle = thread::spawn(move || {
+                            lague::erode(&mut partition.lock().unwrap().heightmap, &params);
+                        });
+                        handles.push(handle);
+                    }
+                    for handle in handles {
+                        handle.join().unwrap();
+                    }
+                    for partition in partitions {
+                        partition.lock().unwrap().apply_to(&mut heightmap);
+                    }
+
+                    // heightmap = heightmap::PartialHeightmap::combine(&tl, &bl, &tr, &br);
+
                     println!("Done!");
                     heightmap_eroded_texture = Some(heightmap_to_texture(&heightmap));
                     heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
@@ -76,7 +104,6 @@ pub async fn visualize() {
                         "output/heightmap_diff",
                     ],
                 );
-
             }
 
             next_frame().await;

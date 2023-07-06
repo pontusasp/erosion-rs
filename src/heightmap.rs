@@ -2,7 +2,7 @@ use ds_heightmap::Runner;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::math::Vector2;
+use crate::math::{UVector2, Vector2};
 pub mod io;
 
 pub type HeightmapPrecision = f32;
@@ -16,6 +16,12 @@ pub struct Heightmap {
     pub depth: HeightmapPrecision,
     pub original_depth: HeightmapPrecision,
     pub metadata: Option<HashMap<String, String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PartialHeightmap {
+    pub anchor: UVector2,
+    pub heightmap: Heightmap,
 }
 
 #[derive(Debug)]
@@ -289,6 +295,36 @@ impl Heightmap {
             let mut hashmap = HashMap::new();
             hashmap.insert(key.to_string(), value);
             self.metadata = Some(hashmap);
+        }
+    }
+}
+
+impl PartialHeightmap {
+    pub fn from(heightmap: &Heightmap, anchor: &UVector2, size: &UVector2) -> Self {
+        let mut data: Vec<Vec<HeightmapPrecision>> = vec![vec![0.0; size.y]; size.x];
+        for x in 0..size.x {
+            for y in 0..size.y {
+                data[x][y] = heightmap.data[x + anchor.x][y + anchor.y];
+            }
+        }
+        PartialHeightmap {
+            anchor: anchor.clone(),
+            heightmap: Heightmap {
+                data,
+                width: size.x,
+                height: size.y,
+                depth: heightmap.depth,
+                original_depth: heightmap.original_depth,
+                metadata: heightmap.metadata.clone(),
+            }
+        }
+    }
+
+    pub fn apply_to(&self, heightmap: &mut Heightmap) {
+        for x in 0..self.heightmap.width {
+            for y in 0..self.heightmap.height {
+                heightmap.data[x + self.anchor.x][y + self.anchor.y] = self.heightmap.data[x][y];
+            }
         }
     }
 }
