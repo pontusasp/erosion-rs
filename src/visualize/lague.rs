@@ -2,11 +2,13 @@ use macroquad::prelude::*;
 use std::thread;
 use std::sync::{Arc, Mutex};
 
-use crate::erode;
+use crate::{erode, partitioning};
 use crate::erode::lague;
 use crate::heightmap;
 use crate::math::UVector2;
 use crate::visualize::heightmap_to_texture;
+
+const EROSION_METHOD: partitioning::Method = partitioning::Method::Subdivision;
 
 pub async fn visualize() {
     prevent_quit();
@@ -53,45 +55,19 @@ pub async fn visualize() {
 
             if is_key_pressed(KeyCode::E) {
                 if !eroded {
-                    println!("Eroding...");
-                    let subdivisions = 2;
-                    let slice_amount = 2_usize.pow(subdivisions);
-                    let slices = UVector2 { x: slice_amount, y: slice_amount };
-                    let size = UVector2 { x: heightmap.width / slices.x, y: heightmap.height / slices.y };
-                    let mut partitions = Vec::new();
-                    for x in 0..slices.x {
-                        for y in 0..slices.y {
-                            let anchor = UVector2 { x: x * size.x, y: y * size.y };
-                            let partition = Arc::new(Mutex::new(heightmap::PartialHeightmap::from(&heightmap, &anchor, &size)));
-                            partitions.push(partition);
+                    print!("Eroding using ");
+                    match EROSION_METHOD {
+                        partitioning::Method::Subdivision => {
+                            println!("subdivision method");
+                            partitioning::subdivision_erode(&mut heightmap, &params);
                         }
                     }
-                    let mut handles = Vec::new();
-
-                    let mut params = params.clone();
-                    params.num_iterations /= partitions.len();
-                    for i in 0..partitions.len() {
-                        let partition = Arc::clone(&partitions[i]);
-                        let handle = thread::spawn(move || {
-                            lague::erode(&mut partition.lock().unwrap().heightmap, &params);
-                        });
-                        handles.push(handle);
-                    }
-                    for handle in handles {
-                        handle.join().unwrap();
-                    }
-                    for partition in partitions {
-                        partition.lock().unwrap().apply_to(&mut heightmap);
-                    }
-
-                    // heightmap = heightmap::PartialHeightmap::combine(&tl, &bl, &tr, &br);
-
-                    println!("Done!");
                     heightmap_eroded_texture = Some(heightmap_to_texture(&heightmap));
                     heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
                     heightmap_diff_texture = Some(heightmap_to_texture(&heightmap_diff));
                     heightmap_diff.normalize();
                     heightmap_diff_normalized = Some(heightmap_to_texture(&heightmap_diff));
+                    println!("Done!");
                 }
                 eroded = true;
             }
