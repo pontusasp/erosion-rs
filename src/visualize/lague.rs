@@ -1,14 +1,12 @@
 use macroquad::prelude::*;
-use std::thread;
-use std::sync::{Arc, Mutex};
 
 use crate::{erode, partitioning};
 use crate::erode::lague;
 use crate::heightmap;
-use crate::math::UVector2;
 use crate::visualize::heightmap_to_texture;
 
-const EROSION_METHOD: partitioning::Method = partitioning::Method::Subdivision;
+const EROSION_METHOD: partitioning::Method = partitioning::Method::SubdivisionOverlap;
+const SUBDIVISIONS: u32 = 3;
 
 pub async fn visualize() {
     prevent_quit();
@@ -59,8 +57,12 @@ pub async fn visualize() {
                     match EROSION_METHOD {
                         partitioning::Method::Subdivision => {
                             println!("subdivision method");
-                            partitioning::subdivision_erode(&mut heightmap, &params);
-                        }
+                            partitioning::subdivision_erode(&mut heightmap, &params, SUBDIVISIONS);
+                        },
+                        partitioning::Method::SubdivisionOverlap => {
+                            println!("SubdivisionOverlap method");
+                            partitioning::subdivision_overlap_erode(&mut heightmap, &params, SUBDIVISIONS);
+                        },
                     }
                     heightmap_eroded_texture = Some(heightmap_to_texture(&heightmap));
                     heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();

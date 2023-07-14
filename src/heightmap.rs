@@ -320,6 +320,26 @@ impl PartialHeightmap {
         }
     }
 
+    pub fn nest(&self, anchor: &UVector2, size: &UVector2) -> Self {
+        let mut data: Vec<Vec<HeightmapPrecision>> = vec![vec![0.0; size.y]; size.x];
+        for x in 0..size.x {
+            for y in 0..size.y {
+                data[x][y] = self.heightmap.data[x + anchor.x][y + anchor.y];
+            }
+        }
+        PartialHeightmap {
+            anchor: self.anchor + *anchor,
+            heightmap: Heightmap {
+                data,
+                width: size.x,
+                height: size.y,
+                depth: self.heightmap.depth,
+                original_depth: self.heightmap.original_depth,
+                metadata: self.heightmap.metadata.clone(),
+            }
+        }
+    }
+
     pub fn apply_to(&self, heightmap: &mut Heightmap) {
         for x in 0..self.heightmap.width {
             for y in 0..self.heightmap.height {
