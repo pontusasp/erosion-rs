@@ -1,9 +1,12 @@
 use macroquad::prelude::*;
 
-use crate::erode;
+use crate::{erode, partitioning};
 use crate::erode::lague;
 use crate::heightmap;
 use crate::visualize::heightmap_to_texture;
+
+const EROSION_METHOD: partitioning::Method = partitioning::Method::SubdivisionOverlap;
+const SUBDIVISIONS: u32 = 3;
 
 pub async fn visualize() {
     prevent_quit();
@@ -26,7 +29,6 @@ pub async fn visualize() {
         let mut heightmap_diff_normalized = None;
 
         while !is_quit_requested() && !restart {
-
             draw_texture_ex(
                 if is_key_down(KeyCode::Space) {
                     heightmap_texture
@@ -51,14 +53,23 @@ pub async fn visualize() {
 
             if is_key_pressed(KeyCode::E) {
                 if !eroded {
-                    println!("Eroding...");
-                    lague::erode(&mut heightmap, &params);
-                    println!("Done!");
+                    print!("Eroding using ");
+                    match EROSION_METHOD {
+                        partitioning::Method::Subdivision => {
+                            println!("subdivision method");
+                            partitioning::subdivision_erode(&mut heightmap, &params, SUBDIVISIONS);
+                        },
+                        partitioning::Method::SubdivisionOverlap => {
+                            println!("SubdivisionOverlap method");
+                            partitioning::subdivision_overlap_erode(&mut heightmap, &params, SUBDIVISIONS);
+                        },
+                    }
                     heightmap_eroded_texture = Some(heightmap_to_texture(&heightmap));
                     heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
                     heightmap_diff_texture = Some(heightmap_to_texture(&heightmap_diff));
                     heightmap_diff.normalize();
                     heightmap_diff_normalized = Some(heightmap_to_texture(&heightmap_diff));
+                    println!("Done!");
                 }
                 eroded = true;
             }
@@ -76,7 +87,6 @@ pub async fn visualize() {
                         "output/heightmap_diff",
                     ],
                 );
-
             }
 
             next_frame().await;

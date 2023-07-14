@@ -5,6 +5,7 @@ pub mod erode;
 pub mod heightmap;
 pub mod math;
 pub mod visualize;
+pub mod partitioning;
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 800;
