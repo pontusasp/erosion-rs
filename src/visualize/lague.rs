@@ -7,6 +7,7 @@ use crate::visualize::heightmap_to_texture;
 
 const EROSION_METHOD: partitioning::Method = partitioning::Method::SubdivisionOverlap;
 const SUBDIVISIONS: u32 = 3;
+const ITERATIONS: usize = 1000000;
 
 pub async fn visualize() {
     prevent_quit();
@@ -20,8 +21,10 @@ pub async fn visualize() {
         heightmap.normalize();
         let heightmap_original = heightmap.clone();
         let heightmap_texture = heightmap_to_texture(&heightmap_original);
-        let mut params = lague::DEFAULT_PARAMS;
-        params.num_iterations = 1000000;
+        let params = lague::Parameters {
+            num_iterations: ITERATIONS,
+            ..lague::Parameters::default()
+        };
         let mut heightmap_eroded_texture = None;
         let mut heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
         let mut heightmap_diff_texture = None;

@@ -1,5 +1,7 @@
 use crate::heightmap::*;
 use rand::prelude::*;
+use crate::heightmap;
+use crate::math::Vector2;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Parameters {
@@ -17,20 +19,40 @@ pub struct Parameters {
     pub num_iterations: usize, // 1
 }
 
-pub const DEFAULT_PARAMS: Parameters = Parameters {
-    erosion_radius: 3,
-    inertia: 0.05,
-    sediment_capacity_factor: 4.0,
-    min_sediment_capacity: 0.01,
-    erode_speed: 0.3,
-    deposit_speed: 0.3,
-    evaporate_speed: 0.1,
-    gravity: 4.0,
-    max_droplet_lifetime: 30,
-    initial_water_volume: 1.0,
-    initial_speed: 1.0,
-    num_iterations: 1,
-};
+impl Default for Parameters {
+    fn default() -> Self {
+        Parameters {
+            erosion_radius: 3,
+            inertia: 0.05,
+            sediment_capacity_factor: 4.0,
+            min_sediment_capacity: 0.01,
+            erode_speed: 0.3,
+            deposit_speed: 0.3,
+            evaporate_speed: 0.1,
+            gravity: 4.0,
+            max_droplet_lifetime: 30,
+            initial_water_volume: 1.0,
+            initial_speed: 1.0,
+            num_iterations: 1,
+        }
+    }
+}
+
+pub struct DropZone {
+    min: Vector2,
+    max: Vector2,
+    validate: Option<fn(Vector2) -> bool>
+}
+
+impl DropZone {
+    fn default(heightmap: Heightmap) -> Self {
+        DropZone {
+            min: Vector2 { x: 0.0, y: 0.0 },
+            max: Vector2 { x: heightmap.width as f32 - 1.0, y: heightmap.height as f32 - 1.0 },
+            validate: None,
+        }
+    }
+}
 
 pub struct State {
     params: Parameters,
@@ -51,7 +73,7 @@ fn index_to_position(index: usize, width: usize) -> (usize, usize) {
     (index % width, index / width)
 }
 
-pub fn erode(heightmap: &mut Heightmap, params: &Parameters) {
+pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: DropZone) {
     let mut state = State {
         params: *params,
         current_map_size: 0,
@@ -67,6 +89,12 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters) {
     for _iteration in 0..params.num_iterations {
         let mut pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
         let mut pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);
+        if let Some(validate) = drop_zone.validate {
+            while !validate(Vector2 { x: pos_x, y: pos_y }) {
+                pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
+                pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);
+            }
+        }
         let mut dir_x = 0.0;
         let mut dir_y = 0.0;
         let mut speed = state.params.initial_speed;
