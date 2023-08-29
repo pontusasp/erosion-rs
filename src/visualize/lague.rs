@@ -9,6 +9,16 @@ const EROSION_METHOD: partitioning::Method = partitioning::Method::SubdivisionOv
 const SUBDIVISIONS: u32 = 3;
 const ITERATIONS: usize = 1000000;
 
+/*
+Keybinds:
+- [R] restart
+- [S] export
+- [E] erode
+- [Space] show heightmap texture
+- [D] show diff
+- [Shift-D] show diff normalized
+*/
+
 pub async fn visualize() {
     prevent_quit();
     let mut restart = true;
