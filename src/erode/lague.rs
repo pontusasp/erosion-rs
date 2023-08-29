@@ -1,6 +1,5 @@
 use crate::heightmap::*;
 use rand::prelude::*;
-use crate::heightmap;
 use crate::math::Vector2;
 
 #[derive(Clone, Copy, Debug)]
@@ -45,7 +44,7 @@ pub struct DropZone {
 }
 
 impl DropZone {
-    fn default(heightmap: Heightmap) -> Self {
+    pub fn default(heightmap: &Heightmap) -> Self {
         DropZone {
             min: Vector2 { x: 0.0, y: 0.0 },
             max: Vector2 { x: heightmap.width as f32 - 1.0, y: heightmap.height as f32 - 1.0 },

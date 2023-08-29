@@ -44,7 +44,9 @@ fn erode_multiple(heightmaps: &Vec<Arc<Mutex<heightmap::PartialHeightmap>>>, par
     for i in 0..heightmaps.len() {
         let partition = Arc::clone(&heightmaps[i]);
         let handle = thread::spawn(move || {
-            lague::erode(&mut partition.lock().unwrap().heightmap, &params);
+            let heightmap = &mut partition.lock().unwrap().heightmap;
+            let drop_zone = lague::DropZone::default(heightmap);
+            lague::erode(heightmap, &params, drop_zone);
         });
         handles.push(handle);
     }
