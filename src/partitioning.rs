@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 pub enum Method {
+    Default,
     Subdivision,
     SubdivisionOverlap,
 }
@@ -86,6 +87,11 @@ fn erode_multiple(
     for partition in heightmaps {
         partition.lock().unwrap().apply_to(heightmap);
     }
+}
+
+pub fn default_erode(heightmap: &mut heightmap::Heightmap, params: &lague::Parameters) {
+    let drop_zone = lague::DropZone::default(heightmap);
+    lague::erode(heightmap, &params, drop_zone);
 }
 
 pub fn subdivision_erode(

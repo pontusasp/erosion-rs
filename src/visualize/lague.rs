@@ -7,7 +7,8 @@ use crate::{erode, partitioning};
 
 const SUBDIVISIONS: u32 = 3;
 const ITERATIONS: usize = 1000000;
-const EROSION_METHODS: [partitioning::Method; 2] = [
+const EROSION_METHODS: [partitioning::Method; 3] = [
+    partitioning::Method::Default,
     partitioning::Method::Subdivision,
     partitioning::Method::SubdivisionOverlap,
 ];
@@ -26,6 +27,24 @@ Keybinds:
 - [K] select previous partitioning method
 */
 
+fn cycle_erosion_method(erosion_method_index: &mut usize) {
+    *erosion_method_index = (*erosion_method_index
+        + if is_key_pressed(KeyCode::J) {
+            1
+        } else if is_key_pressed(KeyCode::K) {
+            EROSION_METHODS.len() - 1
+        } else {
+            0
+        })
+        % EROSION_METHODS.len();
+    print!("Selected method: ");
+    match EROSION_METHODS[*erosion_method_index] {
+        partitioning::Method::Default => println!("Default (no partitioning)"),
+        partitioning::Method::Subdivision => println!("Subdivision"),
+        partitioning::Method::SubdivisionOverlap => println!("SubdivisionOverlap"),
+    };
+}
+
 pub async fn visualize() {
     prevent_quit();
     let mut restart = true;
@@ -35,6 +54,8 @@ pub async fn visualize() {
     let mut heightmap = erode::initialize_heightmap();
     heightmap.normalize();
     let mut heightmap_original = heightmap.clone();
+
+    cycle_erosion_method(&mut erosion_method_index);
 
     while restart {
         restart = false;
@@ -86,22 +107,19 @@ pub async fn visualize() {
             );
 
             if is_key_pressed(KeyCode::J) || is_key_pressed(KeyCode::K) {
-                erosion_method_index = (erosion_method_index
-                    + if is_key_pressed(KeyCode::J) { 1 } else { EROSION_METHODS.len()-1 })
-                    % EROSION_METHODS.len();
-                print!("Select method: ");
-                match EROSION_METHODS[erosion_method_index] {
-                    partitioning::Method::Subdivision => println!("Subdivision"),
-                    partitioning::Method::SubdivisionOverlap => println!("SubdivisionOverlap"),
-                };
+                cycle_erosion_method(&mut erosion_method_index);
             }
 
             if is_key_pressed(KeyCode::E) {
                 if !eroded {
                     print!("Eroding using ");
                     match EROSION_METHODS[erosion_method_index] {
+                        partitioning::Method::Default => {
+                            println!("Default method (no partitioning)");
+                            partitioning::default_erode(&mut heightmap, &params);
+                        }
                         partitioning::Method::Subdivision => {
-                            println!("subdivision method");
+                            println!("Subdivision method");
                             partitioning::subdivision_erode(&mut heightmap, &params, SUBDIVISIONS);
                         }
                         partitioning::Method::SubdivisionOverlap => {
