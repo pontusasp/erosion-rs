@@ -97,6 +97,8 @@ pub fn subdivision_erode(
 
     let mut params = params.clone();
     params.num_iterations /= partitions.len();
+
+    erode_multiple(&partitions, params, heightmap);
 }
 
 pub fn subdivision_overlap_erode(

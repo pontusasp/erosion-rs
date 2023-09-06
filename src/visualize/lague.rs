@@ -18,6 +18,7 @@ Keybinds:
 - [R] restart
 - [S] export
 - [E] erode
+- [Q] quit
 - [Space] show heightmap texture
 - [D] show diff
 - [Shift-D] show diff normalized
@@ -131,6 +132,11 @@ pub async fn visualize() {
                 println!("Regenerating heightmap");
                 restart = true;
                 regenerate = true;
+            }
+
+            if is_key_pressed(KeyCode::Q) {
+                println!("Quitting...");
+                break;
             }
 
             if is_key_pressed(KeyCode::S) {
