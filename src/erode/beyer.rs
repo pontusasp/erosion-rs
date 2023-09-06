@@ -346,29 +346,37 @@ pub fn deposit(
                 fraction.y + 0.5
             } else {
                 fraction.y - 0.5
-            }
+            },
         );
         // heightmap.set(pos.0, pos.1, deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height)?;
-        heightmap.set(
-            pos.0 + 0 - adjust.0,
-            pos.1 + 0 - adjust.1,
-            deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
-        ).expect("Failed to get heightmap value");
-        heightmap.set(
-            pos.0 + 1 - adjust.0,
-            pos.1 + 0 - adjust.1,
-            deposition * fraction.x * (1.0 - fraction.y) + height,
-        ).expect("Failed to get heightmap value");
-        heightmap.set(
-            pos.0 + 0 - adjust.0,
-            pos.1 + 1 - adjust.1,
-            deposition * (1.0 - fraction.x) * fraction.y + height,
-        ).expect("Failed to get heightmap value");
-        heightmap.set(
-            pos.0 + 1 - adjust.0,
-            pos.1 + 1 - adjust.1,
-            deposition * fraction.x * fraction.y + height,
-        ).expect("Failed to get heightmap value");
+        heightmap
+            .set(
+                pos.0 + 0 - adjust.0,
+                pos.1 + 0 - adjust.1,
+                deposition * (1.0 - fraction.x) * (1.0 - fraction.y) + height,
+            )
+            .expect("Failed to get heightmap value");
+        heightmap
+            .set(
+                pos.0 + 1 - adjust.0,
+                pos.1 + 0 - adjust.1,
+                deposition * fraction.x * (1.0 - fraction.y) + height,
+            )
+            .expect("Failed to get heightmap value");
+        heightmap
+            .set(
+                pos.0 + 0 - adjust.0,
+                pos.1 + 1 - adjust.1,
+                deposition * (1.0 - fraction.x) * fraction.y + height,
+            )
+            .expect("Failed to get heightmap value");
+        heightmap
+            .set(
+                pos.0 + 1 - adjust.0,
+                pos.1 + 1 - adjust.1,
+                deposition * fraction.x * fraction.y + height,
+            )
+            .expect("Failed to get heightmap value");
         Ok(())
     }
 

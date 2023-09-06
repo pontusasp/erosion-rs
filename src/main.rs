@@ -4,8 +4,8 @@ use std::env;
 pub mod erode;
 pub mod heightmap;
 pub mod math;
-pub mod visualize;
 pub mod partitioning;
+pub mod visualize;
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 800;
@@ -31,4 +31,3 @@ async fn main() {
         visualize::run().await;
     }
 }
-

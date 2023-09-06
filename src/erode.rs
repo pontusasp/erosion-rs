@@ -34,9 +34,11 @@ pub fn initialize_heightmap() -> heightmap::Heightmap {
     let debug = false;
 
     if debug {
-        heightmap::create_heightmap_from_preset(heightmap::HeightmapPresets::CenteredHillSmallGradient, size)
+        heightmap::create_heightmap_from_preset(
+            heightmap::HeightmapPresets::CenteredHillSmallGradient,
+            size,
+        )
     } else {
         heightmap::create_heightmap(size, depth, roughness)
     }
 }
-

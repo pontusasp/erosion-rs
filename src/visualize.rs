@@ -1,9 +1,8 @@
-use macroquad::prelude::*;
 use crate::heightmap;
+use macroquad::prelude::*;
 
 pub mod beyer;
 pub mod lague;
-
 
 pub async fn run() {
     lague::visualize().await;

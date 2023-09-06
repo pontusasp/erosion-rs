@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
 
-use crate::heightmap;
 use crate::erode;
+use crate::heightmap;
 use crate::visualize::heightmap_to_texture;
 
 #[derive(Debug, Clone)]
