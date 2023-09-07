@@ -52,7 +52,9 @@ impl DropZone {
         let width = heightmap.width as f32;
         let height = heightmap.height as f32;
         let _circle = move |drop: Vector2| -> bool {
-            ((drop.x - width / 2.0).powf(2.0) + (drop.y - height / 2.0).powf(2.0)).sqrt() / (width / 2.0) <= radius
+            ((drop.x - width / 2.0).powf(2.0) + (drop.y - height / 2.0).powf(2.0)).sqrt()
+                / (width / 2.0)
+                <= radius
         };
         DropZone {
             min: Vector2 { x: 0.0, y: 0.0 },
