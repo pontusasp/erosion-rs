@@ -40,11 +40,31 @@ impl Default for Parameters {
 pub struct DropZone {
     min: Vector2,
     max: Vector2,
-    validate: Option<fn(Vector2) -> bool>,
+    validate: Option<Box<dyn Fn(Vector2) -> bool>>,
 }
 
 impl DropZone {
     pub fn default(heightmap: &Heightmap) -> Self {
+        DropZone::simple(heightmap)
+    }
+
+    pub fn circle(heightmap: &Heightmap, radius: f32) -> Self {
+        let width = heightmap.width as f32;
+        let height = heightmap.height as f32;
+        let _circle = move |drop: Vector2| -> bool {
+            ((drop.x - width / 2.0).powf(2.0) + (drop.y - height / 2.0).powf(2.0)).sqrt() / (width / 2.0) <= radius
+        };
+        DropZone {
+            min: Vector2 { x: 0.0, y: 0.0 },
+            max: Vector2 {
+                x: heightmap.width as f32,
+                y: heightmap.height as f32,
+            },
+            validate: Some(Box::new(_circle)),
+        }
+    }
+
+    pub fn simple(heightmap: &Heightmap) -> Self {
         DropZone {
             min: Vector2 { x: 0.0, y: 0.0 },
             max: Vector2 {
@@ -75,7 +95,7 @@ fn index_to_position(index: usize, width: usize) -> (usize, usize) {
     (index % width, index / width)
 }
 
-pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: DropZone) {
+pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: &DropZone) {
     let mut state = State {
         params: *params,
         current_map_size: 0,
@@ -91,7 +111,7 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: DropZone
     for _iteration in 0..params.num_iterations {
         let mut pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
         let mut pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);
-        if let Some(validate) = drop_zone.validate {
+        if let Some(ref validate) = drop_zone.validate {
             while !validate(Vector2 { x: pos_x, y: pos_y }) {
                 pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
                 pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);

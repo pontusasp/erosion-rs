@@ -77,7 +77,7 @@ fn erode_multiple(
         let handle = thread::spawn(move || {
             let heightmap = &mut partition.lock().unwrap().heightmap;
             let drop_zone = lague::DropZone::default(heightmap);
-            lague::erode(heightmap, &params, drop_zone);
+            lague::erode(heightmap, &params, &drop_zone);
         });
         handles.push(handle);
     }
@@ -89,8 +89,11 @@ fn erode_multiple(
     }
 }
 
-pub fn default_erode(heightmap: &mut heightmap::Heightmap, params: &lague::Parameters) {
-    let drop_zone = lague::DropZone::default(heightmap);
+pub fn default_erode(
+    heightmap: &mut heightmap::Heightmap,
+    params: &lague::Parameters,
+    drop_zone: &lague::DropZone,
+) {
     lague::erode(heightmap, &params, drop_zone);
 }
 

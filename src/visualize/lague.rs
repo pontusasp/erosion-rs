@@ -45,6 +45,10 @@ fn cycle_erosion_method(erosion_method_index: &mut usize) {
     };
 }
 
+fn generate_drop_zone(heightmap: &heightmap::Heightmap) -> lague::DropZone {
+    lague::DropZone::default(&heightmap)
+}
+
 pub async fn visualize() {
     prevent_quit();
     let mut restart = true;
@@ -54,6 +58,7 @@ pub async fn visualize() {
     let mut heightmap = erode::initialize_heightmap();
     heightmap.normalize();
     let mut heightmap_original = heightmap.clone();
+    let mut drop_zone = generate_drop_zone(&heightmap);
 
     cycle_erosion_method(&mut erosion_method_index);
 
@@ -65,6 +70,7 @@ pub async fn visualize() {
             heightmap = erode::initialize_heightmap();
             heightmap.normalize();
             heightmap_original = heightmap.clone();
+            drop_zone = generate_drop_zone(&heightmap);
             regenerate = false;
         }
 
@@ -116,7 +122,7 @@ pub async fn visualize() {
                     match EROSION_METHODS[erosion_method_index] {
                         partitioning::Method::Default => {
                             println!("Default method (no partitioning)");
-                            partitioning::default_erode(&mut heightmap, &params);
+                            partitioning::default_erode(&mut heightmap, &params, &drop_zone);
                         }
                         partitioning::Method::Subdivision => {
                             println!("Subdivision method");
