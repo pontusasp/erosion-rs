@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use macroquad::prelude::*;
 
 use crate::erode::lague;
@@ -21,12 +23,32 @@ Keybinds:
 - [Shift-D] show diff normalized
 - [J] select next partitioning method
 - [K] select previous partitioning method
-*/
+ui.label("[G] Generate New Heightmap");
+ui.label("[R] Restart");
+ui.label("[S] Export");
+ui.label("[H] Show/Hide Keybinds");
+ui.label("[E] Erode");
+ui.label("[Q][Escape] Quit");
+ui.label("[Space] Show Heightmap Texture");
+ui.label("[D] Show Diff");
+ui.label("[Shift-D] Show Diff Normalized");
+ui.label("[J] Select Next Partitioning Method");
+ui.label("[K] Select Previous Partitioning Method");
+ */
 
 #[derive(Debug, Copy, Clone)]
 enum UiWindow {
     Keybinds,
     Toggles,
+}
+
+impl UiWindow {
+    pub fn to_string(self) -> String {
+        match self {
+            UiWindow::Keybinds => "Keybinds UI".to_string(),
+            UiWindow::Toggles => "Toggles UI".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -43,6 +65,29 @@ enum UiEvent {
     NextPartitioningMethod,
     PreviousPartitioningMethod,
     SelectMethod(partitioning::Method),
+}
+
+impl UiEvent {
+    pub fn info(self) -> String {
+        match self {
+            UiEvent::NewHeightmap => "Generate new heightmap".to_string(),
+            UiEvent::Clear => "Clear simulations".to_string(),
+            UiEvent::Export => "Export layers".to_string(),
+            UiEvent::RunSimulation => "Run simulation".to_string(),
+            UiEvent::ToggleUi(window) => format!("Toggles {}", window.to_string()).to_string(),
+            UiEvent::Quit => "Quit".to_string(),
+            UiEvent::ShowBaseLayer => "Show base layer".to_string(),
+            UiEvent::ShowDifference => "Show difference".to_string(),
+            UiEvent::ShowDifferenceNormalized => "Show difference normalized".to_string(),
+            UiEvent::NextPartitioningMethod => "Select next partitioning method".to_string(),
+            UiEvent::PreviousPartitioningMethod => {
+                "Select previous partitioning method".to_string()
+            }
+            UiEvent::SelectMethod(method) => {
+                format!("Select method {}", method.to_string()).to_string()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -82,25 +127,36 @@ const KEYBINDS: [UiKeybind; 12] = [
 ];
 
 fn poll_ui_keybinds(events: &mut Vec<UiEvent>) {
+    let mut consumed_keys = HashSet::new();
     for &keybind in KEYBINDS.iter() {
         match keybind {
             UiKeybind::Pressed(UiKey::Single(key_code), event) => {
-                if is_key_pressed(key_code) {
+                if is_key_pressed(key_code) && !consumed_keys.contains(&key_code) {
+                    consumed_keys.insert(key_code);
                     events.push(event);
                 }
             }
             UiKeybind::Pressed(UiKey::Double(key_codes), event) => {
-                if is_key_pressed(key_codes.0) && is_key_pressed(key_codes.1) {
+                if is_key_pressed(key_codes.0)
+                    && is_key_pressed(key_codes.1)
+                    && !consumed_keys.contains(&key_codes.1)
+                {
+                    consumed_keys.insert(key_codes.1);
                     events.push(event);
                 }
             }
             UiKeybind::Down(UiKey::Single(key_code), event) => {
-                if is_key_down(key_code) {
+                if is_key_down(key_code) && !consumed_keys.contains(&key_code) {
+                    consumed_keys.insert(key_code);
                     events.push(event);
                 }
             }
             UiKeybind::Down(UiKey::Double(key_codes), event) => {
-                if is_key_down(key_codes.0) && is_key_pressed(key_codes.1) {
+                if is_key_down(key_codes.0)
+                    && is_key_pressed(key_codes.1)
+                    && !consumed_keys.contains(&key_codes.1)
+                {
+                    consumed_keys.insert(key_codes.1);
                     events.push(event);
                 }
             }
@@ -290,6 +346,22 @@ pub async fn visualize() {
                         ui.label("[Shift-D] Show Diff Normalized");
                         ui.label("[J] Select Next Partitioning Method");
                         ui.label("[K] Select Previous Partitioning Method");
+                        for keybind in KEYBINDS {
+                            match keybind {
+                                UiKeybind::Pressed(keys, event) => {
+                                    ui.horizontal(|ui| {
+                                        if ui.button(event.info()).clicked() {
+                                            ui_events.push(event);
+                                        }
+                                        match keys {
+                                            UiKey::Single(key_code) => ui.label("[{:?}]", key_code),
+                                            UiKey::Double(key_codes) => ui.label("[{:?}-[:?]]", key_codes.0, key_codes.1),
+                                        };
+                                    });
+                                }
+                                UiKeybind::Down(keys, event) => {}
+                            }
+                        }
                     });
                 }
                 egui::Window::new("Control Panel").show(egui_ctx, |ui| {
