@@ -7,11 +7,6 @@ use crate::{erode, partitioning};
 
 const SUBDIVISIONS: u32 = 3;
 const ITERATIONS: usize = 1000000;
-const EROSION_METHODS: [partitioning::Method; 3] = [
-    partitioning::Method::Default,
-    partitioning::Method::Subdivision,
-    partitioning::Method::SubdivisionOverlap,
-];
 
 /*
 Keybinds:
@@ -47,24 +42,70 @@ enum UiEvent {
     ShowDifferenceNormalized,
     NextPartitioningMethod,
     PreviousPartitioningMethod,
+    SelectMethod(partitioning::Method),
 }
 
-fn cycle_erosion_method(erosion_method_index: &mut usize) {
-    *erosion_method_index = (*erosion_method_index
-        + if is_key_pressed(KeyCode::J) {
-            1
-        } else if is_key_pressed(KeyCode::K) {
-            EROSION_METHODS.len() - 1
-        } else {
-            0
-        })
-        % EROSION_METHODS.len();
-    print!("Selected method: ");
-    match EROSION_METHODS[*erosion_method_index] {
-        partitioning::Method::Default => println!("Default (no partitioning)"),
-        partitioning::Method::Subdivision => println!("Subdivision"),
-        partitioning::Method::SubdivisionOverlap => println!("SubdivisionOverlap"),
-    };
+#[derive(Debug, Copy, Clone)]
+enum UiKey {
+    Single(KeyCode),
+    Double((KeyCode, KeyCode)),
+}
+
+#[derive(Debug, Copy, Clone)]
+enum UiKeybind {
+    Pressed(UiKey, UiEvent),
+    Down(UiKey, UiEvent),
+}
+
+const KEYBINDS: [UiKeybind; 12] = [
+    UiKeybind::Pressed(UiKey::Single(KeyCode::G), UiEvent::NewHeightmap),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::R), UiEvent::Clear),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::S), UiEvent::Export),
+    UiKeybind::Pressed(
+        UiKey::Single(KeyCode::H),
+        UiEvent::ToggleUi(UiWindow::Keybinds),
+    ),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::E), UiEvent::RunSimulation),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::Q), UiEvent::Quit),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::Escape), UiEvent::Quit),
+    UiKeybind::Down(UiKey::Single(KeyCode::Space), UiEvent::ShowBaseLayer),
+    UiKeybind::Down(UiKey::Single(KeyCode::D), UiEvent::ShowDifference),
+    UiKeybind::Down(
+        UiKey::Double((KeyCode::LeftShift, KeyCode::D)),
+        UiEvent::ShowDifferenceNormalized,
+    ),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::J), UiEvent::NextPartitioningMethod),
+    UiKeybind::Pressed(
+        UiKey::Single(KeyCode::K),
+        UiEvent::PreviousPartitioningMethod,
+    ),
+];
+
+fn poll_ui_keybinds(events: &mut Vec<UiEvent>) {
+    for &keybind in KEYBINDS.iter() {
+        match keybind {
+            UiKeybind::Pressed(UiKey::Single(key_code), event) => {
+                if is_key_pressed(key_code) {
+                    events.push(event);
+                }
+            }
+            UiKeybind::Pressed(UiKey::Double(key_codes), event) => {
+                if is_key_pressed(key_codes.0) && is_key_pressed(key_codes.1) {
+                    events.push(event);
+                }
+            }
+            UiKeybind::Down(UiKey::Single(key_code), event) => {
+                if is_key_down(key_code) {
+                    events.push(event);
+                }
+            }
+            UiKeybind::Down(UiKey::Double(key_codes), event) => {
+                if is_key_down(key_codes.0) && is_key_pressed(key_codes.1) {
+                    events.push(event);
+                }
+            }
+        }
+    }
 }
 
 fn generate_drop_zone(heightmap: &heightmap::Heightmap) -> lague::DropZone {
@@ -73,37 +114,17 @@ fn generate_drop_zone(heightmap: &heightmap::Heightmap) -> lague::DropZone {
 
 pub async fn visualize() {
     prevent_quit();
+    let mut erosion_method = partitioning::Method::Default;
     let mut show_keybinds = false;
     let mut restart = true;
     let mut quit = false;
     let mut regenerate = false;
-    let mut erosion_method_index: usize = 0;
 
     let mut heightmap = erode::initialize_heightmap();
     heightmap.normalize();
     let mut heightmap_original = heightmap.clone();
     let mut drop_zone = generate_drop_zone(&heightmap);
     let mut ui_events: Vec<UiEvent> = vec![];
-
-    let keybinds = [
-        (vec![KeyCode::G], UiEvent::NewHeightmap),
-        (vec![KeyCode::R], UiEvent::Clear),
-        (vec![KeyCode::S], UiEvent::Export),
-        (vec![KeyCode::H], UiEvent::ToggleUi(UiWindow::Keybinds)),
-        (vec![KeyCode::E], UiEvent::RunSimulation),
-        (vec![KeyCode::Q], UiEvent::Quit),
-        (vec![KeyCode::Escape], UiEvent::Quit),
-        (vec![KeyCode::Space], UiEvent::ShowBaseLayer),
-        (vec![KeyCode::D], UiEvent::ShowDifference),
-        (
-            vec![KeyCode::LeftShift, KeyCode::D],
-            UiEvent::ShowDifferenceNormalized,
-        ),
-        (vec![KeyCode::J], UiEvent::NextPartitioningMethod),
-        (vec![KeyCode::K], UiEvent::PreviousPartitioningMethod),
-    ];
-
-    cycle_erosion_method(&mut erosion_method_index);
 
     while restart && !quit {
         restart = false;
@@ -129,19 +150,7 @@ pub async fn visualize() {
         let mut heightmap_diff_normalized = None;
 
         while !is_quit_requested() && !restart && !quit {
-
-            for keybind in keybinds.iter() {
-                let mut key_is_pressed = true;
-                for key in keybind.0.iter() {
-                    if !is_key_pressed(*key) {
-                        key_is_pressed = false;
-                        break;
-                    }
-                }
-                if key_is_pressed {
-                    ui_events.push(keybind.1);
-                }
-            }
+            poll_ui_keybinds(&mut ui_events);
 
             let mut active_texture = if let Some(eroded_texture) = heightmap_eroded_texture {
                 eroded_texture
@@ -174,14 +183,17 @@ pub async fn visualize() {
                         UiWindow::Keybinds => {
                             show_keybinds = !show_keybinds;
                         }
-                        UiWindow::Toggles => {}
+                        UiWindow::Toggles => unimplemented!(),
                     },
                     UiEvent::RunSimulation => {
                         if !eroded {
                             print!("Eroding using ");
-                            match EROSION_METHODS[erosion_method_index] {
+                            match erosion_method {
                                 partitioning::Method::Default => {
-                                    println!("Default method (no partitioning)");
+                                    println!(
+                                        "{} method (no partitioning)",
+                                        partitioning::Method::Default.to_string()
+                                    );
                                     partitioning::default_erode(
                                         &mut heightmap,
                                         &params,
@@ -189,7 +201,10 @@ pub async fn visualize() {
                                     );
                                 }
                                 partitioning::Method::Subdivision => {
-                                    println!("Subdivision method");
+                                    println!(
+                                        "{} method",
+                                        partitioning::Method::Subdivision.to_string()
+                                    );
                                     partitioning::subdivision_erode(
                                         &mut heightmap,
                                         &params,
@@ -197,7 +212,10 @@ pub async fn visualize() {
                                     );
                                 }
                                 partitioning::Method::SubdivisionOverlap => {
-                                    println!("SubdivisionOverlap method");
+                                    println!(
+                                        "{} method",
+                                        partitioning::Method::SubdivisionOverlap.to_string()
+                                    );
                                     partitioning::subdivision_overlap_erode(
                                         &mut heightmap,
                                         &params,
@@ -232,10 +250,16 @@ pub async fn visualize() {
                         }
                     }
                     UiEvent::NextPartitioningMethod => {
-                        cycle_erosion_method(&mut erosion_method_index);
+                        erosion_method = erosion_method.next();
+                        println!("Selected {} method.", erosion_method.to_string());
                     }
                     UiEvent::PreviousPartitioningMethod => {
-                        cycle_erosion_method(&mut erosion_method_index);
+                        erosion_method = erosion_method.previous();
+                        println!("Selected {} method.", erosion_method.to_string());
+                    }
+                    UiEvent::SelectMethod(method) => {
+                        erosion_method = *method;
+                        println!("Selected {} method.", erosion_method.to_string());
                     }
                 };
             }
@@ -268,9 +292,29 @@ pub async fn visualize() {
                         ui.label("[K] Select Previous Partitioning Method");
                     });
                 }
-                egui::Window::new("Toggles").show(egui_ctx, |ui| {
+                egui::Window::new("Control Panel").show(egui_ctx, |ui| {
+                    // Erosion Method Selection
+                    ui.heading("Erosion Method Selection");
+                    for &method in partitioning::Method::iterator() {
+                        if method == erosion_method {
+                            ui.label(method.to_string());
+                        } else {
+                            ui.horizontal(|ui| {
+                                if ui.button(method.to_string()).clicked() {
+                                    ui_events.push(UiEvent::SelectMethod(method));
+                                }
+                                if method == erosion_method.next() {
+                                    ui.label("[J]");
+                                } else if method == erosion_method.previous() {
+                                    ui.label("[K]");
+                                }
+                            });
+                        }
+                    }
+
+                    ui.heading("Toggles");
+                    // Show/Hide Keybinds
                     ui.horizontal(|ui| {
-                        ui.label("[H]");
                         if ui
                             .button(if show_keybinds {
                                 "Hide Keybinds"
@@ -281,7 +325,11 @@ pub async fn visualize() {
                         {
                             show_keybinds = !show_keybinds;
                         };
+                        ui.label("[H]");
                     });
+
+                    // Image Layers
+                    ui.heading("Image Layers");
                     ui.label("0: Default Heightmap");
                 });
             });

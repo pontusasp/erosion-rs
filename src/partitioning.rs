@@ -1,13 +1,50 @@
 use crate::erode::lague;
 use crate::heightmap;
 use crate::math::UVector2;
+use std::slice::Iter;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Method {
     Default,
     Subdivision,
     SubdivisionOverlap,
+}
+
+impl Method {
+    pub fn to_string(self) -> String {
+        match self {
+            Method::Default => String::from("Default"),
+            Method::Subdivision => String::from("Subdivision"),
+            Method::SubdivisionOverlap => String::from("SubdivisionOverlap"),
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            Method::Default => Method::Subdivision,
+            Method::Subdivision => Method::SubdivisionOverlap,
+            Method::SubdivisionOverlap => Method::Default,
+        }
+    }
+
+    pub fn previous(self) -> Self {
+        match self {
+            Method::Subdivision => Method::Default,
+            Method::SubdivisionOverlap => Method::Subdivision,
+            Method::Default => Method::SubdivisionOverlap,
+        }
+    }
+
+    pub fn iterator() -> Iter<'static, Method> {
+        static EROSION_METHODS: [Method; 3] = [
+            Method::Default,
+            Method::Subdivision,
+            Method::SubdivisionOverlap,
+        ];
+        EROSION_METHODS.iter()
+    }
 }
 
 fn subdivide(
