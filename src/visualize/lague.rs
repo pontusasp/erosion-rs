@@ -40,7 +40,7 @@ ui.label("[K] Select Previous Partitioning Method");
 enum UiWindow {
     All,
     Keybinds,
-    Toggles,
+    ControlPanel,
 }
 
 impl UiWindow {
@@ -48,7 +48,7 @@ impl UiWindow {
         match self {
             UiWindow::All => "All UI".to_string(),
             UiWindow::Keybinds => "Keybinds UI".to_string(),
-            UiWindow::Toggles => "Toggles UI".to_string(),
+            UiWindow::ControlPanel => "Control Panel UI".to_string(),
         }
     }
 }
@@ -104,15 +104,23 @@ enum UiKeybind {
     Down(UiKey, UiEvent),
 }
 
-const KEYBINDS: [UiKeybind; 13] = [
+const KEYCODE_TOGGLE_CONTROL_PANEL_UI: KeyCode = KeyCode::F2;
+const KEYCODE_TOGGLE_KEYBINDS_UI: KeyCode = KeyCode::F3;
+const KEYCODE_NEXT_PARTITIONING_METHOD: KeyCode = KeyCode::J;
+const KEYCODE_PREVIOUS_PARTITIONING_METHOD: KeyCode = KeyCode::K;
+const KEYBINDS: [UiKeybind; 14] = [
     UiKeybind::Pressed(UiKey::Single(KeyCode::F1), UiEvent::ToggleUi(UiWindow::All)),
+    UiKeybind::Pressed(
+        UiKey::Single(KeyCode::F2),
+        UiEvent::ToggleUi(UiWindow::ControlPanel),
+    ),
+    UiKeybind::Pressed(
+        UiKey::Single(KEYCODE_TOGGLE_KEYBINDS_UI),
+        UiEvent::ToggleUi(UiWindow::Keybinds),
+    ),
     UiKeybind::Pressed(UiKey::Single(KeyCode::G), UiEvent::NewHeightmap),
     UiKeybind::Pressed(UiKey::Single(KeyCode::R), UiEvent::Clear),
     UiKeybind::Pressed(UiKey::Single(KeyCode::S), UiEvent::Export),
-    UiKeybind::Pressed(
-        UiKey::Single(KeyCode::H),
-        UiEvent::ToggleUi(UiWindow::Keybinds),
-    ),
     UiKeybind::Pressed(UiKey::Single(KeyCode::E), UiEvent::RunSimulation),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Q), UiEvent::Quit),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Escape), UiEvent::Quit),
@@ -122,9 +130,9 @@ const KEYBINDS: [UiKeybind; 13] = [
         UiKey::Double((KeyCode::LeftShift, KeyCode::D)),
         UiEvent::ShowDifferenceNormalized,
     ),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::J), UiEvent::NextPartitioningMethod),
+    UiKeybind::Pressed(UiKey::Single(KEYCODE_NEXT_PARTITIONING_METHOD), UiEvent::NextPartitioningMethod),
     UiKeybind::Pressed(
-        UiKey::Single(KeyCode::K),
+        UiKey::Single(KEYCODE_PREVIOUS_PARTITIONING_METHOD),
         UiEvent::PreviousPartitioningMethod,
     ),
 ];
@@ -192,6 +200,7 @@ pub async fn visualize() {
     let mut erosion_method = partitioning::Method::Default;
     let mut show_ui = true;
     let mut show_keybinds = false;
+    let mut show_control_panel = true;
     let mut restart = true;
     let mut quit = false;
     let mut regenerate = false;
@@ -263,7 +272,9 @@ pub async fn visualize() {
                         UiWindow::Keybinds => {
                             show_keybinds = !show_keybinds;
                         }
-                        UiWindow::Toggles => unimplemented!(),
+                        UiWindow::ControlPanel => {
+                            show_control_panel = !show_control_panel;
+                        }
                     },
                     UiEvent::RunSimulation => {
                         if !eroded {
@@ -360,7 +371,7 @@ pub async fn visualize() {
             if show_ui {
                 egui_macroquad::ui(|egui_ctx| {
                     if show_keybinds {
-                        egui::Window::new("Keybinds").show(egui_ctx, |ui| {
+                        egui::Window::new(format!("Keybinds [{:?}]", KEYCODE_TOGGLE_KEYBINDS_UI)).show(egui_ctx, |ui| {
                             for keybind in KEYBINDS {
                                 match keybind {
                                     UiKeybind::Pressed(keys, event) => {
@@ -401,46 +412,49 @@ pub async fn visualize() {
                             }
                         });
                     }
-                    egui::Window::new("Control Panel").show(egui_ctx, |ui| {
-                        // Erosion Method Selection
-                        ui.heading("Erosion Method Selection");
-                        for &method in partitioning::Method::iterator() {
-                            if method == erosion_method {
-                                ui.label(method.to_string());
-                            } else {
-                                ui.horizontal(|ui| {
-                                    if ui.button(method.to_string()).clicked() {
-                                        ui_events.push(UiEvent::SelectMethod(method));
-                                    }
-                                    if method == erosion_method.next() {
-                                        ui.label("[J]");
-                                    } else if method == erosion_method.previous() {
-                                        ui.label("[K]");
-                                    }
-                                });
-                            }
-                        }
 
-                        ui.heading("Toggles");
-                        // Show/Hide Keybinds
-                        ui.horizontal(|ui| {
-                            if ui
-                                .button(if show_keybinds {
-                                    "Hide Keybinds"
+                    if show_control_panel {
+                        egui::Window::new(format!("Control Panel [{:?}]", KEYCODE_TOGGLE_CONTROL_PANEL_UI)).show(egui_ctx, |ui| {
+                            // Erosion Method Selection
+                            ui.heading("Erosion Method Selection");
+                            for &method in partitioning::Method::iterator() {
+                                if method == erosion_method {
+                                    ui.label(method.to_string());
                                 } else {
-                                    "Show Keybinds"
-                                })
-                                .clicked()
-                            {
-                                show_keybinds = !show_keybinds;
-                            };
-                            ui.label("[H]");
-                        });
+                                    ui.horizontal(|ui| {
+                                        if ui.button(method.to_string()).clicked() {
+                                            ui_events.push(UiEvent::SelectMethod(method));
+                                        }
+                                        if method == erosion_method.next() {
+                                        ui.label(format!("{:?}", KEYCODE_NEXT_PARTITIONING_METHOD));
+                                        } else if method == erosion_method.previous() {
+                                            ui.label(format!("{:?}", KEYCODE_PREVIOUS_PARTITIONING_METHOD));
+                                        }
+                                    });
+                                }
+                            }
 
-                        // Image Layers
-                        ui.heading("Image Layers");
-                        ui.label("0: Default Heightmap");
-                    });
+                            ui.heading("Toggles");
+                            // Show/Hide Keybinds
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .button(if show_keybinds {
+                                        "Hide Keybinds"
+                                    } else {
+                                        "Show Keybinds"
+                                    })
+                                    .clicked()
+                                {
+                                    show_keybinds = !show_keybinds;
+                                };
+                                ui.label(format!("{:?}", KEYCODE_TOGGLE_KEYBINDS_UI));
+                            });
+
+                            // Image Layers
+                            ui.heading("Image Layers");
+                            ui.label("0: Default Heightmap");
+                        });
+                    }
                 });
 
                 egui_macroquad::draw();
