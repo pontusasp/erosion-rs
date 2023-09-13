@@ -133,35 +133,51 @@ fn poll_ui_keybinds(events: &mut Vec<UiEvent>) {
     let mut consumed_keys = HashSet::new();
     for &keybind in KEYBINDS.iter() {
         match keybind {
-            UiKeybind::Pressed(UiKey::Single(key_code), event) => {
-                if is_key_pressed(key_code) && !consumed_keys.contains(&key_code) {
-                    consumed_keys.insert(key_code);
-                    events.push(event);
+            UiKeybind::Pressed(keybind, event) => match keybind {
+                UiKey::Single(_) => (),
+                UiKey::Double(key_codes) => {
+                    if is_key_pressed(key_codes.0)
+                        && is_key_pressed(key_codes.1)
+                        && !consumed_keys.contains(&key_codes.1)
+                    {
+                        consumed_keys.insert(key_codes.1);
+                        events.push(event);
+                    }
                 }
             }
-            UiKeybind::Pressed(UiKey::Double(key_codes), event) => {
-                if is_key_pressed(key_codes.0)
-                    && is_key_pressed(key_codes.1)
-                    && !consumed_keys.contains(&key_codes.1)
-                {
-                    consumed_keys.insert(key_codes.1);
-                    events.push(event);
+            UiKeybind::Down(keybind, event) => match keybind {
+                UiKey::Single(_) => (),
+                UiKey::Double(key_codes) => {
+                    if is_key_down(key_codes.0)
+                        && is_key_down(key_codes.1)
+                        && !consumed_keys.contains(&key_codes.1)
+                    {
+                        consumed_keys.insert(key_codes.1);
+                        events.push(event);
+                    }
                 }
             }
-            UiKeybind::Down(UiKey::Single(key_code), event) => {
-                if is_key_down(key_code) && !consumed_keys.contains(&key_code) {
-                    consumed_keys.insert(key_code);
-                    events.push(event);
+        }
+    }
+    for &keybind in KEYBINDS.iter() {
+        match keybind {
+            UiKeybind::Pressed(keybind, event) => match keybind {
+                UiKey::Single(key_code) => {
+                    if is_key_pressed(key_code) && !consumed_keys.contains(&key_code) {
+                        consumed_keys.insert(key_code);
+                        events.push(event);
+                    }
                 }
+                UiKey::Double(_) => (),
             }
-            UiKeybind::Down(UiKey::Double(key_codes), event) => {
-                if is_key_down(key_codes.0)
-                    && is_key_pressed(key_codes.1)
-                    && !consumed_keys.contains(&key_codes.1)
-                {
-                    consumed_keys.insert(key_codes.1);
-                    events.push(event);
+            UiKeybind::Down(keybind, event) => match keybind {
+                UiKey::Single(key_code) => {
+                    if is_key_down(key_code) && !consumed_keys.contains(&key_code) {
+                        consumed_keys.insert(key_code);
+                        events.push(event);
+                    }
                 }
+                UiKey::Double(_) => (),
             }
         }
     }
