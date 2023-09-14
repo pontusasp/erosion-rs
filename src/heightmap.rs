@@ -65,7 +65,7 @@ impl Heightmap {
         (min, max)
     }
 
-    pub fn normalize(&mut self) {
+    pub fn normalize(mut self) -> Self {
         let (min, max) = self.get_range();
         let range = max - min;
         for i in 0..self.width {
@@ -74,6 +74,7 @@ impl Heightmap {
                 self.data[i][j] = (value - min) / range;
             }
         }
+        self
     }
 
     pub fn set_range(&mut self, min: HeightmapPrecision, max: HeightmapPrecision) {

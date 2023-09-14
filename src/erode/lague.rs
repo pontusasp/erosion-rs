@@ -37,33 +37,41 @@ impl Default for Parameters {
     }
 }
 
+#[derive(Clone)]
+pub enum DropZoneValidator {
+    None,
+    Circle(f32),
+}
+
+impl DropZoneValidator {
+    pub fn validate(&self, heightmap: &Heightmap, drop: &Vector2) -> bool {
+        match self {
+            DropZoneValidator::None => true,
+            DropZoneValidator::Circle(radius) => {
+                let width = heightmap.width as f32;
+                let height = heightmap.height as f32;
+                ((drop.x - width / 2.0).powf(2.0) + (drop.y - height / 2.0).powf(2.0)).sqrt()
+                    / (width / 2.0)
+                    <= *radius
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct DropZone {
     min: Vector2,
     max: Vector2,
-    validate: Option<Box<dyn Fn(Vector2) -> bool>>,
+    validator: DropZoneValidator,
 }
 
 impl DropZone {
-    pub fn default(heightmap: &Heightmap) -> Self {
+    pub fn new(heightmap: &Heightmap, validator: DropZoneValidator) -> Self {
         DropZone::simple(heightmap)
     }
 
-    pub fn circle(heightmap: &Heightmap, radius: f32) -> Self {
-        let width = heightmap.width as f32;
-        let height = heightmap.height as f32;
-        let _circle = move |drop: Vector2| -> bool {
-            ((drop.x - width / 2.0).powf(2.0) + (drop.y - height / 2.0).powf(2.0)).sqrt()
-                / (width / 2.0)
-                <= radius
-        };
-        DropZone {
-            min: Vector2 { x: 0.0, y: 0.0 },
-            max: Vector2 {
-                x: heightmap.width as f32,
-                y: heightmap.height as f32,
-            },
-            validate: Some(Box::new(_circle)),
-        }
+    pub fn default(heightmap: &Heightmap) -> Self {
+        DropZone::simple(heightmap)
     }
 
     pub fn simple(heightmap: &Heightmap) -> Self {
@@ -73,7 +81,18 @@ impl DropZone {
                 x: heightmap.width as f32 - 1.0,
                 y: heightmap.height as f32 - 1.0,
             },
-            validate: None,
+            validator: DropZoneValidator::None,
+        }
+    }
+
+    pub fn circle(heightmap: &Heightmap, radius: f32) -> Self {
+        DropZone {
+            min: Vector2 { x: 0.0, y: 0.0 },
+            max: Vector2 {
+                x: heightmap.width as f32,
+                y: heightmap.height as f32,
+            },
+            validator: DropZoneValidator::Circle(radius),
         }
     }
 }
@@ -113,11 +132,12 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: &DropZon
     for _iteration in 0..params.num_iterations {
         let mut pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
         let mut pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);
-        if let Some(ref validate) = drop_zone.validate {
-            while !validate(Vector2 { x: pos_x, y: pos_y }) {
-                pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
-                pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);
-            }
+        while !drop_zone
+            .validator
+            .validate(&heightmap, &Vector2 { x: pos_x, y: pos_y })
+        {
+            pos_x = state.random_in_range(0.0, heightmap.width as f32 - 1.0);
+            pos_y = state.random_in_range(0.0, heightmap.height as f32 - 1.0);
         }
         let mut dir_x = 0.0;
         let mut dir_y = 0.0;

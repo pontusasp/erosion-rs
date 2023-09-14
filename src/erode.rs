@@ -8,8 +8,8 @@ pub fn erode(heightmap: &heightmap::Heightmap) -> heightmap::Heightmap {
 }
 
 pub fn run_simulation() {
-    let mut heightmap = initialize_heightmap();
-    heightmap.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+    // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+    let heightmap = initialize_heightmap().normalize();
 
     let heightmap_eroded = erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();

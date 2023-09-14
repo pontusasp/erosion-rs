@@ -1,364 +1,218 @@
-use std::collections::HashSet;
+use std::rc::Rc;
 
 use macroquad::prelude::*;
 
 use crate::erode::lague;
+use crate::erode::lague::DropZone;
+use crate::erode::lague::Parameters;
 use crate::heightmap;
+use crate::heightmap::Heightmap;
+use crate::partitioning::Method;
 use crate::visualize::heightmap_to_texture;
+use crate::visualize::keybinds::*;
 use crate::{erode, partitioning};
 
 const SUBDIVISIONS: u32 = 3;
 const ITERATIONS: usize = 1000000;
 
-/*
-Keybinds:
-- [G] generate new heightmap
-- [R] restart
-- [S] export
-- [E] erode
-- [H] Show/Hide Keybinds
-- [Q|Esc] quit
-- [Space] show heightmap texture
-- [D] show diff
-- [Shift-D] show diff normalized
-- [J] select next partitioning method
-- [K] select previous partitioning method
-ui.label("[G] Generate New Heightmap");
-ui.label("[R] Restart");
-ui.label("[S] Export");
-ui.label("[H] Show/Hide Keybinds");
-ui.label("[E] Erode");
-ui.label("[Q][Escape] Quit");
-ui.label("[Space] Show Heightmap Texture");
-ui.label("[D] Show Diff");
-ui.label("[Shift-D] Show Diff Normalized");
-ui.label("[J] Select Next Partitioning Method");
-ui.label("[K] Select Previous Partitioning Method");
- */
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum UiWindow {
-    All,
-    Keybinds,
-    ControlPanel,
-}
-
-impl UiWindow {
-    pub fn to_string(self) -> String {
-        match self {
-            UiWindow::All => "All UI".to_string(),
-            UiWindow::Keybinds => "Keybinds UI".to_string(),
-            UiWindow::ControlPanel => "Control Panel UI".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum UiEvent {
-    NewHeightmap,
-    Clear,
-    Export,
-    RunSimulation,
-    ToggleUi(UiWindow),
-    Quit,
-    ShowBaseLayer,
-    ShowDifference,
-    ShowDifferenceNormalized,
-    NextPartitioningMethod,
-    PreviousPartitioningMethod,
-    SelectMethod(partitioning::Method),
-}
-
-impl UiEvent {
-    pub fn info(self) -> String {
-        match self {
-            UiEvent::NewHeightmap => "Generate new heightmap".to_string(),
-            UiEvent::Clear => "Clear simulations".to_string(),
-            UiEvent::Export => "Export layers".to_string(),
-            UiEvent::RunSimulation => "Run simulation".to_string(),
-            UiEvent::ToggleUi(window) => format!("Toggles {}", window.to_string()).to_string(),
-            UiEvent::Quit => "Quit".to_string(),
-            UiEvent::ShowBaseLayer => "Show base layer".to_string(),
-            UiEvent::ShowDifference => "Show difference".to_string(),
-            UiEvent::ShowDifferenceNormalized => "Show difference normalized".to_string(),
-            UiEvent::NextPartitioningMethod => "Select next partitioning method".to_string(),
-            UiEvent::PreviousPartitioningMethod => {
-                "Select previous partitioning method".to_string()
-            }
-            UiEvent::SelectMethod(method) => {
-                format!("Select method {}", method.to_string()).to_string()
-            }
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum UiKey {
-    Single(KeyCode),
-    Double((KeyCode, KeyCode)),
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum UiKeybind {
-    Pressed(UiKey, UiEvent),
-    Down(UiKey, UiEvent),
-}
-
-const KEYCODE_TOGGLE_CONTROL_PANEL_UI: KeyCode = KeyCode::F2;
-const KEYCODE_TOGGLE_KEYBINDS_UI: KeyCode = KeyCode::F3;
-const KEYCODE_NEXT_PARTITIONING_METHOD: KeyCode = KeyCode::J;
-const KEYCODE_PREVIOUS_PARTITIONING_METHOD: KeyCode = KeyCode::K;
-const KEYBINDS: [UiKeybind; 14] = [
-    UiKeybind::Pressed(UiKey::Single(KeyCode::F1), UiEvent::ToggleUi(UiWindow::All)),
-    UiKeybind::Pressed(
-        UiKey::Single(KeyCode::F2),
-        UiEvent::ToggleUi(UiWindow::ControlPanel),
-    ),
-    UiKeybind::Pressed(
-        UiKey::Single(KEYCODE_TOGGLE_KEYBINDS_UI),
-        UiEvent::ToggleUi(UiWindow::Keybinds),
-    ),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::G), UiEvent::NewHeightmap),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::R), UiEvent::Clear),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::S), UiEvent::Export),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::E), UiEvent::RunSimulation),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::Q), UiEvent::Quit),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::Escape), UiEvent::Quit),
-    UiKeybind::Down(UiKey::Single(KeyCode::Space), UiEvent::ShowBaseLayer),
-    UiKeybind::Down(UiKey::Single(KeyCode::D), UiEvent::ShowDifference),
-    UiKeybind::Down(
-        UiKey::Double((KeyCode::LeftShift, KeyCode::D)),
-        UiEvent::ShowDifferenceNormalized,
-    ),
-    UiKeybind::Pressed(UiKey::Single(KEYCODE_NEXT_PARTITIONING_METHOD), UiEvent::NextPartitioningMethod),
-    UiKeybind::Pressed(
-        UiKey::Single(KEYCODE_PREVIOUS_PARTITIONING_METHOD),
-        UiEvent::PreviousPartitioningMethod,
-    ),
-];
-
-fn poll_ui_keybinds(events: &mut Vec<UiEvent>) {
-    let mut consumed_keys = HashSet::new();
-    for &keybind in KEYBINDS.iter() {
-        match keybind {
-            UiKeybind::Pressed(keybind, event) => match keybind {
-                UiKey::Single(_) => (),
-                UiKey::Double(key_codes) => {
-                    if is_key_pressed(key_codes.0)
-                        && is_key_pressed(key_codes.1)
-                        && !consumed_keys.contains(&key_codes.1)
-                    {
-                        consumed_keys.insert(key_codes.1);
-                        events.push(event);
-                    }
-                }
-            }
-            UiKeybind::Down(keybind, event) => match keybind {
-                UiKey::Single(_) => (),
-                UiKey::Double(key_codes) => {
-                    if is_key_down(key_codes.0)
-                        && is_key_down(key_codes.1)
-                        && !consumed_keys.contains(&key_codes.1)
-                    {
-                        consumed_keys.insert(key_codes.1);
-                        events.push(event);
-                    }
-                }
-            }
-        }
-    }
-    for &keybind in KEYBINDS.iter() {
-        match keybind {
-            UiKeybind::Pressed(keybind, event) => match keybind {
-                UiKey::Single(key_code) => {
-                    if is_key_pressed(key_code) && !consumed_keys.contains(&key_code) {
-                        consumed_keys.insert(key_code);
-                        events.push(event);
-                    }
-                }
-                UiKey::Double(_) => (),
-            }
-            UiKeybind::Down(keybind, event) => match keybind {
-                UiKey::Single(key_code) => {
-                    if is_key_down(key_code) && !consumed_keys.contains(&key_code) {
-                        consumed_keys.insert(key_code);
-                        events.push(event);
-                    }
-                }
-                UiKey::Double(_) => (),
-            }
-        }
-    }
-}
-
 fn generate_drop_zone(heightmap: &heightmap::Heightmap) -> lague::DropZone {
     lague::DropZone::default(&heightmap)
 }
 
-pub async fn visualize() {
-    prevent_quit();
-    let mut erosion_method = partitioning::Method::Default;
-    let mut show_ui = true;
-    let mut show_keybinds = false;
-    let mut show_control_panel = true;
-    let mut restart = true;
-    let mut quit = false;
-    let mut regenerate = false;
+pub enum SimulationState {
+    Base(BaseState),
+    Eroded((BaseState, ErodedState)),
+}
 
-    let mut heightmap = erode::initialize_heightmap();
-    heightmap.normalize();
-    let mut heightmap_original = heightmap.clone();
-    let mut drop_zone = generate_drop_zone(&heightmap);
-    let mut ui_events: Vec<UiEvent> = vec![];
-    let mut ui_events_previous: Vec<UiEvent> = vec![];
+impl SimulationState {
+    pub fn get_new_base(new_id: usize) -> Self {
+        let heightmap = Rc::new(erode::initialize_heightmap().normalize());
+        let texture = Rc::new(heightmap_to_texture(&heightmap));
+        SimulationState::Base(BaseState {
+            id: new_id,
+            erosion_method: Method::Default,
+            params: Parameters {
+                num_iterations: ITERATIONS,
+                ..Default::default()
+            },
+            drop_zone: DropZone::default(&heightmap),
+            heightmap_base: Rc::clone(&heightmap),
+            texture_heightmap_base: Rc::clone(&texture),
+            texture_active: Rc::clone(&texture),
+        })
+    }
 
-    while restart && !quit {
-        restart = false;
-        let mut eroded = false;
+    pub fn get_new_eroded(&self, new_id: usize) -> Self {
+        let (mut base, eroded) = match self {
+            SimulationState::Base(base) => (base.clone(), None),
+            SimulationState::Eroded((base, eroded)) => (base.clone(), Some(eroded)),
+        };
 
-        if regenerate {
-            heightmap = erode::initialize_heightmap();
-            heightmap.normalize();
-            heightmap_original = heightmap.clone();
-            drop_zone = generate_drop_zone(&heightmap);
-            regenerate = false;
+        if let Some(eroded) = eroded {
+            base = BaseState {
+                id: eroded.id,
+                erosion_method: base.erosion_method,
+                params: base.params,
+                drop_zone: base.drop_zone,
+                heightmap_base: Rc::clone(&eroded.heightmap_eroded),
+                texture_heightmap_base: Rc::clone(&eroded.texture_eroded),
+                texture_active: Rc::clone(&eroded.texture_eroded),
+            };
         }
 
-        let heightmap_texture = heightmap_to_texture(&heightmap_original);
-        let params = lague::Parameters {
-            num_iterations: ITERATIONS,
-            ..lague::Parameters::default()
-        };
-        let mut heightmap_eroded_texture = None;
-        let mut heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
-        let mut heightmap_diff_texture = None;
-        heightmap_diff.normalize();
-        let mut heightmap_diff_normalized = None;
+        let eroded = base.run_simulation(new_id);
+        SimulationState::Eroded((base, eroded))
+    }
 
-        while !is_quit_requested() && !restart && !quit {
-            poll_ui_keybinds(&mut ui_events);
+    pub fn base(&self) -> &BaseState {
+        match self {
+            SimulationState::Base(base) => base,
+            SimulationState::Eroded((base, _)) => base,
+        }
+    }
 
-            let mut active_texture = if let Some(eroded_texture) = heightmap_eroded_texture {
-                eroded_texture
-            } else {
-                heightmap_texture
-            };
+    pub fn base_mut(&mut self) -> &mut BaseState {
+        match self {
+            SimulationState::Base(base) => base,
+            SimulationState::Eroded((base, _)) => base,
+        }
+    }
 
-            for event in ui_events.iter() {
-                match event {
-                    UiEvent::NewHeightmap => {
-                        println!("Regenerating heightmap");
-                        restart = true;
-                        regenerate = true;
-                    }
-                    UiEvent::Clear => {
-                        println!("Restarting");
-                        restart = true;
-                    }
-                    UiEvent::Export => {
-                        heightmap::export_heightmaps(
-                            vec![&heightmap_original, &heightmap, &heightmap_diff],
-                            vec![
-                                "output/heightmap",
-                                "output/heightmap_eroded",
-                                "output/heightmap_diff",
-                            ],
-                        );
-                    }
-                    UiEvent::ToggleUi(ui_window) => match ui_window {
-                        UiWindow::All => {
-                            show_ui = !show_ui;
-                        }
-                        UiWindow::Keybinds => {
-                            show_keybinds = !show_keybinds;
-                        }
-                        UiWindow::ControlPanel => {
-                            show_control_panel = !show_control_panel;
-                        }
-                    },
-                    UiEvent::RunSimulation => {
-                        if !eroded {
-                            print!("Eroding using ");
-                            match erosion_method {
-                                partitioning::Method::Default => {
-                                    println!(
-                                        "{} method (no partitioning)",
-                                        partitioning::Method::Default.to_string()
-                                    );
-                                    partitioning::default_erode(
-                                        &mut heightmap,
-                                        &params,
-                                        &drop_zone,
-                                    );
-                                }
-                                partitioning::Method::Subdivision => {
-                                    println!(
-                                        "{} method",
-                                        partitioning::Method::Subdivision.to_string()
-                                    );
-                                    partitioning::subdivision_erode(
-                                        &mut heightmap,
-                                        &params,
-                                        SUBDIVISIONS,
-                                    );
-                                }
-                                partitioning::Method::SubdivisionOverlap => {
-                                    println!(
-                                        "{} method",
-                                        partitioning::Method::SubdivisionOverlap.to_string()
-                                    );
-                                    partitioning::subdivision_overlap_erode(
-                                        &mut heightmap,
-                                        &params,
-                                        SUBDIVISIONS,
-                                    );
-                                }
-                            }
-                            heightmap_eroded_texture = Some(heightmap_to_texture(&heightmap));
-                            heightmap_diff = heightmap.subtract(&heightmap_original).unwrap();
-                            heightmap_diff_texture = Some(heightmap_to_texture(&heightmap_diff));
-                            heightmap_diff.normalize();
-                            heightmap_diff_normalized = Some(heightmap_to_texture(&heightmap_diff));
-                            println!("Done!");
-                        }
-                        eroded = true;
-                    }
-                    UiEvent::Quit => {
-                        println!("Quitting...");
-                        quit = true;
-                    }
-                    UiEvent::ShowBaseLayer => {
-                        active_texture = heightmap_texture;
-                    }
-                    UiEvent::ShowDifference => {
-                        if let Some(texture) = heightmap_diff_texture {
-                            active_texture = texture;
-                        }
-                    }
-                    UiEvent::ShowDifferenceNormalized => {
-                        if let Some(texture) = heightmap_diff_normalized {
-                            active_texture = texture;
-                        }
-                    }
-                    UiEvent::NextPartitioningMethod => {
-                        erosion_method = erosion_method.next();
-                        println!("Selected {} method.", erosion_method.to_string());
-                    }
-                    UiEvent::PreviousPartitioningMethod => {
-                        erosion_method = erosion_method.previous();
-                        println!("Selected {} method.", erosion_method.to_string());
-                    }
-                    UiEvent::SelectMethod(method) => {
-                        erosion_method = *method;
-                        println!("Selected {} method.", erosion_method.to_string());
-                    }
-                };
+    pub fn eroded(&self) -> Option<&ErodedState> {
+        match self {
+            SimulationState::Base(_) => None,
+            SimulationState::Eroded((_, eroded)) => Some(eroded),
+        }
+    }
+
+    pub fn set_active_texture(&mut self, texture: &Rc<Texture2D>) {
+        match self {
+            SimulationState::Base(ref mut base) => base.set_active_texture(texture),
+            SimulationState::Eroded((ref mut base, _)) => base.set_active_texture(texture),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct BaseState {
+    pub id: usize,
+    pub erosion_method: Method,
+    pub params: Parameters,
+    pub drop_zone: DropZone,
+    pub heightmap_base: Rc<Heightmap>,
+    pub texture_heightmap_base: Rc<Texture2D>,
+    pub texture_active: Rc<Texture2D>,
+}
+
+impl BaseState {
+    pub fn run_simulation(&self, id: usize) -> ErodedState {
+        print!("Eroding using ");
+        let mut heightmap: Heightmap = (*self.heightmap_base).clone();
+        match self.erosion_method {
+            partitioning::Method::Default => {
+                println!(
+                    "{} method (no partitioning)",
+                    partitioning::Method::Default.to_string()
+                );
+                partitioning::default_erode(&mut heightmap, &self.params, &self.drop_zone);
             }
-            (ui_events_previous, ui_events) = (ui_events, ui_events_previous);
-            ui_events.clear();
+            partitioning::Method::Subdivision => {
+                println!("{} method", partitioning::Method::Subdivision.to_string());
+                partitioning::subdivision_erode(&mut heightmap, &self.params, SUBDIVISIONS);
+            }
+            partitioning::Method::SubdivisionOverlap => {
+                println!(
+                    "{} method",
+                    partitioning::Method::SubdivisionOverlap.to_string()
+                );
+                partitioning::subdivision_overlap_erode(&mut heightmap, &self.params, SUBDIVISIONS);
+            }
+        }
+        let heightmap_eroded_texture = heightmap_to_texture(&heightmap);
+        let heightmap_diff = heightmap.subtract(&self.heightmap_base).unwrap();
+        let heightmap_diff_texture = heightmap_to_texture(&heightmap_diff);
+        let heightmap_diff_normalized = heightmap_diff.clone().normalize();
+        let heightmap_diff_normalized_texture = heightmap_to_texture(&heightmap_diff_normalized);
+        println!("Done!");
+
+        ErodedState {
+            id,
+            base_id: self.id,
+            heightmap_eroded: Rc::new(heightmap),
+            heightmap_difference: Rc::new(heightmap_diff),
+            texture_eroded: Rc::new(heightmap_eroded_texture),
+            texture_difference: Rc::new(heightmap_diff_texture),
+            texture_difference_normalized: Rc::new(heightmap_diff_normalized_texture),
+        }
+    }
+
+    pub fn set_active_texture(&mut self, texture: &Rc<Texture2D>) {
+        self.texture_active = Rc::clone(texture);
+    }
+}
+
+pub struct ErodedState {
+    pub id: usize,
+    pub base_id: usize,
+    pub heightmap_eroded: Rc<Heightmap>,
+    pub heightmap_difference: Rc<Heightmap>,
+    pub texture_eroded: Rc<Texture2D>,
+    pub texture_difference: Rc<Texture2D>,
+    pub texture_difference_normalized: Rc<Texture2D>,
+}
+
+pub struct AppState {
+    pub simulation_states: Vec<SimulationState>,
+    pub simulation_base_indices: Vec<usize>,
+}
+
+impl AppState {
+    pub fn simulation_state(&self) -> &SimulationState {
+        &self.simulation_states[*self.simulation_base_indices.last().unwrap()]
+    }
+
+    pub fn simulation_state_mut(&mut self) -> &mut SimulationState {
+        &mut self.simulation_states[*self.simulation_base_indices.last().unwrap()]
+    }
+}
+
+pub async fn visualize() {
+    prevent_quit();
+
+    let mut ui_state = UiState {
+        show_ui_all: true,
+        show_ui_keybinds: false,
+        show_ui_control_panel: true,
+        simulation_clear: true,
+        simulation_regenerate: false,
+        application_quit: false,
+        ui_events: Vec::<UiEvent>::new(),
+        ui_events_previous: Vec::<UiEvent>::new(),
+    };
+
+    let mut state = AppState {
+        simulation_states: vec![SimulationState::get_new_base(0)],
+        simulation_base_indices: vec![0],
+    };
+
+    // Update heightmap data
+    while ui_state.simulation_clear && !ui_state.application_quit {
+        ui_state.simulation_clear = false;
+
+        if ui_state.simulation_regenerate {
+            state
+                .simulation_states
+                .push(SimulationState::get_new_base(state.simulation_states.len()));
+            ui_state.simulation_regenerate = false;
+        }
+
+        // Update UI
+        while !is_quit_requested() && !ui_state.simulation_clear && !ui_state.application_quit {
+            poll_ui_keybinds(&mut ui_state);
+            poll_ui_events(&mut ui_state, &mut state);
 
             draw_texture_ex(
-                active_texture,
+                *state.simulation_state().base().texture_active,
                 0.0,
                 0.0,
                 WHITE,
@@ -368,98 +222,7 @@ pub async fn visualize() {
                 },
             );
 
-            if show_ui {
-                egui_macroquad::ui(|egui_ctx| {
-                    if show_keybinds {
-                        egui::Window::new(format!("Keybinds [{:?}]", KEYCODE_TOGGLE_KEYBINDS_UI)).show(egui_ctx, |ui| {
-                            for keybind in KEYBINDS {
-                                match keybind {
-                                    UiKeybind::Pressed(keys, event) => {
-                                        ui.horizontal(|ui| {
-                                            if ui.button(event.info()).clicked() {
-                                                ui_events.push(event);
-                                            }
-                                            match keys {
-                                                UiKey::Single(key_code) => {
-                                                    ui.label(format!("[{:?}]", key_code))
-                                                }
-                                                UiKey::Double(key_codes) => ui.label(format!(
-                                                    "[{:?}-{:?}]",
-                                                    key_codes.0, key_codes.1
-                                                )),
-                                            };
-                                        });
-                                    }
-                                    UiKeybind::Down(keys, event) => {
-                                        if ui_events_previous.contains(&event) {
-                                            ui.label(event.info());
-                                        } else {
-                                            if ui.button(event.info()).clicked() {
-                                                ui_events.push(event);
-                                            }
-                                        }
-                                        match keys {
-                                            UiKey::Single(key_code) => {
-                                                ui.label(format!("({:?})", key_code))
-                                            }
-                                            UiKey::Double(key_codes) => ui.label(format!(
-                                                "({:?}-{:?})",
-                                                key_codes.0, key_codes.1
-                                            )),
-                                        };
-                                    }
-                                }
-                            }
-                        });
-                    }
-
-                    if show_control_panel {
-                        egui::Window::new(format!("Control Panel [{:?}]", KEYCODE_TOGGLE_CONTROL_PANEL_UI)).show(egui_ctx, |ui| {
-                            // Erosion Method Selection
-                            ui.heading("Erosion Method Selection");
-                            for &method in partitioning::Method::iterator() {
-                                if method == erosion_method {
-                                    ui.label(method.to_string());
-                                } else {
-                                    ui.horizontal(|ui| {
-                                        if ui.button(method.to_string()).clicked() {
-                                            ui_events.push(UiEvent::SelectMethod(method));
-                                        }
-                                        if method == erosion_method.next() {
-                                        ui.label(format!("{:?}", KEYCODE_NEXT_PARTITIONING_METHOD));
-                                        } else if method == erosion_method.previous() {
-                                            ui.label(format!("{:?}", KEYCODE_PREVIOUS_PARTITIONING_METHOD));
-                                        }
-                                    });
-                                }
-                            }
-
-                            ui.heading("Toggles");
-                            // Show/Hide Keybinds
-                            ui.horizontal(|ui| {
-                                if ui
-                                    .button(if show_keybinds {
-                                        "Hide Keybinds"
-                                    } else {
-                                        "Show Keybinds"
-                                    })
-                                    .clicked()
-                                {
-                                    show_keybinds = !show_keybinds;
-                                };
-                                ui.label(format!("{:?}", KEYCODE_TOGGLE_KEYBINDS_UI));
-                            });
-
-                            // Image Layers
-                            ui.heading("Image Layers");
-                            ui.label("0: Default Heightmap");
-                        });
-                    }
-                });
-
-                egui_macroquad::draw();
-            }
-
+            ui_draw(&mut ui_state, &mut state);
             next_frame().await;
         }
     }

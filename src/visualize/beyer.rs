@@ -18,8 +18,8 @@ pub async fn debug() {
     let mut rng = ::rand::thread_rng();
 
     while !is_quit_requested() {
-        let mut heightmap_ = erode::initialize_heightmap();
-        heightmap_.normalize(); // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+        // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
+        let heightmap_ = erode::initialize_heightmap().normalize();
 
         let drop = erode::beyer::create_drop(
             erode::beyer::random_position(&heightmap_, &mut rng),
@@ -139,8 +139,7 @@ pub async fn debug() {
                     },
                 );
             } else {
-                let mut diff = heightmap.subtract(&heightmap_).unwrap();
-                diff.normalize();
+                let diff = heightmap.subtract(&heightmap_).unwrap().normalize();
 
                 let diff_texture = heightmap_to_texture(&diff);
                 diff_texture.set_filter(FilterMode::Nearest);
