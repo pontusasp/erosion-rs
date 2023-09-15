@@ -2,7 +2,7 @@ use crate::heightmap;
 use macroquad::prelude::*;
 
 pub mod beyer;
-pub mod keybinds;
+pub mod ui;
 pub mod lague;
 
 pub async fn run() {

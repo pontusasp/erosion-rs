@@ -9,7 +9,7 @@ use crate::heightmap;
 use crate::heightmap::Heightmap;
 use crate::partitioning::Method;
 use crate::visualize::heightmap_to_texture;
-use crate::visualize::keybinds::*;
+use crate::visualize::ui::*;
 use crate::{erode, partitioning};
 
 const SUBDIVISIONS: u32 = 3;
@@ -91,6 +91,14 @@ impl SimulationState {
             SimulationState::Eroded((ref mut base, _)) => base.set_active_texture(texture),
         }
     }
+
+    pub fn id(&self) -> usize {
+        match self {
+            SimulationState::Base(base) => base.id,
+            SimulationState::Eroded((_, eroded)) => eroded.id,
+        }
+    }
+
 }
 
 #[derive(Clone)]
@@ -140,6 +148,7 @@ impl BaseState {
             base_id: self.id,
             heightmap_eroded: Rc::new(heightmap),
             heightmap_difference: Rc::new(heightmap_diff),
+            erosion_method: Rc::new(self.erosion_method),
             texture_eroded: Rc::new(heightmap_eroded_texture),
             texture_difference: Rc::new(heightmap_diff_texture),
             texture_difference_normalized: Rc::new(heightmap_diff_normalized_texture),
@@ -156,6 +165,7 @@ pub struct ErodedState {
     pub base_id: usize,
     pub heightmap_eroded: Rc<Heightmap>,
     pub heightmap_difference: Rc<Heightmap>,
+    pub erosion_method: Rc<Method>,
     pub texture_eroded: Rc<Texture2D>,
     pub texture_difference: Rc<Texture2D>,
     pub texture_difference_normalized: Rc<Texture2D>,
