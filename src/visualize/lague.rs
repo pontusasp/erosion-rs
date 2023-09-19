@@ -98,7 +98,6 @@ impl SimulationState {
             SimulationState::Eroded((_, eroded)) => eroded.id,
         }
     }
-
 }
 
 #[derive(Clone)]
@@ -213,6 +212,9 @@ pub async fn visualize() {
             state
                 .simulation_states
                 .push(SimulationState::get_new_base(state.simulation_states.len()));
+            state
+                .simulation_base_indices
+                .push(state.simulation_states.len() - 1);
             ui_state.simulation_regenerate = false;
         }
 
