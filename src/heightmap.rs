@@ -476,7 +476,13 @@ pub fn create_heightmap_from_closure(
 pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, filenames: Vec<&str>) {
     println!("Exporting heightmaps...");
     for (heightmap, filename) in heightmaps.iter().zip(filenames.iter()) {
-        heightmap_to_image(heightmap, filename).unwrap();
+        if let Err(e) = heightmap_to_image(heightmap, filename) {
+            println!(
+                "Failed to save {}! Make sure the output folder exists.",
+                filename
+            );
+            println!("Given Reason: {}", e);
+        }
         io::export(heightmap, filename).unwrap();
     }
 }
