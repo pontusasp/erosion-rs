@@ -2,7 +2,7 @@ use std::{collections::HashSet, mem, rc::Rc};
 
 use macroquad::prelude::*;
 
-use crate::{heightmap, partitioning};
+use crate::{heightmap, partitioning, visualize::heightmap_to_texture};
 
 use super::lague::{AppState, SimulationState};
 
@@ -66,6 +66,8 @@ pub enum UiEvent {
     NextState,
     PreviousState,
     SelectState(usize),
+    NextDiff,
+    PreviousDiff,
 }
 
 impl UiEvent {
@@ -90,6 +92,8 @@ impl UiEvent {
             UiEvent::NextState => "Select next state".to_string(),
             UiEvent::PreviousState => "Select previous state".to_string(),
             UiEvent::SelectState(id) => format!("Select state #{}", id).to_string(),
+            UiEvent::NextDiff => "Select next state for diff".to_string(),
+            UiEvent::PreviousDiff => "Select previous state for diff".to_string(),
         }
     }
 }
@@ -128,7 +132,7 @@ pub const KEYCODE_TOGGLE_CONTROL_PANEL_UI: KeyCode = KeyCode::F2;
 pub const KEYCODE_TOGGLE_KEYBINDS_UI: KeyCode = KeyCode::F3;
 pub const KEYCODE_NEXT_PARTITIONING_METHOD: KeyCode = KeyCode::J;
 pub const KEYCODE_PREVIOUS_PARTITIONING_METHOD: KeyCode = KeyCode::K;
-pub const KEYBINDS: [UiKeybind; 16] = [
+pub const KEYBINDS: [UiKeybind; 18] = [
     UiKeybind::Pressed(UiKey::Single(KeyCode::F1), UiEvent::ToggleUi(UiWindow::All)),
     UiKeybind::Pressed(
         UiKey::Single(KeyCode::F2),
@@ -160,6 +164,8 @@ pub const KEYBINDS: [UiKeybind; 16] = [
     ),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Up), UiEvent::PreviousState),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Down), UiEvent::NextState),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::Left), UiEvent::PreviousDiff),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::Right), UiEvent::NextDiff),
 ];
 
 pub fn poll_ui_keybinds(ui_state: &mut UiState) {
@@ -213,6 +219,28 @@ pub fn poll_ui_keybinds(ui_state: &mut UiState) {
                 UiKey::Double(_) => (),
             },
         }
+    }
+}
+
+fn get_or_calculate_selected_diff_index(state: &AppState) -> Option<usize> {
+    if let Some(eroded) = state.simulation_state().eroded() {
+        if let Some(i) = eroded.diff_index_of(&eroded.selected_diff.borrow()) {
+            Some(i)
+        } else {
+            let heightmap = &eroded.heightmap_eroded;
+            let heightmap_diff = heightmap.subtract(&state.simulation_states[*eroded.selected_diff.borrow()].base().heightmap_base).unwrap();
+            let heightmap_diff_texture = heightmap_to_texture(&heightmap_diff);
+            let heightmap_diff_normalized = heightmap_diff.clone().normalize();
+            let heightmap_diff_normalized_texture = heightmap_to_texture(&heightmap_diff_normalized);
+
+            eroded.heightmap_difference.borrow_mut().push(Rc::new(heightmap_diff));
+            eroded.texture_difference.borrow_mut().push(Rc::new(heightmap_diff_texture));
+            eroded.texture_difference_normalized.borrow_mut().push(Rc::new(heightmap_diff_normalized_texture));
+            eroded.diffs.borrow_mut().push(eroded.selected_diff.borrow().clone());
+            Some(eroded.diffs.borrow().len() - 1)
+        }
+    } else {
+        None
     }
 }
 
@@ -298,12 +326,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             }
             UiEvent::ShowDifference => {
                 let texture = if let Some(eroded) = state.simulation_state().eroded() {
-                    let diff_index: usize =
-                        if let Some(i) = eroded.diff_index_of(&eroded.selected_diff.borrow()) {
-                            i
-                        } else {
-                            0
-                        };
+                    let diff_index: usize = get_or_calculate_selected_diff_index(state).unwrap();
                     Some(Rc::clone(&eroded.texture_difference.borrow()[diff_index]))
                 } else {
                     None
@@ -315,12 +338,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             }
             UiEvent::ShowDifferenceNormalized => {
                 let texture = if let Some(eroded) = state.simulation_state().eroded() {
-                    let diff_index: usize =
-                        if let Some(i) = eroded.diff_index_of(&eroded.selected_diff.borrow()) {
-                            i
-                        } else {
-                            0
-                        };
+                    let diff_index: usize = get_or_calculate_selected_diff_index(state).unwrap();
                     Some(Rc::clone(&eroded.texture_difference_normalized.borrow()[diff_index]))
                 } else {
                     None
@@ -367,6 +385,22 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             UiEvent::SelectState(id) => {
                 let len = state.simulation_base_indices.len();
                 state.simulation_base_indices[len - 1] = id % len;
+            }
+            UiEvent::NextDiff => {
+                if let Some(eroded) = state.simulation_state().eroded() {
+                    let mut selected_diff = *eroded.selected_diff.borrow();
+                    let len = state.simulation_base_indices.len();
+                    selected_diff = (selected_diff + 1) % len;
+                    eroded.selected_diff.replace(selected_diff);
+                }
+            }
+            UiEvent::PreviousDiff => {
+                if let Some(eroded) = state.simulation_state().eroded() {
+                    let mut selected_diff = *eroded.selected_diff.borrow();
+                    let len = state.simulation_base_indices.len();
+                    selected_diff = (selected_diff + len - 1) % len;
+                    eroded.selected_diff.replace(selected_diff);
+                }
             }
         };
     }
