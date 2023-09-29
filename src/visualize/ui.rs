@@ -228,15 +228,40 @@ fn get_or_calculate_selected_diff_index(state: &AppState) -> Option<usize> {
             Some(i)
         } else {
             let heightmap = &eroded.heightmap_eroded;
-            let heightmap_diff = heightmap.subtract(&state.simulation_states[*eroded.selected_diff.borrow()].base().heightmap_base).unwrap();
+            let heightmap_diff = heightmap
+                .subtract(
+                    if let Some(eroded) =
+                        state.simulation_states[*eroded.selected_diff.borrow()].eroded()
+                    {
+                        &eroded.heightmap_eroded
+                    } else {
+                        &state.simulation_states[*eroded.selected_diff.borrow()]
+                            .base()
+                            .heightmap_base
+                    },
+                )
+                .unwrap();
             let heightmap_diff_texture = heightmap_to_texture(&heightmap_diff);
             let heightmap_diff_normalized = heightmap_diff.clone().normalize();
-            let heightmap_diff_normalized_texture = heightmap_to_texture(&heightmap_diff_normalized);
+            let heightmap_diff_normalized_texture =
+                heightmap_to_texture(&heightmap_diff_normalized);
 
-            eroded.heightmap_difference.borrow_mut().push(Rc::new(heightmap_diff));
-            eroded.texture_difference.borrow_mut().push(Rc::new(heightmap_diff_texture));
-            eroded.texture_difference_normalized.borrow_mut().push(Rc::new(heightmap_diff_normalized_texture));
-            eroded.diffs.borrow_mut().push(eroded.selected_diff.borrow().clone());
+            eroded
+                .heightmap_difference
+                .borrow_mut()
+                .push(Rc::new(heightmap_diff));
+            eroded
+                .texture_difference
+                .borrow_mut()
+                .push(Rc::new(heightmap_diff_texture));
+            eroded
+                .texture_difference_normalized
+                .borrow_mut()
+                .push(Rc::new(heightmap_diff_normalized_texture));
+            eroded
+                .diffs
+                .borrow_mut()
+                .push(eroded.selected_diff.borrow().clone());
             Some(eroded.diffs.borrow().len() - 1)
         }
     } else {
@@ -339,7 +364,9 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             UiEvent::ShowDifferenceNormalized => {
                 let texture = if let Some(eroded) = state.simulation_state().eroded() {
                     let diff_index: usize = get_or_calculate_selected_diff_index(state).unwrap();
-                    Some(Rc::clone(&eroded.texture_difference_normalized.borrow()[diff_index]))
+                    Some(Rc::clone(
+                        &eroded.texture_difference_normalized.borrow()[diff_index],
+                    ))
                 } else {
                     None
                 };
@@ -499,11 +526,12 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) {
                         ui.label(format!("{:?}", KEYCODE_TOGGLE_KEYBINDS_UI));
                     });
 
-                    let selected_diff: Option<usize> = if let Some(eroded) = state.simulation_state().eroded() {
-                        Some((*eroded.selected_diff.borrow()).clone())
-                    } else {
-                        None
-                    };
+                    let selected_diff: Option<usize> =
+                        if let Some(eroded) = state.simulation_state().eroded() {
+                            Some((*eroded.selected_diff.borrow()).clone())
+                        } else {
+                            None
+                        };
                     // Image Layers
                     ui.heading("Image Layers");
                     for simulation in state.simulation_states.iter() {
