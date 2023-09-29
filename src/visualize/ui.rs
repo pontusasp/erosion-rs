@@ -248,11 +248,17 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                     );
                 }
                 SimulationState::Eroded((base, eroded)) => {
+                    let diff_index: usize =
+                        if let Some(i) = eroded.diff_index_of(&eroded.selected_diff.borrow()) {
+                            i
+                        } else {
+                            0
+                        };
                     heightmap::export_heightmaps(
                         vec![
                             &base.heightmap_base,
                             &eroded.heightmap_eroded,
-                            &eroded.heightmap_difference,
+                            &eroded.heightmap_difference.borrow()[diff_index],
                         ],
                         vec![
                             "output/heightmap",
@@ -292,7 +298,13 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             }
             UiEvent::ShowDifference => {
                 let texture = if let Some(eroded) = state.simulation_state().eroded() {
-                    Some(Rc::clone(&eroded.texture_difference))
+                    let diff_index: usize =
+                        if let Some(i) = eroded.diff_index_of(&eroded.selected_diff.borrow()) {
+                            i
+                        } else {
+                            0
+                        };
+                    Some(Rc::clone(&eroded.texture_difference.borrow()[diff_index]))
                 } else {
                     None
                 };
@@ -303,7 +315,13 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             }
             UiEvent::ShowDifferenceNormalized => {
                 let texture = if let Some(eroded) = state.simulation_state().eroded() {
-                    Some(Rc::clone(&eroded.texture_difference_normalized))
+                    let diff_index: usize =
+                        if let Some(i) = eroded.diff_index_of(&eroded.selected_diff.borrow()) {
+                            i
+                        } else {
+                            0
+                        };
+                    Some(Rc::clone(&eroded.texture_difference_normalized.borrow()[diff_index]))
                 } else {
                     None
                 };
@@ -447,6 +465,11 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) {
                         ui.label(format!("{:?}", KEYCODE_TOGGLE_KEYBINDS_UI));
                     });
 
+                    let selected_diff: Option<usize> = if let Some(eroded) = state.simulation_state().eroded() {
+                        Some((*eroded.selected_diff.borrow()).clone())
+                    } else {
+                        None
+                    };
                     // Image Layers
                     ui.heading("Image Layers");
                     for simulation in state.simulation_states.iter() {
@@ -465,6 +488,11 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) {
                                         eroded.erosion_method.to_string(),
                                         eroded.base_id
                                     ));
+                                }
+                            }
+                            if let Some(selected_diff) = selected_diff {
+                                if simulation.id() == selected_diff {
+                                    ui.label(" <-- diff");
                                 }
                             }
                         });

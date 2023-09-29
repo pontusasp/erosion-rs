@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use macroquad::prelude::*;
@@ -145,12 +146,16 @@ impl BaseState {
         ErodedState {
             id,
             base_id: self.id,
+            diffs: Rc::new(RefCell::new(vec![self.id])),
+            selected_diff: Rc::new(RefCell::new(self.id)),
             heightmap_eroded: Rc::new(heightmap),
-            heightmap_difference: Rc::new(heightmap_diff),
+            heightmap_difference: Rc::new(RefCell::new(vec![Rc::new(heightmap_diff)])),
             erosion_method: Rc::new(self.erosion_method),
             texture_eroded: Rc::new(heightmap_eroded_texture),
-            texture_difference: Rc::new(heightmap_diff_texture),
-            texture_difference_normalized: Rc::new(heightmap_diff_normalized_texture),
+            texture_difference: Rc::new(RefCell::new(vec![Rc::new(heightmap_diff_texture)])),
+            texture_difference_normalized: Rc::new(RefCell::new(vec![Rc::new(
+                heightmap_diff_normalized_texture,
+            )])),
         }
     }
 
@@ -162,12 +167,25 @@ impl BaseState {
 pub struct ErodedState {
     pub id: usize,
     pub base_id: usize,
+    pub diffs: Rc<RefCell<Vec<usize>>>,
+    pub selected_diff: Rc<RefCell<usize>>,
     pub heightmap_eroded: Rc<Heightmap>,
-    pub heightmap_difference: Rc<Heightmap>,
+    pub heightmap_difference: Rc<RefCell<Vec<Rc<Heightmap>>>>,
     pub erosion_method: Rc<Method>,
     pub texture_eroded: Rc<Texture2D>,
-    pub texture_difference: Rc<Texture2D>,
-    pub texture_difference_normalized: Rc<Texture2D>,
+    pub texture_difference: Rc<RefCell<Vec<Rc<Texture2D>>>>,
+    pub texture_difference_normalized: Rc<RefCell<Vec<Rc<Texture2D>>>>,
+}
+
+impl ErodedState {
+    pub fn diff_index_of(&self, diff_id: &usize) -> Option<usize> {
+        for (i, d) in self.diffs.borrow().iter().enumerate() {
+            if *diff_id == *d {
+                return Some(i);
+            }
+        }
+        None
+    }
 }
 
 pub struct AppState {
