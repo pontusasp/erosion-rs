@@ -1,8 +1,9 @@
 use std::{collections::HashSet, mem, rc::Rc};
 
 use macroquad::prelude::*;
+use bracket_noise::prelude::*;
 
-use crate::{heightmap, partitioning, visualize::heightmap_to_texture};
+use crate::{heightmap::{self, HeightmapSettings}, partitioning, visualize::heightmap_to_texture};
 
 use super::lague::{AppState, SimulationState};
 
@@ -52,6 +53,7 @@ impl UiWindow {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum UiEvent {
     NewHeightmap,
+    ReplaceHeightmap,
     Clear,
     Export,
     RunSimulation,
@@ -74,6 +76,7 @@ impl UiEvent {
     pub fn info(self) -> String {
         match self {
             UiEvent::NewHeightmap => "Generate new heightmap".to_string(),
+            UiEvent::ReplaceHeightmap => "Replace heightmap".to_string(),
             UiEvent::Clear => "Clear simulations".to_string(),
             UiEvent::Export => "Export layers".to_string(),
             UiEvent::RunSimulation => "Run simulation".to_string(),
@@ -290,6 +293,13 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 ui_state.simulation_clear = true;
                 ui_state.simulation_regenerate = true;
             }
+            UiEvent::ReplaceHeightmap => {
+                println!("Regenerating heightmap");
+                state.simulation_states.pop();
+                state.simulation_base_indices.pop();
+                ui_state.simulation_clear = true;
+                ui_state.simulation_regenerate = true;
+            }
             UiEvent::Clear => {
                 println!("Restarting");
                 ui_state.simulation_clear = true;
@@ -482,6 +492,60 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) {
                         }
                     },
                 );
+            }
+
+            if state.simulation_state().eroded().is_none() {
+                egui::Window::new(format!("Parameters"))
+                    .show(egui_ctx, |ui| {
+                        ui.heading("Heightmap Generation");
+                        let mut updated = false;
+
+                        updated = updated || ui.add(egui::Slider::new(&mut state.parameters.heightmap_settings.seed, 0..=10000000000).text("Seed")).changed();
+
+                        let noise_type = state.parameters.heightmap_settings.noise_type;
+                        egui::ComboBox::from_label("Noise Type")
+                            .selected_text(format!("{:?}", state.parameters.heightmap_settings.noise_type))
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::Value, "Value");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::ValueFractal, "Value Fractal");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::Perlin, "Perlin");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::PerlinFractal, "Perlin
+Fractal");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::Simplex, "Simplex");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::SimplexFractal, "Simplex Fractal");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::Cellular, "Cellular");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::WhiteNoise, "WhiteNoise");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::Cubic, "Cubic");
+                                ui.selectable_value(&mut state.parameters.heightmap_settings.noise_type, NoiseType::CubicFractal, "Cubic Fractal");
+                            });
+                        updated = updated || noise_type != state.parameters.heightmap_settings.noise_type;
+
+                        updated = updated || ui.add(egui::Slider::new(&mut state.parameters.heightmap_settings.fractal_octaves, 0..=28).text("Fractal Octaves")).drag_released();
+                        updated = updated || ui.add(egui::Slider::new(&mut state.parameters.heightmap_settings.fractal_gain, 0.0..=2.0).text("Fractal Gain")).changed();
+                        updated = updated || ui.add(egui::Slider::new(&mut state.parameters.heightmap_settings.fractal_lacunarity, 0.0..=7.0).text("Fractal Lacunarity")).drag_released();
+                        updated = updated || ui.add(egui::Slider::new(&mut state.parameters.heightmap_settings.frequency, 0.0..=5.0).text("Frequency")).changed();
+                        let mut size = state.parameters.heightmap_settings.width;
+                        updated = updated || ui.add(egui::Slider::new(&mut size, 64..=1024).text("Size")).changed();
+                        state.parameters.heightmap_settings.width = size;
+                        state.parameters.heightmap_settings.height = size;
+
+                        ui.add(egui::Checkbox::new(&mut state.parameters.auto_apply, "Auto Apply"));
+
+                        if ui.button("Reset").clicked() {
+                            state.parameters.heightmap_settings = HeightmapSettings::default();
+                            updated = true;
+                        }
+
+                        let mut apply = false;
+                        if !state.parameters.auto_apply {
+                            apply = ui.button("Apply").clicked();
+                        }
+
+                        let update = (state.parameters.auto_apply && updated) || apply;
+                        if update {
+                            ui_state.ui_events.push(UiEvent::ReplaceHeightmap);
+                        }
+                    });
             }
 
             {

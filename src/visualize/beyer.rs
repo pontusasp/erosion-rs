@@ -19,7 +19,7 @@ pub async fn debug() {
 
     while !is_quit_requested() {
         // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
-        let heightmap_ = erode::initialize_heightmap().normalize();
+        let heightmap_ = erode::initialize_heightmap(None).normalize();
 
         let drop = erode::beyer::create_drop(
             erode::beyer::random_position(&heightmap_, &mut rng),

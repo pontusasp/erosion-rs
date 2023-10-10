@@ -2,12 +2,14 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use macroquad::prelude::*;
+use bracket_noise::prelude::*;
 
 use crate::erode::lague;
 use crate::erode::lague::DropZone;
 use crate::erode::lague::Parameters;
 use crate::heightmap;
 use crate::heightmap::Heightmap;
+use crate::heightmap::HeightmapSettings;
 use crate::partitioning::Method;
 use crate::visualize::heightmap_to_texture;
 use crate::visualize::ui::*;
@@ -26,8 +28,8 @@ pub enum SimulationState {
 }
 
 impl SimulationState {
-    pub fn get_new_base(new_id: usize) -> Self {
-        let mut heightmap = erode::initialize_heightmap().normalize();
+    pub fn get_new_base(new_id: usize, settings: Option<&HeightmapSettings>) -> Self {
+        let mut heightmap = erode::initialize_heightmap(settings).normalize();
         heightmap.calculate_total_height();
         let texture = Rc::new(heightmap_to_texture(&heightmap));
         SimulationState::Base(BaseState {
@@ -198,9 +200,26 @@ impl ErodedState {
     }
 }
 
+pub struct AppParameters {
+    pub lague_params: Parameters,
+    pub heightmap_settings: HeightmapSettings,
+    pub auto_apply: bool,
+}
+
+impl Default for AppParameters {
+    fn default() -> Self {
+        AppParameters {
+            lague_params: Parameters::default(),
+            heightmap_settings: HeightmapSettings::default(),
+            auto_apply: true,
+        }
+    }
+}
+
 pub struct AppState {
     pub simulation_states: Vec<SimulationState>,
     pub simulation_base_indices: Vec<usize>,
+    pub parameters: AppParameters,
 }
 
 impl AppState {
@@ -228,8 +247,9 @@ pub async fn visualize() {
     };
 
     let mut state = AppState {
-        simulation_states: vec![SimulationState::get_new_base(0)],
+        simulation_states: vec![SimulationState::get_new_base(0, None)],
         simulation_base_indices: vec![0],
+        parameters: AppParameters::default(),
     };
 
     // Update heightmap data
@@ -239,7 +259,7 @@ pub async fn visualize() {
         if ui_state.simulation_regenerate {
             state
                 .simulation_states
-                .push(SimulationState::get_new_base(state.simulation_states.len()));
+                .push(SimulationState::get_new_base(state.simulation_states.len(), Some(&state.parameters.heightmap_settings)));
             state
                 .simulation_base_indices
                 .push(state.simulation_states.len() - 1);
@@ -248,9 +268,6 @@ pub async fn visualize() {
 
         // Update UI
         while !is_quit_requested() && !ui_state.simulation_clear && !ui_state.application_quit {
-            poll_ui_keybinds(&mut ui_state);
-            poll_ui_events(&mut ui_state, &mut state);
-
             draw_texture_ex(
                 *state.simulation_state().base().texture_active,
                 0.0,
@@ -263,6 +280,8 @@ pub async fn visualize() {
             );
 
             ui_draw(&mut ui_state, &mut state);
+            poll_ui_keybinds(&mut ui_state);
+            poll_ui_events(&mut ui_state, &mut state);
             next_frame().await;
         }
     }

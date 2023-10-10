@@ -10,7 +10,7 @@ pub fn erode(heightmap: &heightmap::Heightmap) -> heightmap::Heightmap {
 
 pub fn run_simulation() {
     // Normalize to get the most accuracy out of the png later since heightmap might not utilize full range of 0.0 to 1.0
-    let heightmap = initialize_heightmap().normalize();
+    let heightmap = initialize_heightmap(None).normalize();
 
     let heightmap_eroded = erode(&heightmap);
     let heightmap_diff = heightmap.subtract(&heightmap_eroded).unwrap();
@@ -27,7 +27,7 @@ pub fn run_simulation() {
     println!("Done!");
 }
 
-pub fn initialize_heightmap() -> heightmap::Heightmap {
+pub fn initialize_heightmap(settings: Option<&heightmap::HeightmapSettings>) -> heightmap::Heightmap {
     let size: usize = 512;
     let depth: f32 = 2000.0;
     let roughness: f32 = 1.0;
@@ -40,16 +40,7 @@ pub fn initialize_heightmap() -> heightmap::Heightmap {
             size,
         )
     } else {
-        heightmap::create_perlin_heightmap(&heightmap::HeightmapSettings {
-            noise_type: NoiseType::PerlinFractal,
-            fractal_type: FractalType::FBM,
-            fractal_octaves: 5,
-            fractal_gain: 0.6,
-            fractal_lacunarity: 2.0,
-            frequency: 2.0,
-            width: 512,
-            height: 512,
-        }, &1337)
+        heightmap::create_perlin_heightmap(&settings.unwrap_or(&heightmap::HeightmapSettings::default()))
         // heightmap::create_heightmap(size, depth, roughness)
     }
 }

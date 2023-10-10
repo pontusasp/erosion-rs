@@ -502,6 +502,7 @@ pub fn create_heightmap_from_closure(
 }
 
 pub struct HeightmapSettings {
+    pub seed: u64,
     pub noise_type: NoiseType,
     pub fractal_type: FractalType,
     pub fractal_octaves: i32,
@@ -512,8 +513,24 @@ pub struct HeightmapSettings {
     pub height: usize,
 }
 
-pub fn create_perlin_heightmap(settings: &HeightmapSettings, seed: &u64) -> Heightmap {
-    let mut noise = FastNoise::seeded(*seed);
+impl Default for HeightmapSettings {
+    fn default() -> Self {
+        HeightmapSettings {
+            seed: 1337,
+            noise_type: NoiseType::PerlinFractal,
+            fractal_type: FractalType::FBM,
+            fractal_octaves: 5,
+            fractal_gain: 0.6,
+            fractal_lacunarity: 2.0,
+            frequency: 2.0,
+            width: 512,
+            height: 512,
+        }
+    }
+}
+
+pub fn create_perlin_heightmap(settings: &HeightmapSettings) -> Heightmap {
+    let mut noise = FastNoise::seeded(settings.seed);
     noise.set_noise_type(settings.noise_type);
     noise.set_fractal_type(settings.fractal_type);
     noise.set_fractal_octaves(settings.fractal_octaves);
