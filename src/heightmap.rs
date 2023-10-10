@@ -1,6 +1,7 @@
 use ds_heightmap::Runner;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use bracket_noise::prelude::*;
 
 use crate::math::{UVector2, Vector2};
 pub mod io;
@@ -16,6 +17,7 @@ pub struct Heightmap {
     pub depth: HeightmapPrecision,
     pub original_depth: HeightmapPrecision,
     pub metadata: Option<HashMap<String, String>>,
+    pub total_height: Option<HeightmapPrecision>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +39,7 @@ impl Heightmap {
         height: usize,
         depth: HeightmapPrecision,
         original_depth: HeightmapPrecision,
+        metadata: Option<HashMap<String, String>>,
     ) -> Heightmap {
         Heightmap {
             data,
@@ -44,7 +47,8 @@ impl Heightmap {
             height,
             depth,
             original_depth,
-            metadata: None,
+            metadata,
+            total_height: None,
         }
     }
 
@@ -74,7 +78,30 @@ impl Heightmap {
                 self.data[i][j] = (value - min) / range;
             }
         }
+        self.depth = 1.0;
         self
+    }
+
+    pub fn calculate_total_height(&mut self) -> HeightmapPrecision {
+        if let Some(height) = self.total_height {
+            height
+        } else {
+            let height = self.data.iter().fold(0.0, |accumulator: f32, col: &Vec<HeightmapPrecision>| {
+                accumulator + col.iter().fold(0.0, |accumulator: f32, value: &HeightmapPrecision| {
+                    accumulator + value
+                })
+            });
+            self.total_height = Some(height);
+            height
+        }
+    }
+
+    pub fn calculate_average_height(&mut self) -> HeightmapPrecision {
+        self.calculate_total_height() / (self.width * self.height) as f32
+    }
+
+    pub fn get_average_height(&self) -> Option<HeightmapPrecision> {
+        Some(self.total_height? / (self.width * self.height) as f32)
     }
 
     pub fn set_range(&mut self, min: HeightmapPrecision, max: HeightmapPrecision) {
@@ -188,6 +215,7 @@ impl Heightmap {
             self.height,
             depth,
             heightmap.original_depth,
+            None,
         );
         Ok(diff)
     }
@@ -310,14 +338,14 @@ impl PartialHeightmap {
         }
         PartialHeightmap {
             anchor: anchor.clone(),
-            heightmap: Heightmap {
+            heightmap: Heightmap::new(
                 data,
-                width: size.x,
-                height: size.y,
-                depth: heightmap.depth,
-                original_depth: heightmap.original_depth,
-                metadata: heightmap.metadata.clone(),
-            },
+                size.x,
+                size.y,
+                heightmap.depth,
+                heightmap.original_depth,
+                heightmap.metadata.clone(),
+            ),
         }
     }
 
@@ -330,14 +358,14 @@ impl PartialHeightmap {
         }
         PartialHeightmap {
             anchor: self.anchor + *anchor,
-            heightmap: Heightmap {
+            heightmap: Heightmap::new(
                 data,
-                width: size.x,
-                height: size.y,
-                depth: self.heightmap.depth,
-                original_depth: self.heightmap.original_depth,
-                metadata: self.heightmap.metadata.clone(),
-            },
+                size.x,
+                size.y,
+                self.heightmap.depth,
+                self.heightmap.original_depth,
+                self.heightmap.metadata.clone(),
+            ),
         }
     }
 
@@ -431,8 +459,8 @@ pub fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> Hei
     let depth = 1.0;
 
     let output = runner.ds();
-    Heightmap {
-        data: output
+    Heightmap::new(
+        output
             .data
             .into_iter()
             .map(|row| {
@@ -441,12 +469,12 @@ pub fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> Hei
                     .collect()
             })
             .collect(),
-        width: size,
-        height: size,
+        size,
+        size,
         depth,
         original_depth,
-        metadata: None,
-    }
+        None,
+    )
 }
 
 pub fn create_heightmap_from_closure(
@@ -463,14 +491,65 @@ pub fn create_heightmap_from_closure(
         data.push(row);
     }
 
-    Heightmap {
+    Heightmap::new(
         data,
-        width: size,
-        height: size,
-        depth: 1.0,
+        size,
+        size,
+        1.0,
         original_depth,
-        metadata: None,
+        None,
+    )
+}
+
+pub struct HeightmapSettings {
+    pub noise_type: NoiseType,
+    pub fractal_type: FractalType,
+    pub fractal_octaves: i32,
+    pub fractal_gain: f32,
+    pub fractal_lacunarity: f32,
+    pub frequency: f32,
+    pub width: usize,
+    pub height: usize,
+}
+
+pub fn create_perlin_heightmap(settings: &HeightmapSettings, seed: &u64) -> Heightmap {
+    let mut noise = FastNoise::seeded(*seed);
+    noise.set_noise_type(settings.noise_type);
+    noise.set_fractal_type(settings.fractal_type);
+    noise.set_fractal_octaves(settings.fractal_octaves);
+    noise.set_fractal_gain(settings.fractal_gain);
+    noise.set_fractal_lacunarity(settings.fractal_lacunarity);
+    noise.set_frequency(settings.frequency);
+
+    let denominator = 100.0;
+
+    let mut data: HeightmapData = Vec::new();
+
+    let mut min = noise.get_noise(0.0, 0.0);
+    let mut max = min.clone();
+
+    for x in 0..settings.width {
+        data.push(vec![]);
+        for y in 0..settings.height {
+            let n = noise.get_noise(x as f32 / denominator, y as f32 / denominator);
+            if n < min {
+                min = n;
+            }
+            if n > max {
+                max = n;
+            }
+            data.last_mut().unwrap().push(n);
+        }
     }
+
+    Heightmap::new(
+        data,
+        settings.width,
+        settings.height,
+        max - min,
+        max - min,
+        None,
+    ).normalize()
 }
 
 pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, filenames: Vec<&str>) {

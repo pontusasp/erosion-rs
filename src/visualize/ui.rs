@@ -228,7 +228,7 @@ fn get_or_calculate_selected_diff_index(state: &AppState) -> Option<usize> {
             Some(i)
         } else {
             let heightmap = &eroded.heightmap_eroded;
-            let heightmap_diff = heightmap
+            let mut heightmap_diff = heightmap
                 .subtract(
                     if let Some(eroded) =
                         state.simulation_states[*eroded.selected_diff.borrow()].eroded()
@@ -241,6 +241,7 @@ fn get_or_calculate_selected_diff_index(state: &AppState) -> Option<usize> {
                     },
                 )
                 .unwrap();
+            heightmap_diff.calculate_total_height();
             let heightmap_diff_texture = heightmap_to_texture(&heightmap_diff);
             let heightmap_diff_normalized = heightmap_diff.clone().normalize();
             let heightmap_diff_normalized_texture =
@@ -481,6 +482,44 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) {
                         }
                     },
                 );
+            }
+
+            {
+                egui::Window::new(format!("Metadata"))
+                    .show(egui_ctx, |ui| {
+                        ui.heading("Base Heightmap");
+                        ui.label(format!("Width x Height: {} x {}", state.simulation_state().base().heightmap_base.width, state.simulation_state().base().heightmap_base.height));
+                        ui.label(format!("Depth: {}", state.simulation_state().base().heightmap_base.depth));
+                        ui.label(format!("Original Depth: {}", state.simulation_state().base().heightmap_base.original_depth));
+                        if let Some(height) = state.simulation_state().get_heightmap().get_average_height() {
+                            ui.label(format!("Average Height: {}", height));
+                        }
+                        if let Some(height) = state.simulation_state().base().heightmap_base.total_height {
+                            ui.label(format!("Total Depth: {}", height));
+                        }
+                        if let Some(metadata) = state.simulation_state().base().heightmap_base.metadata.clone() {
+                            for (k, v) in metadata.iter() {
+                                ui.label(format!("{}: {}", k, v));
+                            }
+                        }
+                        if let Some(eroded) = state.simulation_state().eroded() {
+                            ui.heading("Eroded Heightmap");
+                            ui.label(format!("Width x Height: {} x {}", eroded.heightmap_eroded.width, state.simulation_state().base().heightmap_base.height));
+                            ui.label(format!("Depth: {}", eroded.heightmap_eroded.depth));
+                            ui.label(format!("Original Depth: {}", eroded.heightmap_eroded.original_depth));
+                            if let Some(height) = eroded.heightmap_eroded.get_average_height() {
+                                ui.label(format!("Average Height: {}", height));
+                            }
+                            if let Some(height) = eroded.heightmap_eroded.total_height {
+                                ui.label(format!("Total Depth: {}", height));
+                            }
+                            if let Some(metadata) = eroded.heightmap_eroded.metadata.clone() {
+                                for (k, v) in metadata.iter() {
+                                    ui.label(format!("{}: {}", k, v));
+                                }
+                            }
+                        }
+                    });
             }
 
             if ui_state.show_ui_control_panel {

@@ -27,7 +27,8 @@ pub enum SimulationState {
 
 impl SimulationState {
     pub fn get_new_base(new_id: usize) -> Self {
-        let heightmap = Rc::new(erode::initialize_heightmap().normalize());
+        let mut heightmap = erode::initialize_heightmap().normalize();
+        heightmap.calculate_total_height();
         let texture = Rc::new(heightmap_to_texture(&heightmap));
         SimulationState::Base(BaseState {
             id: new_id,
@@ -37,7 +38,7 @@ impl SimulationState {
                 ..Default::default()
             },
             drop_zone: DropZone::default(&heightmap),
-            heightmap_base: Rc::clone(&heightmap),
+            heightmap_base: Rc::new(heightmap),
             texture_heightmap_base: Rc::clone(&texture),
             texture_active: Rc::clone(&texture),
         })
@@ -99,6 +100,13 @@ impl SimulationState {
             SimulationState::Eroded((_, eroded)) => eroded.id,
         }
     }
+
+    pub fn get_heightmap(&self) -> Rc<Heightmap> {
+        match self {
+            SimulationState::Base(base) => Rc::clone(&base.heightmap_base),
+            SimulationState::Eroded((_, eroded)) => Rc::clone(&eroded.heightmap_eroded),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -137,12 +145,14 @@ impl BaseState {
             }
         }
         let heightmap_eroded_texture = heightmap_to_texture(&heightmap);
-        let heightmap_diff = heightmap.subtract(&self.heightmap_base).unwrap();
+        let mut heightmap_diff = heightmap.subtract(&self.heightmap_base).unwrap();
         let heightmap_diff_texture = heightmap_to_texture(&heightmap_diff);
         let heightmap_diff_normalized = heightmap_diff.clone().normalize();
         let heightmap_diff_normalized_texture = heightmap_to_texture(&heightmap_diff_normalized);
         println!("Done!");
 
+        heightmap.calculate_total_height();
+        heightmap_diff.calculate_total_height();
         ErodedState {
             id,
             base_id: self.id,

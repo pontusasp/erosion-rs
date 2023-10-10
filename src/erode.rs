@@ -1,4 +1,5 @@
 use crate::heightmap;
+use bracket_noise::prelude::*;
 
 pub mod beyer;
 pub mod lague;
@@ -39,6 +40,16 @@ pub fn initialize_heightmap() -> heightmap::Heightmap {
             size,
         )
     } else {
-        heightmap::create_heightmap(size, depth, roughness)
+        heightmap::create_perlin_heightmap(&heightmap::HeightmapSettings {
+            noise_type: NoiseType::PerlinFractal,
+            fractal_type: FractalType::FBM,
+            fractal_octaves: 5,
+            fractal_gain: 0.6,
+            fractal_lacunarity: 2.0,
+            frequency: 2.0,
+            width: 512,
+            height: 512,
+        }, &1337)
+        // heightmap::create_heightmap(size, depth, roughness)
     }
 }
