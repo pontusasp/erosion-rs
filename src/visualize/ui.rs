@@ -3,7 +3,7 @@ use std::{collections::HashSet, mem, rc::Rc};
 use macroquad::prelude::*;
 use bracket_noise::prelude::*;
 
-use crate::{heightmap::{self, HeightmapSettings}, partitioning, visualize::heightmap_to_texture};
+use crate::{heightmap::{self, HeightmapSettings}, partitioning, visualize::heightmap_to_texture, erode::lague::Parameters};
 
 use super::lague::{AppState, SimulationState};
 
@@ -346,7 +346,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             UiEvent::RunSimulation => {
                 let simulation_state = state
                     .simulation_state()
-                    .get_new_eroded(state.simulation_states.len());
+                    .get_new_eroded(state.simulation_states.len(), &state.parameters.lague_params);
                 state.simulation_states.push(simulation_state);
                 state
                     .simulation_base_indices
@@ -545,6 +545,27 @@ Fractal");
                         if update {
                             ui_state.ui_events.push(UiEvent::ReplaceHeightmap);
                         }
+
+ui.heading("Erosion Parameters");
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.erosion_radius, 0..=5).text("Erosion Radius")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.inertia, 0.0..=5.5).text("Inertia")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.sediment_capacity_factor, 0.0..=5.5).text("Sediment Capacity Factor")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.min_sediment_capacity, 0.0..=5.5).text("Min Sediment Capacity")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.erode_speed, 0.0..=5.5).text("Erode Speed")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.deposit_speed, 0.0..=5.5).text("Deposit Speed")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.evaporate_speed, 0.0..=5.5).text("Evaporate Speed")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.gravity, 0.0..=5.5).text("Gravity")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.max_droplet_lifetime, 0..=5).text("Max Droplet Lifetime")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.initial_water_volume, 0.0..=5.5).text("Initial Water Volume")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.initial_speed, 0.0..=5.5).text("Initial Speed")).changed();
+                         ui.add(egui::Slider::new(&mut state.parameters.lague_params.num_iterations, 0..=10000).text("Num Iterations")).changed();
+
+                         if ui.button("Reset").clicked() {
+                             state.parameters.lague_params = Parameters::default();
+                         }
+
+                         ui.heading("Partitioning Parameters");
+                         ui.label("coming soon...");
                     });
             }
 

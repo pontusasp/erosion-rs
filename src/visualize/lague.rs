@@ -16,7 +16,6 @@ use crate::visualize::ui::*;
 use crate::{erode, partitioning};
 
 const SUBDIVISIONS: u32 = 3;
-const ITERATIONS: usize = 1000000;
 
 fn generate_drop_zone(heightmap: &heightmap::Heightmap) -> lague::DropZone {
     lague::DropZone::default(&heightmap)
@@ -28,17 +27,14 @@ pub enum SimulationState {
 }
 
 impl SimulationState {
-    pub fn get_new_base(new_id: usize, settings: Option<&HeightmapSettings>) -> Self {
+    pub fn get_new_base(new_id: usize, settings: Option<&HeightmapSettings>, parameters: &Parameters) -> Self {
         let mut heightmap = erode::initialize_heightmap(settings).normalize();
         heightmap.calculate_total_height();
         let texture = Rc::new(heightmap_to_texture(&heightmap));
         SimulationState::Base(BaseState {
             id: new_id,
             erosion_method: Method::Default,
-            params: Parameters {
-                num_iterations: ITERATIONS,
-                ..Default::default()
-            },
+            params: parameters.clone(),
             drop_zone: DropZone::default(&heightmap),
             heightmap_base: Rc::new(heightmap),
             texture_heightmap_base: Rc::clone(&texture),
@@ -46,7 +42,7 @@ impl SimulationState {
         })
     }
 
-    pub fn get_new_eroded(&self, new_id: usize) -> Self {
+    pub fn get_new_eroded(&self, new_id: usize, parameters: &Parameters) -> Self {
         let (mut base, eroded) = match self {
             SimulationState::Base(base) => (base.clone(), None),
             SimulationState::Eroded((base, eroded)) => (base.clone(), Some(eroded)),
@@ -56,7 +52,7 @@ impl SimulationState {
             base = BaseState {
                 id: eroded.id,
                 erosion_method: base.erosion_method,
-                params: base.params,
+                params: parameters.clone(),
                 drop_zone: base.drop_zone,
                 heightmap_base: Rc::clone(&eroded.heightmap_eroded),
                 texture_heightmap_base: Rc::clone(&eroded.texture_eroded),
@@ -64,7 +60,7 @@ impl SimulationState {
             };
         }
 
-        let eroded = base.run_simulation(new_id);
+        let eroded = base.run_simulation(new_id, parameters);
         SimulationState::Eroded((base, eroded))
     }
 
@@ -123,7 +119,7 @@ pub struct BaseState {
 }
 
 impl BaseState {
-    pub fn run_simulation(&self, id: usize) -> ErodedState {
+    pub fn run_simulation(&self, id: usize, parameters: &Parameters) -> ErodedState {
         print!("Eroding using ");
         let mut heightmap: Heightmap = (*self.heightmap_base).clone();
         match self.erosion_method {
@@ -132,18 +128,18 @@ impl BaseState {
                     "{} method (no partitioning)",
                     partitioning::Method::Default.to_string()
                 );
-                partitioning::default_erode(&mut heightmap, &self.params, &self.drop_zone);
+                partitioning::default_erode(&mut heightmap, &parameters, &self.drop_zone);
             }
             partitioning::Method::Subdivision => {
                 println!("{} method", partitioning::Method::Subdivision.to_string());
-                partitioning::subdivision_erode(&mut heightmap, &self.params, SUBDIVISIONS);
+                partitioning::subdivision_erode(&mut heightmap, &parameters, SUBDIVISIONS);
             }
             partitioning::Method::SubdivisionOverlap => {
                 println!(
                     "{} method",
                     partitioning::Method::SubdivisionOverlap.to_string()
                 );
-                partitioning::subdivision_overlap_erode(&mut heightmap, &self.params, SUBDIVISIONS);
+                partitioning::subdivision_overlap_erode(&mut heightmap, &parameters, SUBDIVISIONS);
             }
         }
         let heightmap_eroded_texture = heightmap_to_texture(&heightmap);
@@ -247,7 +243,7 @@ pub async fn visualize() {
     };
 
     let mut state = AppState {
-        simulation_states: vec![SimulationState::get_new_base(0, None)],
+        simulation_states: vec![SimulationState::get_new_base(0, None, &Parameters::default())],
         simulation_base_indices: vec![0],
         parameters: AppParameters::default(),
     };
@@ -259,7 +255,7 @@ pub async fn visualize() {
         if ui_state.simulation_regenerate {
             state
                 .simulation_states
-                .push(SimulationState::get_new_base(state.simulation_states.len(), Some(&state.parameters.heightmap_settings)));
+                .push(SimulationState::get_new_base(state.simulation_states.len(), Some(&state.parameters.heightmap_settings), &state.parameters.lague_params));
             state
                 .simulation_base_indices
                 .push(state.simulation_states.len() - 1);

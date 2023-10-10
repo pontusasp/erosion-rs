@@ -32,7 +32,7 @@ impl Default for Parameters {
             max_droplet_lifetime: 30,
             initial_water_volume: 1.0,
             initial_speed: 1.0,
-            num_iterations: 1,
+            num_iterations: 1000000,
         }
     }
 }
