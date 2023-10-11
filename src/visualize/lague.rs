@@ -3,6 +3,8 @@ use std::rc::Rc;
 
 use macroquad::prelude::*;
 use bracket_noise::prelude::*;
+use egui::{Pos2, Rect};
+use egui_macroquad::ui;
 
 use crate::erode::lague;
 use crate::erode::lague::DropZone;
@@ -240,6 +242,7 @@ pub async fn visualize() {
         application_quit: false,
         ui_events: Vec::<UiEvent>::new(),
         ui_events_previous: Vec::<UiEvent>::new(),
+        canvas_rect: None,
     };
 
     let mut state = AppState {
@@ -264,18 +267,34 @@ pub async fn visualize() {
 
         // Update UI
         while !is_quit_requested() && !ui_state.simulation_clear && !ui_state.application_quit {
+            clear_background(BLACK);
+
+            let rect = ui_state.canvas_rect.unwrap_or(Rect {
+                min: Pos2 {
+                    x: 0.0,
+                    y: 0.0
+                },
+                max: Pos2 {
+                    x: screen_width(),
+                    y: screen_height(),
+                }
+            });
+
+            let side = rect.width().min(rect.height());
+            let margin_left = (rect.width() - side) / 2.0;
+            let margin_top = (rect.height() - side) / 2.0;
             draw_texture_ex(
                 *state.simulation_state().base().texture_active,
-                0.0,
-                0.0,
+                rect.min.x + margin_left,
+                rect.min.y + margin_top,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(vec2(crate::WIDTH as f32, crate::HEIGHT as f32)),
+                    dest_size: Some(vec2(side, side)),
                     ..Default::default()
                 },
             );
 
-            ui_draw(&mut ui_state, &mut state);
+            ui_state.canvas_rect  = ui_draw(&mut ui_state, &mut state);
             poll_ui_keybinds(&mut ui_state);
             poll_ui_events(&mut ui_state, &mut state);
             next_frame().await;

@@ -1,5 +1,4 @@
 use crate::heightmap;
-use bracket_noise::prelude::*;
 
 pub mod beyer;
 pub mod lague;
