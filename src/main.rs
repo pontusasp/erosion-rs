@@ -7,7 +7,7 @@ pub mod math;
 pub mod partitioning;
 pub mod visualize;
 
-const WIDTH: u32 = 800;
+const WIDTH: u32 = 1107;
 const HEIGHT: u32 = 800;
 
 fn window_conf() -> Conf {

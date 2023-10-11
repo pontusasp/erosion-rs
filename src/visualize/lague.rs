@@ -237,6 +237,7 @@ pub async fn visualize() {
         show_ui_all: true,
         show_ui_keybinds: false,
         show_ui_control_panel: true,
+        show_ui_metadata: false,
         simulation_clear: true,
         simulation_regenerate: false,
         application_quit: false,
@@ -250,6 +251,8 @@ pub async fn visualize() {
         simulation_base_indices: vec![0],
         parameters: AppParameters::default(),
     };
+
+    let mut corrected_size = false;
 
     // Update heightmap data
     while ui_state.simulation_clear && !ui_state.application_quit {
@@ -279,6 +282,15 @@ pub async fn visualize() {
                     y: screen_height(),
                 }
             });
+
+            if !corrected_size && ui_state.canvas_rect.is_some() {
+                let fit = rect.width().min(rect.height());
+                request_new_screen_size(
+                    crate::WIDTH as f32 + rect.height() - fit,
+                    crate::HEIGHT as f32 + rect.width() - fit,
+                );
+                corrected_size = true;
+            }
 
             let side = rect.width().min(rect.height());
             let margin_left = (rect.width() - side) / 2.0;
