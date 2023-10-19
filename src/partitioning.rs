@@ -288,8 +288,8 @@ pub fn grid_overlap_blend_erode(
     for i in 0..=1 {
         for j in 0..=1 {
             let mut handles = Vec::new();
-            for x in i..offset_grid.len() {
-                for y in j..offset_grid[x].len() {
+            for x in (i..offset_grid.len()).step_by(2) {
+                for y in (j..offset_grid[x].len()).step_by(2) {
                     let center = Arc::clone(&offset_grid[x][y]);
                     let tl = Arc::clone(&grid[x][y]);
                     let tr = Arc::clone(&grid[x + 1][y]);

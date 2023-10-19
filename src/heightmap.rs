@@ -401,22 +401,24 @@ impl PartialHeightmap {
             (self.anchor.y + self.heightmap.height).min(other.anchor.y + other.heightmap.height)
         );
 
-        for x in rect_min.x..rect_max.x {
-            for y in rect_min.y..rect_max.y {
-                let sx = x - self.anchor.x;
-                let sy = y - self.anchor.y;
-                let ox = x - other.anchor.x;
-                let oy = y - other.anchor.y;
+        for x in 0..(rect_max.x - rect_min.x) {
+            for y in 0..(rect_max.y - rect_min.y) {
+                let sx = x + rect_min.x - self.anchor.x;
+                let sy = y + rect_min.y - self.anchor.y;
+                let ox = x + rect_min.x - other.anchor.x;
+                let oy = y + rect_min.y - other.anchor.y;
 
                 let h1 = self.heightmap.data[sx][sy];
                 let h2 = other.heightmap.data[ox][oy];
                 let min = -1.0;
                 let max = 1.0;
-                let lerp_x = min + (max - min) * (x as HeightmapPrecision / self.heightmap.width as HeightmapPrecision);
+                let lerp_x = min + (max - min) * (x as HeightmapPrecision / (rect_max.x - rect_min.x) as HeightmapPrecision);
                 let factor_x = lerp_x.abs();
-                let lerp_y = min + (max - min) * (y as HeightmapPrecision / self.heightmap.height as HeightmapPrecision);
+                let lerp_y = min + (max - min) * (y as HeightmapPrecision / (rect_max.y - rect_min.y) as HeightmapPrecision);
                 let factor_y = lerp_y.abs();
                 let factor = factor_x.max(factor_y);
+                // let factor = (factor_x.min(factor_y) + factor_x.max(factor_y)) / 2.0;
+                // let factor = factor.powf(2.0);
                 let height = h2 * factor + h1 * (1.0 - factor);
 
                 other.heightmap.data[ox][oy] = height;
