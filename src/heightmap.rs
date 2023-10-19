@@ -141,13 +141,20 @@ impl Heightmap {
                 buffer.push(255);
             }
         }
-        if errors.len() > 0 {
+        if errors.len() > 0 && errors.len() < 256 {
             eprintln!(
                 "heightmap.rs: Could not convert {} / {} ({:.5}%) values to u8 ({:?})",
                 errors.len(),
                 buffer.len(),
                 errors.len() as f32 / buffer.len() as f32,
                 errors
+            );
+        } else if errors.len() > 0 {
+            eprintln!(
+                "heightmap.rs: Could not convert {} / {} ({:.5}%) values to u8.)",
+                errors.len(),
+                buffer.len(),
+                errors.len() as f32 / buffer.len() as f32
             );
         }
 
@@ -174,13 +181,20 @@ impl Heightmap {
                 }
             }
         }
-        if errors.len() > 0 {
+        if errors.len() > 0 && errors.len() < 256 {
             eprintln!(
                 "heightmap.rs: Could not convert {} / {} ({:.5}%) values to u8 ({:?})",
                 errors.len(),
                 buffer.len(),
                 errors.len() as f32 / buffer.len() as f32,
                 errors
+            );
+        } else if errors.len() > 0 {
+            eprintln!(
+                "heightmap.rs: Could not convert {} / {} ({:.5}%) values to u8.)",
+                errors.len(),
+                buffer.len(),
+                errors.len() as f32 / buffer.len() as f32
             );
         }
 
@@ -373,6 +387,39 @@ impl PartialHeightmap {
         for x in 0..self.heightmap.width {
             for y in 0..self.heightmap.height {
                 heightmap.data[x + self.anchor.x][y + self.anchor.y] = self.heightmap.data[x][y];
+            }
+        }
+    }
+
+    pub fn blend_apply_to(&self, other: &mut PartialHeightmap) {
+        let rect_min = UVector2::new(
+            self.anchor.x.max(other.anchor.x),
+            self.anchor.y.max(other.anchor.y),
+        );
+        let rect_max = UVector2::new(
+            (self.anchor.x + self.heightmap.width).min(other.anchor.x + other.heightmap.width),
+            (self.anchor.y + self.heightmap.height).min(other.anchor.y + other.heightmap.height)
+        );
+
+        for x in rect_min.x..rect_max.x {
+            for y in rect_min.y..rect_max.y {
+                let sx = x - self.anchor.x;
+                let sy = y - self.anchor.y;
+                let ox = x - other.anchor.x;
+                let oy = y - other.anchor.y;
+
+                let h1 = self.heightmap.data[sx][sy];
+                let h2 = other.heightmap.data[ox][oy];
+                let min = -1.0;
+                let max = 1.0;
+                let lerp_x = min + (max - min) * (x as HeightmapPrecision / self.heightmap.width as HeightmapPrecision);
+                let factor_x = lerp_x.abs();
+                let lerp_y = min + (max - min) * (y as HeightmapPrecision / self.heightmap.height as HeightmapPrecision);
+                let factor_y = lerp_y.abs();
+                let factor = factor_x.max(factor_y);
+                let height = h2 * factor + h1 * (1.0 - factor);
+
+                other.heightmap.data[ox][oy] = height;
             }
         }
     }

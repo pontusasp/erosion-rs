@@ -2,9 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use macroquad::prelude::*;
-use bracket_noise::prelude::*;
 use egui::{Pos2, Rect};
-use egui_macroquad::ui;
 
 use crate::erode::lague;
 use crate::erode::lague::DropZone;
@@ -18,6 +16,7 @@ use crate::visualize::ui::*;
 use crate::{erode, partitioning};
 
 const SUBDIVISIONS: u32 = 3;
+const GRID_SIZE: usize = 6;
 
 fn generate_drop_zone(heightmap: &heightmap::Heightmap) -> lague::DropZone {
     lague::DropZone::default(&heightmap)
@@ -142,6 +141,13 @@ impl BaseState {
                     partitioning::Method::SubdivisionOverlap.to_string()
                 );
                 partitioning::subdivision_overlap_erode(&mut heightmap, &parameters, SUBDIVISIONS);
+            }
+            partitioning::Method::GridOverlapBlend => {
+                println!(
+                    "{} method",
+                    partitioning::Method::GridOverlapBlend.to_string()
+                );
+                partitioning::grid_overlap_blend_erode(&mut heightmap, &parameters, GRID_SIZE, GRID_SIZE);
             }
         }
         let heightmap_eroded_texture = heightmap_to_texture(&heightmap);
