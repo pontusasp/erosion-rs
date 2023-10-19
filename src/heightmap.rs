@@ -412,13 +412,11 @@ impl PartialHeightmap {
                 let h2 = other.heightmap.data[ox][oy];
                 let min = -1.0;
                 let max = 1.0;
-                let lerp_x = min + (max - min) * (x as HeightmapPrecision / (rect_max.x - rect_min.x) as HeightmapPrecision);
+                let lerp_x = min + (max - min) * (ox as HeightmapPrecision / other.heightmap.width as HeightmapPrecision);
                 let factor_x = lerp_x.abs();
-                let lerp_y = min + (max - min) * (y as HeightmapPrecision / (rect_max.y - rect_min.y) as HeightmapPrecision);
+                let lerp_y = min + (max - min) * (oy as HeightmapPrecision / other.heightmap.height as HeightmapPrecision);
                 let factor_y = lerp_y.abs();
-                let factor = factor_x.max(factor_y);
-                // let factor = (factor_x.min(factor_y) + factor_x.max(factor_y)) / 2.0;
-                // let factor = factor.powf(2.0);
+                let factor = (1.0 - factor_x * factor_y).powf(6.5);
                 let height = h2 * factor + h1 * (1.0 - factor);
 
                 other.heightmap.data[ox][oy] = height;
