@@ -10,7 +10,6 @@ use crate::{
     partitioning,
     visualize::heightmap_to_texture,
 };
-use crate::visualize::ui::UiWindow::Metadata;
 
 use super::lague::{AppState, SimulationState};
 

@@ -4,10 +4,8 @@ use std::rc::Rc;
 use macroquad::prelude::*;
 use egui::{Pos2, Rect};
 
-use crate::erode::lague;
 use crate::erode::lague::DropZone;
 use crate::erode::lague::Parameters;
-use crate::heightmap;
 use crate::heightmap::Heightmap;
 use crate::heightmap::HeightmapSettings;
 use crate::partitioning::Method;
@@ -17,10 +15,6 @@ use crate::{erode, partitioning};
 
 const SUBDIVISIONS: u32 = 3;
 const GRID_SIZE: usize = 6;
-
-fn generate_drop_zone(heightmap: &heightmap::Heightmap) -> lague::DropZone {
-    lague::DropZone::default(&heightmap)
-}
 
 pub enum SimulationState {
     Base(BaseState),

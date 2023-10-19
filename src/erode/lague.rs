@@ -60,14 +60,21 @@ impl DropZoneValidator {
 
 #[derive(Clone)]
 pub struct DropZone {
-    min: Vector2,
-    max: Vector2,
+    _min: Vector2,
+    _max: Vector2,
     validator: DropZoneValidator,
 }
 
 impl DropZone {
     pub fn new(heightmap: &Heightmap, validator: DropZoneValidator) -> Self {
-        DropZone::simple(heightmap)
+        DropZone {
+            _min: Vector2 { x: 0.0, y: 0.0 },
+            _max: Vector2 {
+                x: heightmap.width as f32 - 1.0,
+                y: heightmap.height as f32 - 1.0,
+            },
+            validator,
+        }
     }
 
     pub fn default(heightmap: &Heightmap) -> Self {
@@ -76,8 +83,8 @@ impl DropZone {
 
     pub fn simple(heightmap: &Heightmap) -> Self {
         DropZone {
-            min: Vector2 { x: 0.0, y: 0.0 },
-            max: Vector2 {
+            _min: Vector2 { x: 0.0, y: 0.0 },
+            _max: Vector2 {
                 x: heightmap.width as f32 - 1.0,
                 y: heightmap.height as f32 - 1.0,
             },
@@ -87,8 +94,8 @@ impl DropZone {
 
     pub fn circle(heightmap: &Heightmap, radius: f32) -> Self {
         DropZone {
-            min: Vector2 { x: 0.0, y: 0.0 },
-            max: Vector2 {
+            _min: Vector2 { x: 0.0, y: 0.0 },
+            _max: Vector2 {
                 x: heightmap.width as f32,
                 y: heightmap.height as f32,
             },
