@@ -1,7 +1,6 @@
 use crate::heightmap;
 use macroquad::prelude::*;
 
-pub mod beyer;
 pub mod lague;
 pub mod ui;
 

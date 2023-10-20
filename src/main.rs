@@ -1,4 +1,6 @@
 use macroquad::prelude::*;
+
+#[cfg(debug_assertions)]
 use std::env;
 
 pub mod erode;
@@ -22,12 +24,8 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    #[cfg(debug_assertions)]
     env::set_var("RUST_BACKTRACE", "1");
 
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 {
-        erode::run_simulation();
-    } else {
-        visualize::run().await;
-    }
+    visualize::run().await;
 }
