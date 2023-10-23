@@ -1,6 +1,6 @@
 use crate::heightmap::*;
 use crate::math::Vector2;
-use rand::prelude::*;
+use rand::{thread_rng, Rng};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Parameters {
@@ -130,7 +130,7 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: &DropZon
         current_erosion_radius: 0,
         erosion_brush_indices: vec![],
         erosion_brush_weights: vec![],
-        rng: rand::thread_rng(),
+        rng: thread_rng(),
     };
 
     initialize(&mut state, heightmap.width);

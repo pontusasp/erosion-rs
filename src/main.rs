@@ -1,8 +1,5 @@
 use macroquad::prelude::*;
 
-#[cfg(debug_assertions)]
-use std::env;
-
 pub mod erode;
 pub mod heightmap;
 pub mod math;
@@ -24,8 +21,5 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    #[cfg(debug_assertions)]
-    env::set_var("RUST_BACKTRACE", "1");
-
     visualize::run().await;
 }

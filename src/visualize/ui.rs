@@ -4,9 +4,12 @@ use bracket_noise::prelude::*;
 use egui::{Color32, Rect};
 use macroquad::prelude::*;
 
+#[cfg(feature = "export")]
+use crate::heightmap::io::export_heightmaps;
+
 use crate::{
     erode::lague::Parameters,
-    heightmap::{self, HeightmapSettings},
+    heightmap::HeightmapSettings,
     partitioning,
     visualize::heightmap_to_texture,
 };
@@ -63,6 +66,7 @@ pub enum UiEvent {
     NewHeightmap,
     ReplaceHeightmap,
     Clear,
+    #[cfg(feature = "export")]
     Export,
     RunSimulation,
     ToggleUi(UiWindow),
@@ -86,6 +90,7 @@ impl UiEvent {
             UiEvent::NewHeightmap => "Generate new heightmap".to_string(),
             UiEvent::ReplaceHeightmap => "Replace heightmap".to_string(),
             UiEvent::Clear => "Clear simulations".to_string(),
+            #[cfg(feature = "export")]
             UiEvent::Export => "Export layers".to_string(),
             UiEvent::RunSimulation => "Run simulation".to_string(),
             UiEvent::ToggleUi(window) => format!("Toggles {}", window.to_string()).to_string(),
@@ -148,7 +153,7 @@ pub const KEYCODE_TOGGLE_METADATA_UI: KeyCode = KeyCode::F4;
 pub const KEYCODE_NEW_HEIGHTMAP: KeyCode = KeyCode::G;
 pub const KEYCODE_NEXT_PARTITIONING_METHOD: KeyCode = KeyCode::J;
 pub const KEYCODE_PREVIOUS_PARTITIONING_METHOD: KeyCode = KeyCode::K;
-pub const KEYBINDS: [UiKeybind; 19] = [
+pub const KEYBINDS: &[UiKeybind] = &[
     UiKeybind::Pressed(UiKey::Single(KEYCODE_TOGGLE_ALL_UI), UiEvent::ToggleUi(UiWindow::All)),
     UiKeybind::Pressed(
         UiKey::Single(KeyCode::F2),
@@ -160,6 +165,7 @@ pub const KEYBINDS: [UiKeybind; 19] = [
     ),
     UiKeybind::Pressed(UiKey::Single(KEYCODE_NEW_HEIGHTMAP), UiEvent::NewHeightmap),
     UiKeybind::Pressed(UiKey::Single(KeyCode::R), UiEvent::Clear),
+    #[cfg(feature = "export")]
     UiKeybind::Pressed(UiKey::Single(KeyCode::S), UiEvent::Export),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Enter), UiEvent::RunSimulation),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Q), UiEvent::Quit),
@@ -318,9 +324,10 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 println!("Restarting");
                 ui_state.simulation_clear = true;
             }
+            #[cfg(feature = "export")]
             UiEvent::Export => match state.simulation_state() {
                 SimulationState::Base(base) => {
-                    heightmap::export_heightmaps(
+                    export_heightmaps(
                         vec![&base.heightmap_base],
                         vec!["output/heightmap"],
                     );
@@ -332,7 +339,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                         } else {
                             0
                         };
-                    heightmap::export_heightmaps(
+                    export_heightmaps(
                         vec![
                             &base.heightmap_base,
                             &eroded.heightmap_eroded,
@@ -857,7 +864,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 UiKeybind::Pressed(keys, event) => {
                                     ui.horizontal(|ui| {
                                         if ui.button(event.info()).clicked() {
-                                            ui_state.ui_events.push(event);
+                                            ui_state.ui_events.push(*event);
                                         }
                                         match keys {
                                             UiKey::Single(key_code) => {
@@ -875,7 +882,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                         ui.label(event.info());
                                     } else {
                                         if ui.button(event.info()).clicked() {
-                                            ui_state.ui_events.push(event);
+                                            ui_state.ui_events.push(*event);
                                         }
                                     }
                                     match keys {

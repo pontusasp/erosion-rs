@@ -1,9 +1,10 @@
-use ds_heightmap::Runner;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use bracket_noise::prelude::*;
 
 use crate::math::{UVector2, Vector2};
+
+#[cfg(feature = "export")]
 pub mod io;
 
 pub type HeightmapPrecision = f32;
@@ -482,48 +483,6 @@ pub fn create_heightmap_from_preset(preset: HeightmapPresets, size: usize) -> He
     }
 }
 
-pub fn heightmap_to_image(heightmap: &Heightmap, filename: &str) -> image::ImageResult<()> {
-    let buffer = heightmap.to_u8();
-
-    // Save the buffer as filename on disk
-    image::save_buffer(
-        format!("{}.png", filename),
-        &buffer as &[u8],
-        heightmap.width.try_into().unwrap(),
-        heightmap.height.try_into().unwrap(),
-        image::ColorType::L8,
-    )
-}
-
-pub fn create_heightmap(size: usize, original_depth: f32, roughness: f32) -> Heightmap {
-    let mut runner = Runner::new();
-    runner.set_height(size);
-    runner.set_width(size);
-
-    runner.set_depth(original_depth);
-    runner.set_rough(roughness);
-
-    let depth = 1.0;
-
-    let output = runner.ds();
-    Heightmap::new(
-        output
-            .data
-            .into_iter()
-            .map(|row| {
-                row.into_iter()
-                    .map(|value| value as HeightmapPrecision / original_depth)
-                    .collect()
-            })
-            .collect(),
-        size,
-        size,
-        depth,
-        original_depth,
-        None,
-    )
-}
-
 pub fn create_heightmap_from_closure(
     size: usize,
     original_depth: f32,
@@ -614,18 +573,4 @@ pub fn create_perlin_heightmap(settings: &HeightmapSettings) -> Heightmap {
         max - min,
         None,
     ).normalize()
-}
-
-pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, filenames: Vec<&str>) {
-    println!("Exporting heightmaps...");
-    for (heightmap, filename) in heightmaps.iter().zip(filenames.iter()) {
-        if let Err(e) = heightmap_to_image(heightmap, filename) {
-            println!(
-                "Failed to save {}! Make sure the output folder exists.",
-                filename
-            );
-            println!("Given Reason: {}", e);
-        }
-        io::export(heightmap, filename).unwrap();
-    }
 }

@@ -39,3 +39,30 @@ pub fn import(filename: &str) -> Result<Heightmap, HeightmapIOError> {
         Err(_) => Err(HeightmapIOError::FileImportError),
     }
 }
+
+pub fn heightmap_to_image(heightmap: &Heightmap, filename: &str) -> image::ImageResult<()> {
+    let buffer = heightmap.to_u8();
+
+    // Save the buffer as filename on disk
+    image::save_buffer(
+        format!("{}.png", filename),
+        &buffer as &[u8],
+        heightmap.width.try_into().unwrap(),
+        heightmap.height.try_into().unwrap(),
+        image::ColorType::L8,
+    )
+}
+
+pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, filenames: Vec<&str>) {
+    println!("Exporting heightmaps...");
+    for (heightmap, filename) in heightmaps.iter().zip(filenames.iter()) {
+        if let Err(e) = heightmap_to_image(heightmap, filename) {
+            println!(
+                "Failed to save {}! Make sure the output folder exists.",
+                filename
+            );
+            println!("Given Reason: {}", e);
+        }
+        io::export(heightmap, filename).unwrap();
+    }
+}
