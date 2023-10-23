@@ -3,7 +3,7 @@ use crate::heightmap;
 use crate::math::UVector2;
 use std::slice::Iter;
 use std::sync::{Arc, Mutex};
-use std::thread;
+use rayon::prelude::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Method {
@@ -113,19 +113,12 @@ fn erode_multiple(
     params: lague::Parameters,
     heightmap: &mut heightmap::Heightmap,
 ) {
-    let mut handles = Vec::new();
-    for i in 0..heightmaps.len() {
-        let partition = Arc::clone(&heightmaps[i]);
-        let handle = thread::spawn(move || {
-            let heightmap = &mut partition.lock().unwrap().heightmap;
-            let drop_zone = lague::DropZone::default(heightmap);
-            lague::erode(heightmap, &params, &drop_zone);
-        });
-        handles.push(handle);
-    }
-    for handle in handles {
-        handle.join().unwrap();
-    }
+    heightmaps.par_iter().for_each(|partition| {
+        let heightmap = &mut partition.lock().unwrap().heightmap;
+        let drop_zone = lague::DropZone::default(heightmap);
+        lague::erode(heightmap, &params, &drop_zone);
+    });
+
     for partition in heightmaps {
         partition.lock().unwrap().apply_to(heightmap);
     }
@@ -215,29 +208,22 @@ fn erode_grid(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, params: 
     let grid_height = grid[0].len();
     params.num_iterations /= grid_width * grid_height;
 
-    let mut handles = Vec::new();
-    for x in 0..grid_width {
-        for y in 0..grid_height {
+    (0..grid_width).for_each(|x| {
+        (0..grid_height).into_par_iter().for_each(|y| {
             let partition = Arc::clone(&grid[x][y]);
-            let handle = thread::spawn(move || {
-                let heightmap = &mut partition.lock().unwrap().heightmap;
-                let drop_zone = lague::DropZone::default(heightmap);
-                lague::erode(heightmap, &params, &drop_zone);
-            });
-            handles.push(handle);
-        }
-    }
-    for handle in handles {
-        handle.join().unwrap();
-    }
+            let heightmap = &mut partition.lock().unwrap().heightmap;
+            let drop_zone = lague::DropZone::default(heightmap);
+            lague::erode(heightmap, &params, &drop_zone);
+        });
+    });
 }
 
 fn blend_cells(center: Arc<Mutex<heightmap::PartialHeightmap>>, tl: Arc<Mutex<heightmap::PartialHeightmap>>, tr: Arc<Mutex<heightmap::PartialHeightmap>>, bl: Arc<Mutex<heightmap::PartialHeightmap>>, br: Arc<Mutex<heightmap::PartialHeightmap>>) {
     let mut center = center.lock().unwrap();
     let tl = tl.lock().unwrap();
-    let tr = tr .lock().unwrap();
-    let bl = bl .lock().unwrap();
-    let br = br .lock().unwrap();
+    let tr = tr.lock().unwrap();
+    let bl = bl.lock().unwrap();
+    let br = br.lock().unwrap();
 
     tl.blend_apply_to(&mut center);
     tr.blend_apply_to(&mut center);
@@ -287,23 +273,16 @@ pub fn grid_overlap_blend_erode(
 
     for i in 0..=1 {
         for j in 0..=1 {
-            let mut handles = Vec::new();
-            for x in (i..offset_grid.len()).step_by(2) {
-                for y in (j..offset_grid[x].len()).step_by(2) {
+            (i..offset_grid.len()).step_by(2).for_each(|x| {
+                (j..offset_grid[x].len()).into_par_iter().step_by(2).for_each(|y| {
                     let center = Arc::clone(&offset_grid[x][y]);
                     let tl = Arc::clone(&grid[x][y]);
                     let tr = Arc::clone(&grid[x + 1][y]);
                     let bl = Arc::clone(&grid[x][y + 1]);
                     let br = Arc::clone(&grid[x + 1][y + 1]);
-                    let handle = thread::spawn(move || {
-                        blend_cells(center, tl, tr, bl, br);
-                    });
-                    handles.push(handle);
-                }
-            }
-            for handle in handles {
-                handle.join().unwrap();
-            }
+                    blend_cells(center, tl, tr, bl, br);
+                });
+            });
         }
     }
 
