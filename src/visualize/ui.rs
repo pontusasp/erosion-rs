@@ -476,7 +476,28 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
         egui_macroquad::ui(|egui_ctx| {
 
             // Top Panel
-            egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
+            ui_top_panel(egui_ctx, ui_state);
+
+            // Side Panel
+            ui_side_panel(egui_ctx, ui_state, state);
+
+            // Central Panel
+            central_rect = Some(egui::CentralPanel::default().frame(egui::containers::Frame {
+                fill: Color32::TRANSPARENT,
+                ..Default::default()
+            }).show(egui_ctx, |_| {}).response.rect);
+
+            ui_keybinds_window(egui_ctx, ui_state);
+            ui_metadata_window(egui_ctx, ui_state, state);
+        });
+
+        egui_macroquad::draw();
+    }
+    central_rect
+}
+
+fn ui_top_panel(egui_ctx: &egui::Context, ui_state: &mut UiState) {
+    egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.heading("Erosion RS");
                     if ui.button(format!("[{:?}] {} UI", KEYCODE_TOGGLE_ALL_UI, if ui_state.show_ui_all {
@@ -519,9 +540,10 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                     };
                 });
             });
+}
 
-            // Side Panel
-            egui::SidePanel::left("left_panel").show_animated(egui_ctx, ui_state.show_ui_control_panel, |ui| {
+fn ui_side_panel(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &mut AppState) {
+    egui::SidePanel::left("left_panel").show_animated(egui_ctx, ui_state.show_ui_control_panel, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     // Erosion Method Selection
                     egui::CollapsingHeader::new("Erosion Method Selection")
@@ -848,14 +870,10 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                         });
                 });
             });
+}
 
-            // Central Panel
-            central_rect = Some(egui::CentralPanel::default().frame(egui::containers::Frame {
-                fill: Color32::TRANSPARENT,
-                ..Default::default()
-            }).show(egui_ctx, |_| {}).response.rect);
-
-            if ui_state.show_ui_keybinds {
+fn ui_keybinds_window(egui_ctx: &egui::Context, ui_state: &mut UiState) {
+    if ui_state.show_ui_keybinds {
                 egui::Window::new(format!("Keybinds [{:?}]", KEYCODE_TOGGLE_KEYBINDS_UI)).show(
                     egui_ctx,
                     |ui| {
@@ -900,8 +918,10 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                     },
                 );
             }
+}
 
-            if ui_state.show_ui_metadata {
+fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &mut AppState) {
+    if ui_state.show_ui_metadata {
                 egui::Window::new(format!("Metadata")).show(egui_ctx, |ui| {
                     ui.heading("Base Heightmap");
                     ui.label(format!(
@@ -970,9 +990,4 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                     }
                 });
             }
-        });
-
-        egui_macroquad::draw();
-    }
-    central_rect
 }
