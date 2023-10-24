@@ -1,5 +1,6 @@
 use bracket_noise::prelude::NoiseType;
 use egui::{Color32, Rect, Vec2};
+use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{erode::Parameters, heightmap::HeightmapSettings, partitioning};
 
@@ -585,7 +586,6 @@ pub fn ui_metrics_window(
             egui::Window::new(format!("Metrics [{:?}]", KEYCODE_TOGGLE_METRICS_UI))
                 .show(egui_ctx, |ui| {
                     plot_height(ui, state);
-                    plot_height(ui, state);
                 })
                 .unwrap()
                 .response
@@ -596,12 +596,29 @@ pub fn ui_metrics_window(
 }
 
 fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
-    let width = 200.0;
-    let height = 200.0;
+    let width = 800.0;
+    let height = 500.0;
     let mut canvas = Canvas::new(
         Vec2::new(width, height),
         egui::Stroke::new(1.0, Color32::WHITE),
     );
     canvas.draw(ui);
-    canvas.draw_circle(ui, Vec2::new(50.0, 50.0), 10.0, Color32::RED);
+
+    let heightmap = state.simulation_state().get_heightmap();
+
+    let heights: Vec<f32> = heightmap
+        .data
+        .par_iter()
+        .map(|col| col.par_iter().cloned().reduce(|| 0.0, |a, b| a + b) / col.len() as f32)
+        .collect();
+
+    let max_height = heightmap.depth;
+
+    for i in 1..heights.len() {
+        let progress0 = (i - 1) as f32 / (heights.len() - 1) as f32;
+        let progress1 = i as f32 / (heights.len() - 1) as f32;
+        let start = Vec2::new(progress0 * width, heights[i - 1] / max_height * height);
+        let end = Vec2::new(progress1 * width, heights[i] / max_height * height);
+        canvas.draw_line(ui, start, end);
+    }
 }

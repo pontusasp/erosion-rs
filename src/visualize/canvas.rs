@@ -32,8 +32,8 @@ impl Canvas {
     }
 
     pub fn draw_line(&self, ui: &mut egui::Ui, start: Vec2, end: Vec2) {
-        let start = self.position + start;
-        let end = self.position + end;
+        let start = self.position + Vec2::new(0.0, self.size.y) + Vec2::new(start.x, -start.y);
+        let end = self.position + Vec2::new(0.0, self.size.y) + Vec2::new(end.x, -end.y);
         ui.painter().line_segment([start, end], self.stroke);
     }
 
