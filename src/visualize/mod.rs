@@ -7,6 +7,7 @@ use egui::{Pos2, Rect};
 use macroquad::prelude::*;
 
 pub mod ui;
+pub mod widgets;
 
 use crate::erode::DropZone;
 use crate::erode::Parameters;
@@ -250,12 +251,13 @@ pub async fn run() {
         show_ui_keybinds: false,
         show_ui_control_panel: true,
         show_ui_metadata: false,
+        show_ui_metrics: true,
         simulation_clear: true,
         simulation_regenerate: false,
         application_quit: false,
         ui_events: Vec::<UiEvent>::new(),
         ui_events_previous: Vec::<UiEvent>::new(),
-        canvas_rect: None,
+        frame_slots: None,
     };
 
     let mut state = AppState {
@@ -290,7 +292,7 @@ pub async fn run() {
         while !is_quit_requested() && !ui_state.simulation_clear && !ui_state.application_quit {
             clear_background(BLACK);
 
-            let rect = ui_state.canvas_rect.unwrap_or(Rect {
+            let canvas_rect = ui_state.frame_slots.as_ref().and_then(|slots| slots.canvas).unwrap_or(Rect {
                 min: Pos2 { x: 0.0, y: 0.0 },
                 max: Pos2 {
                     x: screen_width(),
@@ -298,35 +300,45 @@ pub async fn run() {
                 },
             });
 
-            if !corrected_size && ui_state.canvas_rect.is_some() {
-                let fit = rect.width().min(rect.height());
+            if !corrected_size {
+                let fit = canvas_rect.width().min(canvas_rect.height());
                 request_new_screen_size(
-                    crate::WIDTH as f32 + rect.height() - fit,
-                    crate::HEIGHT as f32 + rect.width() - fit,
+                    crate::WIDTH as f32 + canvas_rect.height() - fit,
+                    crate::HEIGHT as f32 + canvas_rect.width() - fit,
                 );
                 corrected_size = true;
             }
+            draw_frame(&canvas_rect, &state.simulation_state().base().texture_active);
 
-            let side = rect.width().min(rect.height());
-            let margin_left = (rect.width() - side) / 2.0;
-            let margin_top = (rect.height() - side) / 2.0;
-            draw_texture_ex(
-                *state.simulation_state().base().texture_active,
-                rect.min.x + margin_left,
-                rect.min.y + margin_top,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(vec2(side, side)),
-                    ..Default::default()
-                },
-            );
+            ui_state.frame_slots = ui_draw(&mut ui_state, &mut state);
 
-            ui_state.canvas_rect = ui_draw(&mut ui_state, &mut state);
-            poll_ui_keybinds(&mut ui_state);
+            if let Some(ref slots) = ui_state.frame_slots {
+                if let Some(rect) = slots.metrics {
+                    draw_frame(&rect, &state.simulation_state().base().texture_active);
+                };
+            }
+
             poll_ui_events(&mut ui_state, &mut state);
+            poll_ui_keybinds(&mut ui_state);
             next_frame().await;
         }
     }
+}
+
+fn draw_frame(rect: &Rect, texture: &Texture2D) {
+    let side = rect.width().min(rect.height());
+    let margin_left = (rect.width() - side) / 2.0;
+    let margin_top = (rect.height() - side) / 2.0;
+    draw_texture_ex(
+        *texture,
+        rect.min.x + margin_left,
+        rect.min.y + margin_top,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(vec2(side, side)),
+            ..Default::default()
+        },
+    );
 }
 
 fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
