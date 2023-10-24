@@ -1,4 +1,4 @@
-use crate::erode::lague;
+use crate::erode;
 use crate::heightmap;
 use crate::math::UVector2;
 use std::slice::Iter;
@@ -110,13 +110,13 @@ fn subdivide_partition(
 
 fn erode_multiple(
     heightmaps: &Vec<Arc<Mutex<heightmap::PartialHeightmap>>>,
-    params: lague::Parameters,
+    params: erode::Parameters,
     heightmap: &mut heightmap::Heightmap,
 ) {
     heightmaps.par_iter().for_each(|partition| {
         let heightmap = &mut partition.lock().unwrap().heightmap;
-        let drop_zone = lague::DropZone::default(heightmap);
-        lague::erode(heightmap, &params, &drop_zone);
+        let drop_zone = erode::DropZone::default(heightmap);
+        erode::erode(heightmap, &params, &drop_zone);
     });
 
     for partition in heightmaps {
@@ -126,15 +126,15 @@ fn erode_multiple(
 
 pub fn default_erode(
     heightmap: &mut heightmap::Heightmap,
-    params: &lague::Parameters,
-    drop_zone: &lague::DropZone,
+    params: &erode::Parameters,
+    drop_zone: &erode::DropZone,
 ) {
-    lague::erode(heightmap, &params, drop_zone);
+    erode::erode(heightmap, &params, drop_zone);
 }
 
 pub fn subdivision_erode(
     heightmap: &mut heightmap::Heightmap,
-    params: &lague::Parameters,
+    params: &erode::Parameters,
     subdivisions: u32,
 ) {
     let partitions = subdivide(heightmap, subdivisions);
@@ -147,7 +147,7 @@ pub fn subdivision_erode(
 
 pub fn subdivision_overlap_erode(
     heightmap: &mut heightmap::Heightmap,
-    params: &lague::Parameters,
+    params: &erode::Parameters,
     subdivisions: u32,
 ) {
     assert!(subdivisions > 0);
@@ -202,7 +202,7 @@ fn get_grid(heightmap: &heightmap::Heightmap, rect_min: &UVector2, rect_max: &UV
     grid
 }
 
-fn erode_grid(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, params: &lague::Parameters) {
+fn erode_grid(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, params: &erode::Parameters) {
     let mut params = params.clone();
     let grid_width = grid.len();
     let grid_height = grid[0].len();
@@ -212,8 +212,8 @@ fn erode_grid(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, params: 
         (0..grid_height).into_par_iter().for_each(|y| {
             let partition = Arc::clone(&grid[x][y]);
             let heightmap = &mut partition.lock().unwrap().heightmap;
-            let drop_zone = lague::DropZone::default(heightmap);
-            lague::erode(heightmap, &params, &drop_zone);
+            let drop_zone = erode::DropZone::default(heightmap);
+            erode::erode(heightmap, &params, &drop_zone);
         });
     });
 }
@@ -233,7 +233,7 @@ fn blend_cells(center: Arc<Mutex<heightmap::PartialHeightmap>>, tl: Arc<Mutex<he
 
 pub fn grid_overlap_blend_erode(
     heightmap: &mut heightmap::Heightmap,
-    params: &lague::Parameters,
+    params: &erode::Parameters,
     grid_x_slices: usize,
     grid_y_slices: usize,
 ) {

@@ -1,4 +1,4 @@
-use crate::heightmap::*;
+use crate::heightmap::{self, *};
 use crate::math::Vector2;
 use rand::{thread_rng, Rng};
 
@@ -359,7 +359,6 @@ struct HeightAndGradient {
 }
 
 pub fn add_metadata(state: &State, heightmap: &mut Heightmap) {
-    heightmap.metadata_add("EROSION_TYPE", "LAGUE".to_string());
     heightmap.metadata_add("EROSION_RADIUS", state.params.erosion_radius.to_string());
     heightmap.metadata_add("INERTIA", state.params.inertia.to_string());
     heightmap.metadata_add(
@@ -384,4 +383,19 @@ pub fn add_metadata(state: &State, heightmap: &mut Heightmap) {
     );
     heightmap.metadata_add("INITIAL_SPEED", state.params.initial_speed.to_string());
     heightmap.metadata_add("NUM_ITERATIONS", state.params.num_iterations.to_string());
+}
+
+pub fn initialize_heightmap(settings: Option<&heightmap::HeightmapSettings>) -> heightmap::Heightmap {
+    let size: usize = 512;
+
+    let debug = false;
+
+    if debug {
+        heightmap::create_heightmap_from_preset(
+            heightmap::HeightmapPresets::CenteredHillSmallGradient,
+            size,
+        )
+    } else {
+        heightmap::create_perlin_heightmap(&settings.unwrap_or(&heightmap::HeightmapSettings::default()))
+    }
 }

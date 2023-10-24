@@ -8,13 +8,13 @@ use macroquad::prelude::*;
 use crate::heightmap::io::export_heightmaps;
 
 use crate::{
-    erode::lague::Parameters,
+    erode::Parameters,
     heightmap::HeightmapSettings,
     partitioning,
     visualize::heightmap_to_texture,
 };
 
-use super::lague::{AppState, SimulationState};
+use super::{AppState, SimulationState};
 
 /*
 Keybinds:
@@ -370,7 +370,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             UiEvent::RunSimulation => {
                 let simulation_state = state.simulation_state().get_new_eroded(
                     state.simulation_states.len(),
-                    &state.parameters.lague_params,
+                    &state.parameters.erosion_params,
                 );
                 state.simulation_states.push(simulation_state);
                 state
@@ -559,18 +559,18 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                         .default_open(true)
                         .show(ui, |ui| {
                             ui.add(
-                                egui::Slider::new(&mut state.parameters.lague_params.erosion_radius, 0..=5)
+                                egui::Slider::new(&mut state.parameters.erosion_params.erosion_radius, 0..=5)
                                     .text("Erosion Radius"),
                             )
                                 .changed();
                             ui.add(
-                                egui::Slider::new(&mut state.parameters.lague_params.inertia, 0.0..=5.5)
+                                egui::Slider::new(&mut state.parameters.erosion_params.inertia, 0.0..=5.5)
                                     .text("Inertia"),
                             )
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.sediment_capacity_factor,
+                                    &mut state.parameters.erosion_params.sediment_capacity_factor,
                                     0.0..=5.5,
                                 )
                                     .text("Sediment Capacity Factor"),
@@ -578,7 +578,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.min_sediment_capacity,
+                                    &mut state.parameters.erosion_params.min_sediment_capacity,
                                     0.0..=5.5,
                                 )
                                     .text("Min Sediment Capacity"),
@@ -586,7 +586,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.erode_speed,
+                                    &mut state.parameters.erosion_params.erode_speed,
                                     0.0..=5.5,
                                 )
                                     .text("Erode Speed"),
@@ -594,7 +594,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.deposit_speed,
+                                    &mut state.parameters.erosion_params.deposit_speed,
                                     0.0..=5.5,
                                 )
                                     .text("Deposit Speed"),
@@ -602,20 +602,20 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.evaporate_speed,
+                                    &mut state.parameters.erosion_params.evaporate_speed,
                                     0.0..=5.5,
                                 )
                                     .text("Evaporate Speed"),
                             )
                                 .changed();
                             ui.add(
-                                egui::Slider::new(&mut state.parameters.lague_params.gravity, 0.0..=5.5)
+                                egui::Slider::new(&mut state.parameters.erosion_params.gravity, 0.0..=5.5)
                                     .text("Gravity"),
                             )
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.max_droplet_lifetime,
+                                    &mut state.parameters.erosion_params.max_droplet_lifetime,
                                     0..=5,
                                 )
                                     .text("Max Droplet Lifetime"),
@@ -623,7 +623,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.initial_water_volume,
+                                    &mut state.parameters.erosion_params.initial_water_volume,
                                     0.0..=5.5,
                                 )
                                     .text("Initial Water Volume"),
@@ -631,7 +631,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.initial_speed,
+                                    &mut state.parameters.erosion_params.initial_speed,
                                     0.0..=5.5,
                                 )
                                     .text("Initial Speed"),
@@ -639,7 +639,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
                             ui.add(
                                 egui::Slider::new(
-                                    &mut state.parameters.lague_params.num_iterations,
+                                    &mut state.parameters.erosion_params.num_iterations,
                                     0..=2000000,
                                 )
                                     .text("Num Iterations"),
@@ -647,7 +647,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<Rect> {
                                 .changed();
 
                             if ui.button("Reset").clicked() {
-                                state.parameters.lague_params = Parameters::default();
+                                state.parameters.erosion_params = Parameters::default();
                             }
                         });
 
