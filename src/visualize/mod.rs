@@ -3,8 +3,8 @@ use crate::heightmap;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use macroquad::prelude::*;
 use egui::{Pos2, Rect};
+use macroquad::prelude::*;
 
 pub mod ui;
 
@@ -25,7 +25,11 @@ pub enum SimulationState {
 }
 
 impl SimulationState {
-    pub fn get_new_base(new_id: usize, settings: Option<&HeightmapSettings>, parameters: &Parameters) -> Self {
+    pub fn get_new_base(
+        new_id: usize,
+        settings: Option<&HeightmapSettings>,
+        parameters: &Parameters,
+    ) -> Self {
         let mut heightmap = erode::initialize_heightmap(settings).normalize();
         heightmap.calculate_total_height();
         let texture = Rc::new(heightmap_to_texture(&heightmap));
@@ -144,7 +148,12 @@ impl BaseState {
                     "{} method",
                     partitioning::Method::GridOverlapBlend.to_string()
                 );
-                partitioning::grid_overlap_blend_erode(&mut heightmap, &parameters, GRID_SIZE, GRID_SIZE);
+                partitioning::grid_overlap_blend_erode(
+                    &mut heightmap,
+                    &parameters,
+                    GRID_SIZE,
+                    GRID_SIZE,
+                );
             }
         }
         let heightmap_eroded_texture = heightmap_to_texture(&heightmap);
@@ -250,7 +259,11 @@ pub async fn run() {
     };
 
     let mut state = AppState {
-        simulation_states: vec![SimulationState::get_new_base(0, None, &Parameters::default())],
+        simulation_states: vec![SimulationState::get_new_base(
+            0,
+            None,
+            &Parameters::default(),
+        )],
         simulation_base_indices: vec![0],
         parameters: AppParameters::default(),
     };
@@ -262,9 +275,11 @@ pub async fn run() {
         ui_state.simulation_clear = false;
 
         if ui_state.simulation_regenerate {
-            state
-                .simulation_states
-                .push(SimulationState::get_new_base(state.simulation_states.len(), Some(&state.parameters.heightmap_settings), &state.parameters.erosion_params));
+            state.simulation_states.push(SimulationState::get_new_base(
+                state.simulation_states.len(),
+                Some(&state.parameters.heightmap_settings),
+                &state.parameters.erosion_params,
+            ));
             state
                 .simulation_base_indices
                 .push(state.simulation_states.len() - 1);
@@ -276,14 +291,11 @@ pub async fn run() {
             clear_background(BLACK);
 
             let rect = ui_state.canvas_rect.unwrap_or(Rect {
-                min: Pos2 {
-                    x: 0.0,
-                    y: 0.0
-                },
+                min: Pos2 { x: 0.0, y: 0.0 },
                 max: Pos2 {
                     x: screen_width(),
                     y: screen_height(),
-                }
+                },
             });
 
             if !corrected_size && ui_state.canvas_rect.is_some() {
@@ -309,7 +321,7 @@ pub async fn run() {
                 },
             );
 
-            ui_state.canvas_rect  = ui_draw(&mut ui_state, &mut state);
+            ui_state.canvas_rect = ui_draw(&mut ui_state, &mut state);
             poll_ui_keybinds(&mut ui_state);
             poll_ui_events(&mut ui_state, &mut state);
             next_frame().await;

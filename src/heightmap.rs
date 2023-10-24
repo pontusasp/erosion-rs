@@ -1,6 +1,6 @@
+use bracket_noise::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use bracket_noise::prelude::*;
 
 use crate::math::{UVector2, Vector2};
 
@@ -84,11 +84,17 @@ impl Heightmap {
         if let Some(height) = self.total_height {
             height
         } else {
-            let height = self.data.iter().fold(0.0, |accumulator: f32, col: &Vec<HeightmapPrecision>| {
-                accumulator + col.iter().fold(0.0, |accumulator: f32, value: &HeightmapPrecision| {
-                    accumulator + value
-                })
-            });
+            let height =
+                self.data
+                    .iter()
+                    .fold(0.0, |accumulator: f32, col: &Vec<HeightmapPrecision>| {
+                        accumulator
+                            + col
+                                .iter()
+                                .fold(0.0, |accumulator: f32, value: &HeightmapPrecision| {
+                                    accumulator + value
+                                })
+                    });
             self.total_height = Some(height);
             height
         }
@@ -396,7 +402,7 @@ impl PartialHeightmap {
         );
         let rect_max = UVector2::new(
             (self.anchor.x + self.heightmap.width).min(other.anchor.x + other.heightmap.width),
-            (self.anchor.y + self.heightmap.height).min(other.anchor.y + other.heightmap.height)
+            (self.anchor.y + self.heightmap.height).min(other.anchor.y + other.heightmap.height),
         );
 
         for x in 0..(rect_max.x - rect_min.x) {
@@ -410,9 +416,13 @@ impl PartialHeightmap {
                 let h2 = other.heightmap.data[ox][oy];
                 let min = -1.0;
                 let max = 1.0;
-                let lerp_x = min + (max - min) * (ox as HeightmapPrecision / other.heightmap.width as HeightmapPrecision);
+                let lerp_x = min
+                    + (max - min)
+                        * (ox as HeightmapPrecision / other.heightmap.width as HeightmapPrecision);
                 let factor_x = lerp_x.abs();
-                let lerp_y = min + (max - min) * (oy as HeightmapPrecision / other.heightmap.height as HeightmapPrecision);
+                let lerp_y = min
+                    + (max - min)
+                        * (oy as HeightmapPrecision / other.heightmap.height as HeightmapPrecision);
                 let factor_y = lerp_y.abs();
                 let factor = (1.0 - factor_x * factor_y).powf(6.5);
                 let height = h2 * factor + h1 * (1.0 - factor);
@@ -494,14 +504,7 @@ pub fn create_heightmap_from_closure(
         data.push(row);
     }
 
-    Heightmap::new(
-        data,
-        size,
-        size,
-        1.0,
-        original_depth,
-        None,
-    )
+    Heightmap::new(data, size, size, 1.0, original_depth, None)
 }
 
 pub struct HeightmapSettings {
@@ -569,7 +572,8 @@ pub fn create_perlin_heightmap(settings: &HeightmapSettings) -> Heightmap {
         max - min,
         max - min,
         None,
-    ).normalize()
+    )
+    .normalize()
 }
 
 #[cfg(feature = "export")]

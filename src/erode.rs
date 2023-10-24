@@ -385,7 +385,9 @@ pub fn add_metadata(state: &State, heightmap: &mut Heightmap) {
     heightmap.metadata_add("NUM_ITERATIONS", state.params.num_iterations.to_string());
 }
 
-pub fn initialize_heightmap(settings: Option<&heightmap::HeightmapSettings>) -> heightmap::Heightmap {
+pub fn initialize_heightmap(
+    settings: Option<&heightmap::HeightmapSettings>,
+) -> heightmap::Heightmap {
     let size: usize = 512;
 
     let debug = false;
@@ -396,6 +398,8 @@ pub fn initialize_heightmap(settings: Option<&heightmap::HeightmapSettings>) -> 
             size,
         )
     } else {
-        heightmap::create_perlin_heightmap(&settings.unwrap_or(&heightmap::HeightmapSettings::default()))
+        heightmap::create_perlin_heightmap(
+            &settings.unwrap_or(&heightmap::HeightmapSettings::default()),
+        )
     }
 }

@@ -1,9 +1,9 @@
 use crate::erode;
 use crate::heightmap;
 use crate::math::UVector2;
+use rayon::prelude::*;
 use std::slice::Iter;
 use std::sync::{Arc, Mutex};
-use rayon::prelude::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Method {
@@ -177,7 +177,12 @@ pub fn subdivision_overlap_erode(
     erode_multiple(&nested_partitions, params, heightmap);
 }
 
-fn get_grid(heightmap: &heightmap::Heightmap, rect_min: &UVector2, rect_max: &UVector2, grid_cells: &UVector2) -> Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>> {
+fn get_grid(
+    heightmap: &heightmap::Heightmap,
+    rect_min: &UVector2,
+    rect_max: &UVector2,
+    grid_cells: &UVector2,
+) -> Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>> {
     let mut grid = Vec::new();
     let slice_width = (rect_max.x - rect_min.x) / grid_cells.x;
     let slice_height = (rect_max.y - rect_min.y) / grid_cells.y;
@@ -202,7 +207,10 @@ fn get_grid(heightmap: &heightmap::Heightmap, rect_min: &UVector2, rect_max: &UV
     grid
 }
 
-fn erode_grid(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, params: &erode::Parameters) {
+fn erode_grid(
+    grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>,
+    params: &erode::Parameters,
+) {
     let mut params = params.clone();
     let grid_width = grid.len();
     let grid_height = grid[0].len();
@@ -218,7 +226,13 @@ fn erode_grid(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, params: 
     });
 }
 
-fn blend_cells(center: Arc<Mutex<heightmap::PartialHeightmap>>, tl: Arc<Mutex<heightmap::PartialHeightmap>>, tr: Arc<Mutex<heightmap::PartialHeightmap>>, bl: Arc<Mutex<heightmap::PartialHeightmap>>, br: Arc<Mutex<heightmap::PartialHeightmap>>) {
+fn blend_cells(
+    center: Arc<Mutex<heightmap::PartialHeightmap>>,
+    tl: Arc<Mutex<heightmap::PartialHeightmap>>,
+    tr: Arc<Mutex<heightmap::PartialHeightmap>>,
+    bl: Arc<Mutex<heightmap::PartialHeightmap>>,
+    br: Arc<Mutex<heightmap::PartialHeightmap>>,
+) {
     let mut center = center.lock().unwrap();
     let tl = tl.lock().unwrap();
     let tr = tr.lock().unwrap();
@@ -274,14 +288,17 @@ pub fn grid_overlap_blend_erode(
     for i in 0..=1 {
         for j in 0..=1 {
             (i..offset_grid.len()).step_by(2).for_each(|x| {
-                (j..offset_grid[x].len()).into_par_iter().step_by(2).for_each(|y| {
-                    let center = Arc::clone(&offset_grid[x][y]);
-                    let tl = Arc::clone(&grid[x][y]);
-                    let tr = Arc::clone(&grid[x + 1][y]);
-                    let bl = Arc::clone(&grid[x][y + 1]);
-                    let br = Arc::clone(&grid[x + 1][y + 1]);
-                    blend_cells(center, tl, tr, bl, br);
-                });
+                (j..offset_grid[x].len())
+                    .into_par_iter()
+                    .step_by(2)
+                    .for_each(|y| {
+                        let center = Arc::clone(&offset_grid[x][y]);
+                        let tl = Arc::clone(&grid[x][y]);
+                        let tr = Arc::clone(&grid[x + 1][y]);
+                        let bl = Arc::clone(&grid[x][y + 1]);
+                        let br = Arc::clone(&grid[x + 1][y + 1]);
+                        blend_cells(center, tl, tr, bl, br);
+                    });
             });
         }
     }
