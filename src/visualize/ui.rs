@@ -6,11 +6,14 @@ use macroquad::prelude::*;
 #[cfg(feature = "export")]
 use crate::heightmap::io::export_heightmaps;
 
-use crate::{
-    partitioning, visualize::heightmap_to_texture,
-};
+use crate::{partitioning, visualize::heightmap_to_texture};
 
-use super::{AppState, widgets::{ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel}};
+use super::{
+    widgets::{
+        ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
+    },
+    AppState,
+};
 
 /*
 Keybinds:
@@ -482,13 +485,11 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
 
 pub struct FrameSlots {
     pub canvas: Option<Rect>,
-    pub metrics: Option<Rect>,
 }
 
 pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<FrameSlots> {
     if ui_state.show_ui_all {
         let mut central_rect = None;
-        let mut metrics_rect = None;
         egui_macroquad::ui(|egui_ctx| {
             // Top Panel
             ui_top_panel(egui_ctx, ui_state);
@@ -510,13 +511,12 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<FrameSlot
 
             ui_keybinds_window(egui_ctx, ui_state);
             ui_metadata_window(egui_ctx, ui_state, state);
-            metrics_rect = ui_metrics_window(egui_ctx, ui_state, state);
+            ui_metrics_window(egui_ctx, ui_state, state);
         });
 
         egui_macroquad::draw();
         Some(FrameSlots {
             canvas: central_rect,
-            metrics: metrics_rect,
         })
     } else {
         None

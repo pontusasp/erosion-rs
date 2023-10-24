@@ -4,6 +4,7 @@ use egui::{Color32, Rect, Vec2};
 use crate::{erode::Parameters, heightmap::HeightmapSettings, partitioning};
 
 use super::{
+    canvas::Canvas,
     ui::{
         UiEvent, UiKey, UiKeybind, UiState, UiWindow, KEYBINDS, KEYCODE_NEW_HEIGHTMAP,
         KEYCODE_NEXT_PARTITIONING_METHOD, KEYCODE_PREVIOUS_PARTITIONING_METHOD,
@@ -576,34 +577,31 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
 pub fn ui_metrics_window(
     egui_ctx: &egui::Context,
     ui_state: &mut UiState,
-    _state: &mut AppState,
+    state: &mut AppState,
 ) -> Option<Rect> {
     let mut rect = None;
     if ui_state.show_ui_metrics {
-        egui::Window::new(format!("Metrics [{:?}]", KEYCODE_TOGGLE_METRICS_UI)).show(
-            egui_ctx,
-            |ui| {
-                rect = Some(
-                    egui::CentralPanel::default()
-                        .frame(egui::containers::Frame {
-                            fill: Color32::TRANSPARENT,
-                            ..Default::default()
-                        })
-                        .show_inside(ui, |_| {})
-                        .response
-                        .rect,
-                );
-                let desired_size = {
-                    let min = rect.unwrap().min;
-                    let max = rect.unwrap().max;
-                    Vec2 {
-                        x: max.x - min.x,
-                        y: max.y - min.y,
-                    }
-                };
-                ui.allocate_exact_size(desired_size, egui::Sense::focusable_noninteractive());
-            },
+        rect = Some(
+            egui::Window::new(format!("Metrics [{:?}]", KEYCODE_TOGGLE_METRICS_UI))
+                .show(egui_ctx, |ui| {
+                    plot_height(ui, state);
+                    plot_height(ui, state);
+                })
+                .unwrap()
+                .response
+                .rect,
         );
     }
     rect
+}
+
+fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
+    let width = 200.0;
+    let height = 200.0;
+    let mut canvas = Canvas::new(
+        Vec2::new(width, height),
+        egui::Stroke::new(1.0, Color32::WHITE),
+    );
+    canvas.draw(ui);
+    canvas.draw_circle(ui, Vec2::new(50.0, 50.0), 10.0, Color32::RED);
 }

@@ -6,6 +6,7 @@ use std::rc::Rc;
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;
 
+pub mod canvas;
 pub mod ui;
 pub mod widgets;
 
@@ -292,13 +293,17 @@ pub async fn run() {
         while !is_quit_requested() && !ui_state.simulation_clear && !ui_state.application_quit {
             clear_background(BLACK);
 
-            let canvas_rect = ui_state.frame_slots.as_ref().and_then(|slots| slots.canvas).unwrap_or(Rect {
-                min: Pos2 { x: 0.0, y: 0.0 },
-                max: Pos2 {
-                    x: screen_width(),
-                    y: screen_height(),
-                },
-            });
+            let canvas_rect = ui_state
+                .frame_slots
+                .as_ref()
+                .and_then(|slots| slots.canvas)
+                .unwrap_or(Rect {
+                    min: Pos2 { x: 0.0, y: 0.0 },
+                    max: Pos2 {
+                        x: screen_width(),
+                        y: screen_height(),
+                    },
+                });
 
             if !corrected_size {
                 let fit = canvas_rect.width().min(canvas_rect.height());
@@ -308,15 +313,12 @@ pub async fn run() {
                 );
                 corrected_size = true;
             }
-            draw_frame(&canvas_rect, &state.simulation_state().base().texture_active);
+            draw_frame(
+                &canvas_rect,
+                &state.simulation_state().base().texture_active,
+            );
 
             ui_state.frame_slots = ui_draw(&mut ui_state, &mut state);
-
-            if let Some(ref slots) = ui_state.frame_slots {
-                if let Some(rect) = slots.metrics {
-                    draw_frame(&rect, &state.simulation_state().base().texture_active);
-                };
-            }
 
             poll_ui_events(&mut ui_state, &mut state);
             poll_ui_keybinds(&mut ui_state);
