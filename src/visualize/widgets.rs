@@ -616,12 +616,11 @@ fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
 
     let heights_along_x: Vec<f32> = {
         let mut heights = Vec::new();
-        let data = &heightmap.data as *const Vec<Vec<f32>>;
 
         for y in 0..heightmap.height {
             heights.push(0.0);
             for x in 0..heightmap.width {
-                let height = unsafe { (*data)[x][y] };
+                let height = heightmap.data[x][y];
                 heights[y] += height;
             }
             heights[y] /= heightmap.width as f32;
@@ -631,22 +630,20 @@ fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
     };
 
     canvas.stroke.color = Color32::BLUE;
-    for i in 1..heights_along_y.len() {
-        let progress0 = (i - 1) as f32 / (heights_along_y.len() - 1) as f32;
-        let progress1 = i as f32 / (heights_along_y.len() - 1) as f32;
-        let start = Vec2::new(progress0 * width, heights_along_y[i - 1] / max_height * height);
-        let end = Vec2::new(progress1 * width, heights_along_y[i] / max_height * height);
-        canvas.draw_line(ui, start, end);
-    }
+    draw_polyline(ui, &heights_along_y, &canvas, width, height, max_height);
     canvas.draw_line(ui, Vec2::new(10.0, 10.0), Vec2::new(30.0, 10.0));
 
     canvas.stroke.color = Color32::RED;
-    for i in 1..heights_along_x.len() {
-        let progress0 = (i - 1) as f32 / (heights_along_x.len() - 1) as f32;
-        let progress1 = i as f32 / (heights_along_x.len() - 1) as f32;
-        let start = Vec2::new(progress0 * width, heights_along_x[i - 1] / max_height * height);
-        let end = Vec2::new(progress1 * width, heights_along_x[i] / max_height * height);
+    draw_polyline(ui, &heights_along_x, &canvas, width, height, max_height);
+    canvas.draw_line(ui, Vec2::new(10.0, 10.0), Vec2::new(10.0, 30.0));
+}
+
+fn draw_polyline(ui: &mut egui::Ui, points: &Vec<f32>, canvas: &Canvas, width: f32, height: f32, max_height: f32) {
+    for i in 1..points.len() {
+        let progress0 = (i - 1) as f32 / (points.len() - 1) as f32;
+        let progress1 = i as f32 / (points.len() - 1) as f32;
+        let start = Vec2::new(progress0 * width, points[i - 1] / max_height * height);
+        let end = Vec2::new(progress1 * width, points[i] / max_height * height);
         canvas.draw_line(ui, start, end);
     }
-    canvas.draw_line(ui, Vec2::new(10.0, 10.0), Vec2::new(10.0, 30.0));
 }
