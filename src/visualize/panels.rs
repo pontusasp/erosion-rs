@@ -2,9 +2,9 @@ use egui::Rect;
 
 use super::{
     ui::{
-        UiEvent, UiKey, UiKeybind, UiState, UiWindow, KEYBINDS,
-        KEYCODE_TOGGLE_ALL_UI, KEYCODE_TOGGLE_CONTROL_PANEL_UI, KEYCODE_TOGGLE_KEYBINDS_UI,
-        KEYCODE_TOGGLE_METADATA_UI, KEYCODE_TOGGLE_METRICS_UI,
+        UiEvent, UiKey, UiKeybind, UiState, UiWindow, KEYBINDS, KEYCODE_TOGGLE_ALL_UI,
+        KEYCODE_TOGGLE_CONTROL_PANEL_UI, KEYCODE_TOGGLE_KEYBINDS_UI, KEYCODE_TOGGLE_METADATA_UI,
+        KEYCODE_TOGGLE_METRICS_UI,
     },
     widgets::*,
     AppState,
@@ -243,4 +243,3 @@ pub fn ui_metrics_window(
     }
     rect
 }
-

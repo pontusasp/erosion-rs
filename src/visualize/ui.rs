@@ -11,6 +11,7 @@ use crate::heightmap::io::export_heightmaps;
 use crate::{partitioning, visualize::heightmap_to_texture};
 
 use super::{
+    mix_heightmap_to_texture,
     panels::{
         ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
     },
@@ -88,6 +89,7 @@ pub enum UiEvent {
     ShowErodedLayer,
     Blur,
     EdgeDetect,
+    BlurEdgeDetect,
 }
 
 impl UiEvent {
@@ -119,6 +121,9 @@ impl UiEvent {
             UiEvent::ShowErodedLayer => "Show eroded layer".to_string(),
             UiEvent::Blur => "Blur currently selected state".to_string(),
             UiEvent::EdgeDetect => "Apply canny edge detection to selected state".to_string(),
+            UiEvent::BlurEdgeDetect => {
+                "Apply blur then canny edge detection to selected state".to_string()
+            }
         }
     }
 }
@@ -215,6 +220,7 @@ pub const KEYBINDS: &[UiKeybind] = &[
     UiKeybind::Pressed(UiKey::Single(KeyCode::V), UiEvent::ShowErodedLayer),
     UiKeybind::Pressed(UiKey::Single(KeyCode::B), UiEvent::Blur),
     UiKeybind::Pressed(UiKey::Single(KeyCode::C), UiEvent::EdgeDetect),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::X), UiEvent::BlurEdgeDetect),
 ];
 
 pub fn poll_ui_keybinds(ui_state: &mut UiState) {
@@ -514,7 +520,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             UiEvent::Blur => {
                 if let Some(heightmap) = state
                     .simulation_state()
-                    .get_active()
+                    .get_heightmap()
                     .blur(ui_state.blur_sigma)
                 {
                     let texture = Rc::new(heightmap_to_texture(&heightmap));
@@ -526,13 +532,29 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             }
             UiEvent::EdgeDetect => {
                 let (low, high) = ui_state.canny_edge;
-                if let Some(heightmap) = state.simulation_state().get_active().canny_edge(low, high)
-                {
-                    let texture = Rc::new(heightmap_to_texture(&heightmap));
+                let og = state.simulation_state().get_heightmap();
+                if let Some(heightmap) = og.canny_edge(low, high) {
+                    let texture =
+                        Rc::new(mix_heightmap_to_texture(&og, &heightmap, 0, true, false));
                     let heightmap = Rc::new(heightmap);
                     state.simulation_state_mut().set_active(heightmap, texture);
                 } else {
                     eprintln!("Failed to edge detect selected state!");
+                }
+            }
+            UiEvent::BlurEdgeDetect => {
+                let (low, high) = ui_state.canny_edge;
+                let og = state.simulation_state().get_heightmap();
+                if let Some(heightmap) = og
+                    .blur(ui_state.blur_sigma)
+                    .and_then(|blurred| blurred.canny_edge(low, high))
+                {
+                    let texture =
+                        Rc::new(mix_heightmap_to_texture(&og, &heightmap, 0, true, false));
+                    let heightmap = Rc::new(heightmap);
+                    state.simulation_state_mut().set_active(heightmap, texture);
+                } else {
+                    eprintln!("Failed to blur or edge detect selected state!");
                 }
             }
         };

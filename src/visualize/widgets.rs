@@ -7,8 +7,8 @@ use crate::{erode::Parameters, heightmap::HeightmapSettings, partitioning};
 use super::{
     canvas::Canvas,
     ui::{
-        UiEvent, UiState, KEYCODE_NEW_HEIGHTMAP,
-        KEYCODE_NEXT_PARTITIONING_METHOD, KEYCODE_PREVIOUS_PARTITIONING_METHOD,
+        UiEvent, UiState, KEYCODE_NEW_HEIGHTMAP, KEYCODE_NEXT_PARTITIONING_METHOD,
+        KEYCODE_PREVIOUS_PARTITIONING_METHOD,
     },
     AppState, SimulationState,
 };
@@ -83,11 +83,27 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                 ui_state.ui_events.push(UiEvent::Blur);
             }
             let (mut canny_low, mut canny_high) = ui_state.canny_edge;
-            ui.add(egui::Slider::new(&mut canny_low, 0.0001..=canny_high).text("Lower Threshold"));
-            ui.add(egui::Slider::new(&mut canny_high, canny_low..=120.0).text("Upper Threshold"));
+            let mut updated = false;
+            updated = updated
+                || ui
+                    .add(
+                        egui::Slider::new(&mut canny_low, 0.0001..=canny_high)
+                            .text("Lower Threshold"),
+                    )
+                    .changed();
+            updated = updated
+                || ui
+                    .add(
+                        egui::Slider::new(&mut canny_high, canny_low..=120.0)
+                            .text("Upper Threshold"),
+                    )
+                    .changed();
             ui_state.canny_edge = (canny_low, canny_high);
-            if ui.button("Edge Detect").clicked() {
+            if ui.button("Edge Detect").clicked() || updated {
                 ui_state.ui_events.push(UiEvent::EdgeDetect);
+            }
+            if ui.button("Blur + Edge Detect").clicked() {
+                ui_state.ui_events.push(UiEvent::BlurEdgeDetect);
             }
         });
     ui.separator();
@@ -105,17 +121,12 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                         if ui.button(method.to_string()).clicked() {
                             ui_state.ui_events.push(UiEvent::SelectMethod(method));
                         }
-                        if method
-                            == state.simulation_state().base().erosion_method.next()
-                        {
+                        if method == state.simulation_state().base().erosion_method.next() {
                             ui.label(format!("{:?}", KEYCODE_NEXT_PARTITIONING_METHOD));
                         } else if method
                             == state.simulation_state().base().erosion_method.previous()
                         {
-                            ui.label(format!(
-                                "{:?}",
-                                KEYCODE_PREVIOUS_PARTITIONING_METHOD
-                            ));
+                            ui.label(format!("{:?}", KEYCODE_PREVIOUS_PARTITIONING_METHOD));
                         }
                     });
                 }
@@ -131,106 +142,98 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
     ui.separator();
 }
 
-pub fn erosion_parameter_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
+pub fn erosion_parameter_selection(
+    ui: &mut egui::Ui,
+    ui_state: &mut UiState,
+    state: &mut AppState,
+) {
     egui::CollapsingHeader::new("Erosion Parameters")
         .default_open(true)
         .show(ui, |ui| {
             ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.erosion_radius,
-                    0..=5,
-                )
+                egui::Slider::new(&mut state.parameters.erosion_params.erosion_radius, 0..=5)
                     .text("Erosion Radius"),
             )
-                .changed();
+            .changed();
             ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.inertia,
-                    0.0..=5.5,
-                )
+                egui::Slider::new(&mut state.parameters.erosion_params.inertia, 0.0..=5.5)
                     .text("Inertia"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.sediment_capacity_factor,
                     0.0..=5.5,
                 )
-                    .text("Sediment Capacity Factor"),
+                .text("Sediment Capacity Factor"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.min_sediment_capacity,
                     0.0..=5.5,
                 )
-                    .text("Min Sediment Capacity"),
+                .text("Min Sediment Capacity"),
             )
-                .changed();
+            .changed();
             ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.erode_speed,
-                    0.0..=5.5,
-                )
+                egui::Slider::new(&mut state.parameters.erosion_params.erode_speed, 0.0..=5.5)
                     .text("Erode Speed"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.deposit_speed,
                     0.0..=5.5,
                 )
-                    .text("Deposit Speed"),
+                .text("Deposit Speed"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.evaporate_speed,
                     0.0..=5.5,
                 )
-                    .text("Evaporate Speed"),
+                .text("Evaporate Speed"),
             )
-                .changed();
+            .changed();
             ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.gravity,
-                    0.0..=5.5,
-                )
+                egui::Slider::new(&mut state.parameters.erosion_params.gravity, 0.0..=5.5)
                     .text("Gravity"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.max_droplet_lifetime,
                     0..=5,
                 )
-                    .text("Max Droplet Lifetime"),
+                .text("Max Droplet Lifetime"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.initial_water_volume,
                     0.0..=5.5,
                 )
-                    .text("Initial Water Volume"),
+                .text("Initial Water Volume"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.initial_speed,
                     0.0..=5.5,
                 )
-                    .text("Initial Speed"),
+                .text("Initial Speed"),
             )
-                .changed();
+            .changed();
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.num_iterations,
                     0..=2000000,
                 )
-                    .text("Num Iterations"),
+                .text("Num Iterations"),
             )
-                .changed();
+            .changed();
 
             if ui.button("Reset").clicked() {
                 state.parameters.erosion_params = Parameters::default();
@@ -253,8 +256,7 @@ pub fn layer_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state: &AppSta
             ui.heading("Image Layers");
             for simulation in state.simulation_states.iter() {
                 ui.horizontal(|ui| {
-                    if *state.simulation_base_indices.last().unwrap() == simulation.id()
-                    {
+                    if *state.simulation_base_indices.last().unwrap() == simulation.id() {
                         ui.label("-> ");
                     }
                     match simulation {
@@ -281,26 +283,29 @@ pub fn layer_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state: &AppSta
 
     ui.separator();
 }
-pub fn heightmap_generation_settings(ui: &mut egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
+pub fn heightmap_generation_settings(
+    ui: &mut egui::Ui,
+    ui_state: &mut UiState,
+    state: &mut AppState,
+) {
     egui::CollapsingHeader::new("Heightmap Generation")
         .default_open(true)
         .show(ui, |ui| {
             if state.simulation_state().eroded().is_none()
-                && state.simulation_state().id()
-                == state.simulation_base_indices.len() - 1
+                && state.simulation_state().id() == state.simulation_base_indices.len() - 1
             {
                 let mut updated = false;
 
                 updated = updated
                     || ui
-                    .add(
-                        egui::Slider::new(
-                            &mut state.parameters.heightmap_settings.seed,
-                            0..=10000000000,
-                        )
+                        .add(
+                            egui::Slider::new(
+                                &mut state.parameters.heightmap_settings.seed,
+                                0..=10000000000,
+                            )
                             .text("Seed"),
-                    )
-                    .changed();
+                        )
+                        .changed();
 
                 let noise_type = state.parameters.heightmap_settings.noise_type;
                 egui::ComboBox::from_label("Noise Type")
@@ -361,60 +366,53 @@ pub fn heightmap_generation_settings(ui: &mut egui::Ui, ui_state: &mut UiState, 
                             "Cubic Fractal",
                         );
                     });
-                updated = updated
-                    || noise_type != state.parameters.heightmap_settings.noise_type;
+                updated = updated || noise_type != state.parameters.heightmap_settings.noise_type;
 
                 updated = updated
                     || ui
-                    .add(
-                        egui::Slider::new(
-                            &mut state
-                                .parameters
-                                .heightmap_settings
-                                .fractal_octaves,
-                            0..=28,
-                        )
+                        .add(
+                            egui::Slider::new(
+                                &mut state.parameters.heightmap_settings.fractal_octaves,
+                                0..=28,
+                            )
                             .text("Fractal Octaves"),
-                    )
-                    .drag_released();
+                        )
+                        .drag_released();
                 updated = updated
                     || ui
-                    .add(
-                        egui::Slider::new(
-                            &mut state.parameters.heightmap_settings.fractal_gain,
-                            0.0..=2.0,
-                        )
+                        .add(
+                            egui::Slider::new(
+                                &mut state.parameters.heightmap_settings.fractal_gain,
+                                0.0..=2.0,
+                            )
                             .text("Fractal Gain"),
-                    )
-                    .changed();
+                        )
+                        .changed();
                 updated = updated
                     || ui
-                    .add(
-                        egui::Slider::new(
-                            &mut state
-                                .parameters
-                                .heightmap_settings
-                                .fractal_lacunarity,
-                            0.0..=7.0,
-                        )
+                        .add(
+                            egui::Slider::new(
+                                &mut state.parameters.heightmap_settings.fractal_lacunarity,
+                                0.0..=7.0,
+                            )
                             .text("Fractal Lacunarity"),
-                    )
-                    .drag_released();
+                        )
+                        .drag_released();
                 updated = updated
                     || ui
-                    .add(
-                        egui::Slider::new(
-                            &mut state.parameters.heightmap_settings.frequency,
-                            0.0..=5.0,
-                        )
+                        .add(
+                            egui::Slider::new(
+                                &mut state.parameters.heightmap_settings.frequency,
+                                0.0..=5.0,
+                            )
                             .text("Frequency"),
-                    )
-                    .changed();
+                        )
+                        .changed();
                 let mut size = state.parameters.heightmap_settings.width;
                 updated = updated
                     || ui
-                    .add(egui::Slider::new(&mut size, 64..=1024).text("Resolution"))
-                    .changed();
+                        .add(egui::Slider::new(&mut size, 64..=1024).text("Resolution"))
+                        .changed();
                 state.parameters.heightmap_settings.width = size;
                 state.parameters.heightmap_settings.height = size;
 

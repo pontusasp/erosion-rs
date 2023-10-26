@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;
+use rayon::prelude::*;
 
 pub mod canvas;
 pub mod panels;
@@ -361,6 +362,45 @@ fn draw_frame(rect: &Rect, texture: &Texture2D) {
 
 fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
     let buffer = heightmap.to_u8_rgba();
+
+    let image = Image {
+        bytes: buffer,
+        width: heightmap.width.try_into().unwrap(),
+        height: heightmap.height.try_into().unwrap(),
+    };
+
+    Texture2D::from_image(&image)
+}
+
+fn mix_heightmap_to_texture(
+    heightmap: &Heightmap,
+    overlay: &Heightmap,
+    channel: u8,
+    invert: bool,
+    round: bool,
+) -> Texture2D {
+    let overlay = overlay.to_u8();
+    let mut buffer = heightmap.to_u8_rgba();
+
+    for i in (0..buffer.len()).step_by(4) {
+        let mut overlay = overlay[i / 4] as f32 / 255.0;
+        if invert {
+            overlay = 1.0 - overlay;
+        }
+        let k = i + channel as usize;
+        let keep = buffer[k];
+        let r = i;
+        let g = i + 1;
+        let b = i + 2;
+        buffer[r] = (buffer[r] as f32 * overlay) as u8;
+        buffer[g] = (buffer[g] as f32 * overlay) as u8;
+        buffer[b] = (buffer[b] as f32 * overlay) as u8;
+        if round && overlay < 0.5 {
+            buffer[k] = ((1.0 - overlay.round()) * 255.0) as u8;
+        } else {
+            buffer[k] = keep;
+        }
+    }
 
     let image = Image {
         bytes: buffer,
