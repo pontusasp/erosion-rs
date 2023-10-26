@@ -4,13 +4,18 @@ use egui::{Color32, Rect};
 use macroquad::prelude::*;
 
 #[cfg(feature = "export")]
+use super::SimulationState;
+#[cfg(feature = "export")]
 use crate::heightmap::io::export_heightmaps;
 
 use crate::{partitioning, visualize::heightmap_to_texture};
 
-use super::{widgets::{
-    ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
-}, AppState, SimulationState};
+use super::{
+    widgets::{
+        ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
+    },
+    AppState,
+};
 
 /*
 Keybinds:

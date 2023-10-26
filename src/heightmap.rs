@@ -1,8 +1,12 @@
 use bracket_noise::prelude::*;
+use rayon::iter::IntoParallelRefMutIterator;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::math::{UVector2, Vector2};
+
+use image::*;
 
 pub type HeightmapPrecision = f32;
 pub type HeightmapData = Vec<Vec<HeightmapPrecision>>;
@@ -48,6 +52,33 @@ impl Heightmap {
             metadata,
             total_height: None,
         }
+    }
+
+    pub fn from_u8(data: &Vec<u8>, width: usize, height: usize) -> Self {
+        let mut data_f32 = vec![vec![0.0; height]; width];
+
+        data_f32.par_iter_mut().enumerate().for_each(|(i, col)| {
+            for j in (i * width)..((i + 1) * width) {
+                let value: HeightmapPrecision = data[j] as f32 / 255.0;
+                let k = j - i * width;
+                col[k] = value;
+            }
+        });
+
+        Heightmap::new(data_f32, width, height, 1.0, 1.0, None)
+    }
+
+    pub fn blur(&self, sigma: f32) -> Option<Heightmap> {
+        let width = self.width.try_into().ok();
+        let height = self.height.try_into().ok();
+
+        // ImageBuffer<Luma<u8>, Vec<u8>>
+        let gray_image: Option<GrayImage> = ImageBuffer::from_vec(width?, height?, self.to_u8());
+        let blurred_gray_image = imageops::blur(&gray_image?, sigma);
+
+        let blurred_heightmap =
+            Heightmap::from_u8(blurred_gray_image.as_raw(), self.width, self.height);
+        Some(blurred_heightmap)
     }
 
     pub fn get_range(&self) -> (HeightmapPrecision, HeightmapPrecision) {

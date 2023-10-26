@@ -638,7 +638,14 @@ fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
     canvas.draw_line(ui, Vec2::new(10.0, 10.0), Vec2::new(10.0, 30.0));
 }
 
-fn draw_polyline(ui: &mut egui::Ui, points: &Vec<f32>, canvas: &Canvas, width: f32, height: f32, max_height: f32) {
+fn draw_polyline(
+    ui: &mut egui::Ui,
+    points: &Vec<f32>,
+    canvas: &Canvas,
+    width: f32,
+    height: f32,
+    max_height: f32,
+) {
     for i in 1..points.len() {
         let progress0 = (i - 1) as f32 / (points.len() - 1) as f32;
         let progress1 = i as f32 / (points.len() - 1) as f32;

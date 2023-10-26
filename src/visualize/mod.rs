@@ -12,8 +12,7 @@ pub mod widgets;
 
 use crate::erode::DropZone;
 use crate::erode::Parameters;
-use crate::heightmap::Heightmap;
-use crate::heightmap::HeightmapSettings;
+use crate::heightmap::{Heightmap, HeightmapSettings};
 use crate::partitioning::Method;
 use crate::visualize::ui::*;
 use crate::{erode, partitioning};
