@@ -67,18 +67,27 @@ impl Heightmap {
 
         Heightmap::new(data_f32, width, height, 1.0, 1.0, None)
     }
-
-    pub fn blur(&self, sigma: f32) -> Option<Heightmap> {
+    
+    fn get_gray_image(&self) -> Option<GrayImage> {
         let width = self.width.try_into().ok();
         let height = self.height.try_into().ok();
+        ImageBuffer::from_vec(width?, height?, self.to_u8())
+    }
 
-        // ImageBuffer<Luma<u8>, Vec<u8>>
-        let gray_image: Option<GrayImage> = ImageBuffer::from_vec(width?, height?, self.to_u8());
+    pub fn blur(&self, sigma: f32) -> Option<Heightmap> {
+        let gray_image: Option<GrayImage> = self.get_gray_image();
         let blurred_gray_image = imageops::blur(&gray_image?, sigma);
 
         let blurred_heightmap =
             Heightmap::from_u8(blurred_gray_image.as_raw(), self.width, self.height);
         Some(blurred_heightmap)
+    }
+
+    pub fn canny_edge(&self, low: f32, high: f32) -> Option<Heightmap> {
+        let gray_image: Option<GrayImage> = self.get_gray_image();
+        let canny_edge_image = imageproc::edges::canny(&gray_image?, low, high);
+
+        Some(Heightmap::from_u8(canny_edge_image.as_raw(), self.width, self.height))
     }
 
     pub fn get_range(&self) -> (HeightmapPrecision, HeightmapPrecision) {
