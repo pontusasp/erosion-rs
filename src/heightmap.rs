@@ -379,6 +379,25 @@ impl Heightmap {
         Some((1.0 - frac_x) * interpolate_l + frac_x * interpolate_r)
     }
 
+    pub fn overlay(&mut self, overlay: &Self, mask: &Self) -> Result<(), HeightmapError> {
+        if self.width != overlay.width
+            || self.height != overlay.height
+            || self.width != mask.width
+            || self.height != mask.height
+        {
+            return Err(HeightmapError::MismatchingSize);
+        }
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let v0 = self.data[x][y];
+                let v1 = overlay.data[x][y];
+                let m = mask.data[x][y];
+                self.data[x][y] = v1 * m + v0 * (1.0 - m);
+            }
+        }
+        Ok(())
+    }
+
     pub fn metadata_add(&mut self, key: &str, value: String) {
         if let Some(hashmap) = &mut self.metadata {
             hashmap.insert(key.to_string(), value);

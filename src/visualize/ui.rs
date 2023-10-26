@@ -65,7 +65,7 @@ impl UiWindow {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum UiEvent {
     NewHeightmap,
     ReplaceHeightmap,
@@ -157,7 +157,7 @@ pub enum UiKey {
     Double((KeyCode, KeyCode)),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum UiKeybind {
     Pressed(UiKey, UiEvent),
     Down(UiKey, UiEvent),

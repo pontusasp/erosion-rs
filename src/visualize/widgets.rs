@@ -13,6 +13,11 @@ use super::{
     AppState, SimulationState,
 };
 
+const GAUSSIAN_BLUR_SIGMA_RANGE_MIN: f32 = 0.0;
+const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;
+const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
+const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX: u16 = 10;
+
 pub fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
     let width = 800.0;
     let height = 500.0;
@@ -77,7 +82,11 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
         .default_open(true)
         .show(ui, |ui| {
             ui.add(
-                egui::Slider::new(&mut ui_state.blur_sigma, 0.0..=20.0).text("Gaussian Blur Sigma"),
+                egui::Slider::new(
+                    &mut ui_state.blur_sigma,
+                    GAUSSIAN_BLUR_SIGMA_RANGE_MIN..=GAUSSIAN_BLUR_SIGMA_RANGE_MAX,
+                )
+                .text("Gaussian Blur Sigma"),
             );
             if ui.button("Blur").clicked() {
                 ui_state.ui_events.push(UiEvent::Blur);
@@ -109,22 +118,22 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
     ui.separator();
 }
 
-pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state: &AppState) {
+pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
     egui::CollapsingHeader::new("Erosion Method Selection")
         .default_open(true)
         .show(ui, |ui| {
             for &method in partitioning::Method::iterator() {
-                if method == state.simulation_state().base().erosion_method {
+                if method.matches(&state.simulation_state().base().erosion_method) {
                     ui.label(format!("-> {}", method.to_string()));
                 } else {
                     ui.horizontal(|ui| {
                         if ui.button(method.to_string()).clicked() {
                             ui_state.ui_events.push(UiEvent::SelectMethod(method));
                         }
-                        if method == state.simulation_state().base().erosion_method.next() {
+                        if method.matches(&state.simulation_state().base().erosion_method.next()) {
                             ui.label(format!("{:?}", KEYCODE_NEXT_PARTITIONING_METHOD));
                         } else if method
-                            == state.simulation_state().base().erosion_method.previous()
+                            .matches(&state.simulation_state().base().erosion_method.previous())
                         {
                             ui.label(format!("{:?}", KEYCODE_PREVIOUS_PARTITIONING_METHOD));
                         }
@@ -135,18 +144,36 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
             egui::CollapsingHeader::new("Partitioning Parameters")
                 .default_open(true)
                 .show(ui, |ui| {
-                    ui.label("coming soon...");
+                    match state.simulation_state_mut().base_mut().erosion_method {
+                        partitioning::Method::SubdivisionBlurBoundary((
+                            ref mut sigma,
+                            ref mut thickness,
+                        )) => {
+                            ui.add(
+                                egui::Slider::new(
+                                    sigma,
+                                    GAUSSIAN_BLUR_SIGMA_RANGE_MIN..=GAUSSIAN_BLUR_SIGMA_RANGE_MAX,
+                                )
+                                .text("Gaussian Blur Sigma"),
+                            );
+                            ui.add(
+                                egui::Slider::new(
+                                    thickness,
+                                    GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN
+                                        ..=GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX,
+                                )
+                                .text("Gaussian Blur Boundary Thickness"),
+                            );
+                        }
+                        _ => (),
+                    };
                 });
         });
 
     ui.separator();
 }
 
-pub fn erosion_parameter_selection(
-    ui: &mut egui::Ui,
-    ui_state: &mut UiState,
-    state: &mut AppState,
-) {
+pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
     egui::CollapsingHeader::new("Erosion Parameters")
         .default_open(true)
         .show(ui, |ui| {
@@ -242,7 +269,7 @@ pub fn erosion_parameter_selection(
 
     ui.separator();
 }
-pub fn layer_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state: &AppState) {
+pub fn layer_selection(ui: &mut egui::Ui, state: &AppState) {
     egui::CollapsingHeader::new("Layers")
         .default_open(true)
         .show(ui, |ui| {

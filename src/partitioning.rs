@@ -1,14 +1,20 @@
 use crate::erode;
 use crate::heightmap;
+use crate::heightmap::HeightmapPrecision;
 use crate::math::UVector2;
 use rayon::prelude::*;
+use std::f32::consts::PI;
 use std::slice::Iter;
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub const GAUSSIAN_DEFAULT_SIGMA: f32 = 2.0;
+pub const GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS: u16 = 2;
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Method {
     Default,
     Subdivision,
+    SubdivisionBlurBoundary((f32, u16)),
     SubdivisionOverlap,
     GridOverlapBlend,
 }
@@ -18,6 +24,7 @@ impl Method {
         match self {
             Method::Default => String::from("Default"),
             Method::Subdivision => String::from("Subdivision"),
+            Method::SubdivisionBlurBoundary(_) => String::from("SubdivisionBlurBoundary"),
             Method::SubdivisionOverlap => String::from("SubdivisionOverlap"),
             Method::GridOverlapBlend => String::from("GridOverlapBlend"),
         }
@@ -26,7 +33,11 @@ impl Method {
     pub fn next(self) -> Self {
         match self {
             Method::Default => Method::Subdivision,
-            Method::Subdivision => Method::SubdivisionOverlap,
+            Method::Subdivision => Method::SubdivisionBlurBoundary((
+                GAUSSIAN_DEFAULT_SIGMA,
+                GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS,
+            )),
+            Method::SubdivisionBlurBoundary(_) => Method::SubdivisionOverlap,
             Method::SubdivisionOverlap => Method::GridOverlapBlend,
             Method::GridOverlapBlend => Method::Default,
         }
@@ -35,16 +46,36 @@ impl Method {
     pub fn previous(self) -> Self {
         match self {
             Method::Subdivision => Method::Default,
-            Method::SubdivisionOverlap => Method::Subdivision,
+            Method::SubdivisionBlurBoundary(_) => Method::Subdivision,
+            Method::SubdivisionOverlap => Method::SubdivisionBlurBoundary((
+                GAUSSIAN_DEFAULT_SIGMA,
+                GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS,
+            )),
             Method::GridOverlapBlend => Method::SubdivisionOverlap,
             Method::Default => Method::GridOverlapBlend,
         }
     }
 
+    pub fn matches(&self, other: &Self) -> bool {
+        match self {
+            Method::Default => matches!(other, Method::Default),
+            Method::Subdivision => matches!(other, Method::Subdivision),
+            Method::SubdivisionBlurBoundary(_) => {
+                matches!(other, Method::SubdivisionBlurBoundary(_))
+            }
+            Method::SubdivisionOverlap => matches!(other, Method::SubdivisionOverlap),
+            Method::GridOverlapBlend => matches!(other, Method::GridOverlapBlend),
+        }
+    }
+
     pub fn iterator() -> Iter<'static, Method> {
-        static EROSION_METHODS: [Method; 4] = [
+        static EROSION_METHODS: &[Method] = &[
             Method::Default,
             Method::Subdivision,
+            Method::SubdivisionBlurBoundary((
+                GAUSSIAN_DEFAULT_SIGMA,
+                GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS,
+            )),
             Method::SubdivisionOverlap,
             Method::GridOverlapBlend,
         ];
@@ -143,6 +174,36 @@ pub fn subdivision_erode(
     params.num_iterations /= partitions.len();
 
     erode_multiple(&partitions, params, heightmap);
+}
+
+pub fn subdivision_blur_boundary_erode(
+    heightmap: &mut heightmap::Heightmap,
+    params: &erode::Parameters,
+    subdivisions: u32,
+    sigma: f32,
+    thickness: u16,
+) {
+    subdivision_erode(heightmap, params, subdivisions);
+    let blurred = heightmap.blur(sigma).unwrap();
+    let size = heightmap.width;
+    let mask = heightmap::create_heightmap_from_closure(
+        heightmap.width,
+        1.0,
+        &|x, y| -> HeightmapPrecision {
+            let chunk = size as i32 / 2i32.pow(subdivisions);
+            let dx = (chunk - x as i32 % chunk).abs().min(x as i32 % chunk);
+            let dy = (chunk - y as i32 % chunk).abs().min(y as i32 % chunk);
+            let d = dx.min(dy);
+            if d >= thickness as i32 {
+                0.0
+            } else {
+                (d as f32 / thickness as f32 * PI / 2.0).cos()
+            }
+        },
+    );
+    heightmap
+        .overlay(&blurred, &mask)
+        .expect("Subdivision Blur Boundary Erode failed.");
 }
 
 pub fn subdivision_overlap_erode(

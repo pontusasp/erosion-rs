@@ -5,7 +5,6 @@ use std::rc::Rc;
 
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;
-use rayon::prelude::*;
 
 pub mod canvas;
 pub mod panels;
@@ -137,29 +136,37 @@ impl BaseState {
         print!("Eroding using ");
         let mut heightmap: Heightmap = (*self.heightmap_base).clone();
         match self.erosion_method {
-            partitioning::Method::Default => {
-                println!(
-                    "{} method (no partitioning)",
-                    partitioning::Method::Default.to_string()
-                );
+            Method::Default => {
+                println!("{} method (no partitioning)", Method::Default.to_string());
                 partitioning::default_erode(&mut heightmap, &parameters, &self.drop_zone);
             }
-            partitioning::Method::Subdivision => {
-                println!("{} method", partitioning::Method::Subdivision.to_string());
+            Method::Subdivision => {
+                println!("{} method", Method::Subdivision.to_string());
                 partitioning::subdivision_erode(&mut heightmap, &parameters, SUBDIVISIONS);
             }
-            partitioning::Method::SubdivisionOverlap => {
+            Method::SubdivisionBlurBoundary((sigma, thickness)) => {
                 println!(
                     "{} method",
-                    partitioning::Method::SubdivisionOverlap.to_string()
+                    Method::SubdivisionBlurBoundary((
+                        partitioning::GAUSSIAN_DEFAULT_SIGMA,
+                        partitioning::GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS
+                    ))
+                    .to_string()
                 );
+                partitioning::subdivision_blur_boundary_erode(
+                    &mut heightmap,
+                    &parameters,
+                    SUBDIVISIONS,
+                    sigma,
+                    thickness,
+                );
+            }
+            Method::SubdivisionOverlap => {
+                println!("{} method", Method::SubdivisionOverlap.to_string());
                 partitioning::subdivision_overlap_erode(&mut heightmap, &parameters, SUBDIVISIONS);
             }
-            partitioning::Method::GridOverlapBlend => {
-                println!(
-                    "{} method",
-                    partitioning::Method::GridOverlapBlend.to_string()
-                );
+            Method::GridOverlapBlend => {
+                println!("{} method", Method::GridOverlapBlend.to_string());
                 partitioning::grid_overlap_blend_erode(
                     &mut heightmap,
                     &parameters,
