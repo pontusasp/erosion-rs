@@ -56,18 +56,18 @@ impl Heightmap {
 
     pub fn from_u8(data: &Vec<u8>, width: usize, height: usize) -> Self {
         let mut data_f32 = vec![vec![0.0; height]; width];
+        let data: Vec<&[u8]> = data.chunks(height).collect();
 
         data_f32.par_iter_mut().enumerate().for_each(|(i, col)| {
-            for j in (i * width)..((i + 1) * width) {
-                let value: HeightmapPrecision = data[j] as f32 / 255.0;
-                let k = j - i * width;
-                col[k] = value;
+            for j in 0..height {
+                let value: HeightmapPrecision = data[j][i] as f32 / 255.0;
+                col[j] = value;
             }
         });
 
         Heightmap::new(data_f32, width, height, 1.0, 1.0, None)
     }
-    
+
     fn get_gray_image(&self) -> Option<GrayImage> {
         let width = self.width.try_into().ok();
         let height = self.height.try_into().ok();
@@ -87,7 +87,11 @@ impl Heightmap {
         let gray_image: Option<GrayImage> = self.get_gray_image();
         let canny_edge_image = imageproc::edges::canny(&gray_image?, low, high);
 
-        Some(Heightmap::from_u8(canny_edge_image.as_raw(), self.width, self.height))
+        Some(Heightmap::from_u8(
+            canny_edge_image.as_raw(),
+            self.width,
+            self.height,
+        ))
     }
 
     pub fn get_range(&self) -> (HeightmapPrecision, HeightmapPrecision) {

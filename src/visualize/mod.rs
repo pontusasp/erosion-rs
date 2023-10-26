@@ -7,6 +7,7 @@ use egui::{Pos2, Rect};
 use macroquad::prelude::*;
 
 pub mod canvas;
+pub mod panels;
 pub mod ui;
 pub mod widgets;
 
@@ -34,14 +35,16 @@ impl SimulationState {
         let mut heightmap = erode::initialize_heightmap(settings).normalize();
         heightmap.calculate_total_height();
         let texture = Rc::new(heightmap_to_texture(&heightmap));
+        let heightmap = Rc::new(heightmap);
         SimulationState::Base(BaseState {
             id: new_id,
             erosion_method: Method::Default,
             params: parameters.clone(),
             drop_zone: DropZone::default(&heightmap),
-            heightmap_base: Rc::new(heightmap),
+            heightmap_base: Rc::clone(&heightmap),
             texture_heightmap_base: Rc::clone(&texture),
             texture_active: Rc::clone(&texture),
+            heightmap_active: Rc::clone(&heightmap),
         })
     }
 
@@ -60,6 +63,7 @@ impl SimulationState {
                 heightmap_base: Rc::clone(&eroded.heightmap_eroded),
                 texture_heightmap_base: Rc::clone(&eroded.texture_eroded),
                 texture_active: Rc::clone(&eroded.texture_eroded),
+                heightmap_active: Rc::clone(&eroded.heightmap_eroded),
             };
         }
 
@@ -88,11 +92,16 @@ impl SimulationState {
         }
     }
 
-    pub fn set_active_texture(&mut self, texture: &Rc<Texture2D>) {
-        match self {
-            SimulationState::Base(ref mut base) => base.set_active_texture(texture),
-            SimulationState::Eroded((ref mut base, _)) => base.set_active_texture(texture),
-        }
+    pub fn get_active(&self) -> Rc<Heightmap> {
+        Rc::clone(&self.base().heightmap_active)
+    }
+
+    pub fn get_active_texture(&self) -> Rc<Texture2D> {
+        Rc::clone(&self.base().texture_active)
+    }
+
+    pub fn set_active(&mut self, heightmap: Rc<Heightmap>, texture: Rc<Texture2D>) {
+        self.base_mut().set_active(heightmap, texture);
     }
 
     pub fn id(&self) -> usize {
@@ -119,6 +128,7 @@ pub struct BaseState {
     pub heightmap_base: Rc<Heightmap>,
     pub texture_heightmap_base: Rc<Texture2D>,
     pub texture_active: Rc<Texture2D>,
+    pub heightmap_active: Rc<Heightmap>,
 }
 
 impl BaseState {
@@ -173,6 +183,9 @@ impl BaseState {
             selected_diff: Rc::new(RefCell::new(self.id)),
             heightmap_eroded: Rc::new(heightmap),
             heightmap_difference: Rc::new(RefCell::new(vec![Rc::new(heightmap_diff)])),
+            heightmap_difference_normalized: Rc::new(RefCell::new(vec![Rc::new(
+                heightmap_diff_normalized,
+            )])),
             erosion_method: Rc::new(self.erosion_method),
             texture_eroded: Rc::new(heightmap_eroded_texture),
             texture_difference: Rc::new(RefCell::new(vec![Rc::new(heightmap_diff_texture)])),
@@ -182,8 +195,9 @@ impl BaseState {
         }
     }
 
-    pub fn set_active_texture(&mut self, texture: &Rc<Texture2D>) {
-        self.texture_active = Rc::clone(texture);
+    pub fn set_active(&mut self, heightmap: Rc<Heightmap>, texture: Rc<Texture2D>) {
+        self.heightmap_active = heightmap;
+        self.texture_active = texture;
     }
 }
 
@@ -194,6 +208,7 @@ pub struct ErodedState {
     pub selected_diff: Rc<RefCell<usize>>,
     pub heightmap_eroded: Rc<Heightmap>,
     pub heightmap_difference: Rc<RefCell<Vec<Rc<Heightmap>>>>,
+    pub heightmap_difference_normalized: Rc<RefCell<Vec<Rc<Heightmap>>>>,
     pub erosion_method: Rc<Method>,
     pub texture_eroded: Rc<Texture2D>,
     pub texture_difference: Rc<RefCell<Vec<Rc<Texture2D>>>>,
@@ -258,6 +273,8 @@ pub async fn run() {
         ui_events: Vec::<UiEvent>::new(),
         ui_events_previous: Vec::<UiEvent>::new(),
         frame_slots: None,
+        blur_sigma: 5.0,
+        canny_edge: (2.5, 50.0),
     };
 
     let mut state = AppState {

@@ -11,7 +11,7 @@ use crate::heightmap::io::export_heightmaps;
 use crate::{partitioning, visualize::heightmap_to_texture};
 
 use super::{
-    widgets::{
+    panels::{
         ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
     },
     AppState,
@@ -85,6 +85,9 @@ pub enum UiEvent {
     SelectState(usize),
     NextDiff,
     PreviousDiff,
+    ShowErodedLayer,
+    Blur,
+    EdgeDetect,
 }
 
 impl UiEvent {
@@ -113,6 +116,9 @@ impl UiEvent {
             UiEvent::SelectState(id) => format!("Select state #{}", id).to_string(),
             UiEvent::NextDiff => "Select next state for diff".to_string(),
             UiEvent::PreviousDiff => "Select previous state for diff".to_string(),
+            UiEvent::ShowErodedLayer => "Show eroded layer".to_string(),
+            UiEvent::Blur => "Blur currently selected state".to_string(),
+            UiEvent::EdgeDetect => "Apply canny edge detection to selected state".to_string(),
         }
     }
 }
@@ -129,6 +135,8 @@ pub struct UiState {
     pub ui_events: Vec<UiEvent>,
     pub ui_events_previous: Vec<UiEvent>,
     pub frame_slots: Option<FrameSlots>,
+    pub blur_sigma: f32,
+    pub canny_edge: (f32, f32),
 }
 
 impl UiState {
@@ -204,6 +212,9 @@ pub const KEYBINDS: &[UiKeybind] = &[
         UiKey::Single(KEYCODE_TOGGLE_METRICS_UI),
         UiEvent::ToggleUi(UiWindow::Metrics),
     ),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::V), UiEvent::ShowErodedLayer),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::B), UiEvent::Blur),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::C), UiEvent::EdgeDetect),
 ];
 
 pub fn poll_ui_keybinds(ui_state: &mut UiState) {
@@ -290,6 +301,10 @@ fn get_or_calculate_selected_diff_index(state: &AppState) -> Option<usize> {
                 .borrow_mut()
                 .push(Rc::new(heightmap_diff));
             eroded
+                .heightmap_difference_normalized
+                .borrow_mut()
+                .push(Rc::new(heightmap_diff_normalized));
+            eroded
                 .texture_difference
                 .borrow_mut()
                 .push(Rc::new(heightmap_diff_texture));
@@ -308,19 +323,22 @@ fn get_or_calculate_selected_diff_index(state: &AppState) -> Option<usize> {
     }
 }
 
-pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
-    {
-        let texture = if let Some(eroded) = state.simulation_state().eroded() {
-            Some(Rc::clone(&eroded.texture_eroded))
-        } else {
-            None
-        };
-
-        if let Some(texture) = texture {
-            state.simulation_state_mut().set_active_texture(&texture);
-        }
+fn try_set_eroded_layer_active(state: &mut AppState) {
+    let texture = if let Some(eroded) = state.simulation_state().eroded() {
+        Some((
+            Rc::clone(&eroded.heightmap_eroded),
+            Rc::clone(&eroded.texture_eroded),
+        ))
+    } else {
+        None
     };
 
+    if let Some((heightmap, texture)) = texture {
+        state.simulation_state_mut().set_active(heightmap, texture);
+    }
+}
+
+pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
     for event in ui_state.ui_events.iter() {
         match event {
             UiEvent::NewHeightmap => {
@@ -356,11 +374,13 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                             &base.heightmap_base,
                             &eroded.heightmap_eroded,
                             &eroded.heightmap_difference.borrow()[diff_index],
+                            &eroded.heightmap_difference_normalized.borrow()[diff_index],
                         ],
                         vec![
                             "output/heightmap",
                             "output/heightmap_eroded",
                             "output/heightmap_diff",
+                            "output/heightmap_diff_normalized",
                         ],
                     );
                 }
@@ -391,39 +411,46 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 state
                     .simulation_base_indices
                     .push(state.simulation_states.len() - 1);
+                try_set_eroded_layer_active(state);
             }
             UiEvent::Quit => {
                 println!("Quitting...");
                 ui_state.application_quit = true;
             }
             UiEvent::ShowBaseLayer => {
+                let heightmap = Rc::clone(&state.simulation_state().base().heightmap_base);
                 let texture = Rc::clone(&state.simulation_state().base().texture_heightmap_base);
-                state.simulation_state_mut().set_active_texture(&texture);
+                state.simulation_state_mut().set_active(heightmap, texture);
             }
             UiEvent::ShowDifference => {
                 let texture = if let Some(eroded) = state.simulation_state().eroded() {
                     let diff_index: usize = get_or_calculate_selected_diff_index(state).unwrap();
-                    Some(Rc::clone(&eroded.texture_difference.borrow()[diff_index]))
+                    let diff_texture = Rc::clone(&eroded.texture_difference.borrow()[diff_index]);
+                    let diff_heightmap =
+                        Rc::clone(&eroded.heightmap_difference.borrow()[diff_index]);
+                    Some((diff_heightmap, diff_texture))
                 } else {
                     None
                 };
 
-                if let Some(texture) = texture {
-                    state.simulation_state_mut().set_active_texture(&texture);
+                if let Some((heightmap, texture)) = texture {
+                    state.simulation_state_mut().set_active(heightmap, texture);
                 }
             }
             UiEvent::ShowDifferenceNormalized => {
                 let texture = if let Some(eroded) = state.simulation_state().eroded() {
                     let diff_index: usize = get_or_calculate_selected_diff_index(state).unwrap();
-                    Some(Rc::clone(
-                        &eroded.texture_difference_normalized.borrow()[diff_index],
-                    ))
+                    let diff_texture =
+                        Rc::clone(&eroded.texture_difference_normalized.borrow()[diff_index]);
+                    let diff_heightmap =
+                        Rc::clone(&eroded.heightmap_difference_normalized.borrow()[diff_index]);
+                    Some((diff_heightmap, diff_texture))
                 } else {
                     None
                 };
 
-                if let Some(texture) = texture {
-                    state.simulation_state_mut().set_active_texture(&texture);
+                if let Some((heightmap, texture)) = texture {
+                    state.simulation_state_mut().set_active(heightmap, texture);
                 }
             }
             UiEvent::NextPartitioningMethod => {
@@ -478,6 +505,34 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                     let len = state.simulation_base_indices.len();
                     selected_diff = (selected_diff + len - 1) % len;
                     eroded.selected_diff.replace(selected_diff);
+                }
+            }
+            UiEvent::ShowErodedLayer => {
+                try_set_eroded_layer_active(state);
+            }
+
+            UiEvent::Blur => {
+                if let Some(heightmap) = state
+                    .simulation_state()
+                    .get_active()
+                    .blur(ui_state.blur_sigma)
+                {
+                    let texture = Rc::new(heightmap_to_texture(&heightmap));
+                    let heightmap = Rc::new(heightmap);
+                    state.simulation_state_mut().set_active(heightmap, texture);
+                } else {
+                    eprintln!("Failed to blur selected state!");
+                }
+            }
+            UiEvent::EdgeDetect => {
+                let (low, high) = ui_state.canny_edge;
+                if let Some(heightmap) = state.simulation_state().get_active().canny_edge(low, high)
+                {
+                    let texture = Rc::new(heightmap_to_texture(&heightmap));
+                    let heightmap = Rc::new(heightmap);
+                    state.simulation_state_mut().set_active(heightmap, texture);
+                } else {
+                    eprintln!("Failed to edge detect selected state!");
                 }
             }
         };
