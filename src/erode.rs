@@ -386,7 +386,7 @@ pub fn add_metadata(state: &State, heightmap: &mut Heightmap) {
 }
 
 pub fn initialize_heightmap(
-    settings: Option<&heightmap::HeightmapSettings>,
+    settings: Option<&heightmap::ProceduralHeightmapSettings>,
 ) -> heightmap::Heightmap {
     let size: usize = 512;
 
@@ -394,12 +394,12 @@ pub fn initialize_heightmap(
 
     if debug {
         heightmap::create_heightmap_from_preset(
-            heightmap::HeightmapPresets::CenteredHillSmallGradient,
+            &heightmap::HeightmapType::CenteredHillSmallGradient,
             size,
         )
     } else {
         heightmap::create_perlin_heightmap(
-            &settings.unwrap_or(&heightmap::HeightmapSettings::default()),
+            &settings.unwrap_or(&heightmap::ProceduralHeightmapSettings::default()),
         )
     }
 }

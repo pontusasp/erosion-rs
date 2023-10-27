@@ -13,13 +13,14 @@ pub mod widgets;
 
 use crate::erode::DropZone;
 use crate::erode::Parameters;
-use crate::heightmap::{Heightmap, HeightmapSettings};
+use crate::heightmap::{Heightmap, HeightmapType};
 use crate::partitioning::Method;
 use crate::visualize::ui::*;
-use crate::{erode, partitioning};
+use crate::partitioning;
 
 const SUBDIVISIONS: u32 = 3;
 const GRID_SIZE: usize = 6;
+const PRESET_HEIGHTMAP_SIZE: usize = 512;
 
 pub enum SimulationState {
     Base(BaseState),
@@ -29,10 +30,10 @@ pub enum SimulationState {
 impl SimulationState {
     pub fn get_new_base(
         new_id: usize,
-        settings: Option<&HeightmapSettings>,
+        heightmap_type: &HeightmapType,
         parameters: &Parameters,
     ) -> Self {
-        let mut heightmap = erode::initialize_heightmap(settings).normalize();
+        let mut heightmap = heightmap::create_heightmap_from_preset(heightmap_type, PRESET_HEIGHTMAP_SIZE);
         heightmap.calculate_total_height();
         let texture = Rc::new(heightmap_to_texture(&heightmap));
         let heightmap = Rc::new(heightmap);
@@ -236,7 +237,7 @@ impl ErodedState {
 
 pub struct AppParameters {
     pub erosion_params: Parameters,
-    pub heightmap_settings: HeightmapSettings,
+    pub heightmap_type: HeightmapType,
     pub auto_apply: bool,
 }
 
@@ -244,7 +245,7 @@ impl Default for AppParameters {
     fn default() -> Self {
         AppParameters {
             erosion_params: Parameters::default(),
-            heightmap_settings: HeightmapSettings::default(),
+            heightmap_type: HeightmapType::default(),
             auto_apply: true,
         }
     }
@@ -288,7 +289,7 @@ pub async fn run() {
     let mut state = AppState {
         simulation_states: vec![SimulationState::get_new_base(
             0,
-            None,
+            &HeightmapType::default(),
             &Parameters::default(),
         )],
         simulation_base_indices: vec![0],
@@ -304,7 +305,7 @@ pub async fn run() {
         if ui_state.simulation_regenerate {
             state.simulation_states.push(SimulationState::get_new_base(
                 state.simulation_states.len(),
-                Some(&state.parameters.heightmap_settings),
+                &state.parameters.heightmap_type,
                 &state.parameters.erosion_params,
             ));
             state

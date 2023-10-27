@@ -1,8 +1,9 @@
 use bracket_noise::prelude::*;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 use crate::math::{UVector2, Vector2};
 
@@ -496,9 +497,9 @@ impl PartialHeightmap {
     }
 }
 
-pub enum HeightmapPresets {
-    // Flat,
-    // Random,
+#[derive(PartialEq, Copy, Clone)]
+pub enum HeightmapType {
+    Procedural(ProceduralHeightmapSettings),
     YGradient,
     InvertedYGradient,
     YHyperbolaGradient,
@@ -506,32 +507,73 @@ pub enum HeightmapPresets {
     CenteredHillSmallGradient,
 }
 
-pub fn create_heightmap_from_preset(preset: HeightmapPresets, size: usize) -> Heightmap {
+impl Default for HeightmapType {
+    fn default() -> Self {
+        HeightmapType::Procedural(ProceduralHeightmapSettings::default())
+    }
+}
+
+impl Display for HeightmapType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HeightmapType::Procedural(_) => f.collect_str("Procedural"),
+            HeightmapType::YGradient => f.collect_str("Vertical Gradient 1"),
+            HeightmapType::InvertedYGradient => f.collect_str("Vertical Gradient 2"),
+            HeightmapType::YHyperbolaGradient => f.collect_str("Vertical Hyperbola Gradient"),
+            HeightmapType::CenteredHillGradient => f.collect_str("Centered Hill"),
+            HeightmapType::CenteredHillSmallGradient => f.collect_str("Centered Hill Small"),
+        }
+    }
+}
+
+impl HeightmapType {
+    pub fn first() -> Self {
+        HeightmapType::Procedural(ProceduralHeightmapSettings::default())
+    }
+}
+
+impl Iterator for HeightmapType {
+    type Item = Self;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        *self = match self {
+            HeightmapType::Procedural(_) => HeightmapType::YGradient,
+            HeightmapType::YGradient => HeightmapType::InvertedYGradient,
+            HeightmapType::InvertedYGradient => HeightmapType::YHyperbolaGradient,
+            HeightmapType::YHyperbolaGradient => HeightmapType::CenteredHillGradient,
+            HeightmapType::CenteredHillGradient => HeightmapType::CenteredHillSmallGradient,
+            HeightmapType::CenteredHillSmallGradient => return None,
+        };
+        Some(*self)
+    }
+}
+
+pub fn create_heightmap_from_preset(preset: &HeightmapType, size: usize) -> Heightmap {
     match preset {
-        HeightmapPresets::YGradient => {
+        HeightmapType::YGradient => {
             create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| {
                 y as HeightmapPrecision / size as HeightmapPrecision
             })
         }
-        HeightmapPresets::InvertedYGradient => {
+        HeightmapType::InvertedYGradient => {
             create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| {
                 1.0 - y as HeightmapPrecision / size as HeightmapPrecision
             })
         }
-        HeightmapPresets::YHyperbolaGradient => {
+        HeightmapType::YHyperbolaGradient => {
             create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| {
                 let gradient = y as HeightmapPrecision / size as HeightmapPrecision;
                 gradient.powi(2)
             })
         }
-        HeightmapPresets::CenteredHillGradient => {
+        HeightmapType::CenteredHillGradient => {
             create_heightmap_from_closure(size, 1.0, &|x: usize, y: usize| {
                 let gradient = (x as HeightmapPrecision - size as HeightmapPrecision / 2.0).powi(2)
                     + (y as HeightmapPrecision - size as HeightmapPrecision / 2.0).powi(2);
                 1.0 - gradient / (size as HeightmapPrecision / 2.0).powi(2)
             })
         }
-        HeightmapPresets::CenteredHillSmallGradient => {
+        HeightmapType::CenteredHillSmallGradient => {
             create_heightmap_from_closure(size, 1.0, &|x: usize, y: usize| {
                 let radius = size as HeightmapPrecision / 2.0;
                 let x = x as HeightmapPrecision;
@@ -549,6 +591,9 @@ pub fn create_heightmap_from_preset(preset: HeightmapPresets, size: usize) -> He
                     0.0
                 }
             })
+        }
+        HeightmapType::Procedural(settings) => {
+            create_perlin_heightmap(&settings)
         }
     }
 }
@@ -570,7 +615,8 @@ pub fn create_heightmap_from_closure(
     Heightmap::new(data, size, size, 1.0, original_depth, None)
 }
 
-pub struct HeightmapSettings {
+#[derive(PartialEq, Copy, Clone)]
+pub struct ProceduralHeightmapSettings {
     pub seed: u64,
     pub noise_type: NoiseType,
     pub fractal_type: FractalType,
@@ -582,9 +628,15 @@ pub struct HeightmapSettings {
     pub height: usize,
 }
 
-impl Default for HeightmapSettings {
+impl ProceduralHeightmapSettings {
+    pub fn reset(&mut self) {
+        *self = ProceduralHeightmapSettings::default()
+    }
+}
+
+impl Default for ProceduralHeightmapSettings {
     fn default() -> Self {
-        HeightmapSettings {
+        ProceduralHeightmapSettings {
             seed: 1337,
             noise_type: NoiseType::PerlinFractal,
             fractal_type: FractalType::FBM,
@@ -598,7 +650,7 @@ impl Default for HeightmapSettings {
     }
 }
 
-pub fn create_perlin_heightmap(settings: &HeightmapSettings) -> Heightmap {
+pub fn create_perlin_heightmap(settings: &ProceduralHeightmapSettings) -> Heightmap {
     let mut noise = FastNoise::seeded(settings.seed);
     noise.set_noise_type(settings.noise_type);
     noise.set_fractal_type(settings.fractal_type);
