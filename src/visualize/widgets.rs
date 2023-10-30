@@ -115,6 +115,15 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
             if ui.button("Blur + Edge Detect").clicked() {
                 ui_state.ui_events.push(UiEvent::BlurEdgeDetect);
             }
+
+            let (mut iso_value, mut iso_error) = ui_state.isoline;
+            let mut updated = false;
+            updated = updated || ui.add(egui::Slider::new(&mut iso_value, 0.0..=1.0).text("Isoline value")).changed();
+            updated = updated || ui.add(egui::Slider::new(&mut iso_error, 0.0..=0.1).text("Isoline error")).changed();
+            if ui.button("Show isoline").clicked() || updated {
+                ui_state.isoline = (iso_value, iso_error);
+                ui_state.ui_events.push(UiEvent::Isoline);
+            }
         });
     ui.separator();
 }
@@ -471,29 +480,33 @@ pub fn heightmap_generation_settings(
             if state.simulation_state().eroded().is_none()
                 && state.simulation_state().id() == state.simulation_base_indices.len() - 1
             {
+                let mut heightmap_type = state.parameters.heightmap_type;
                 egui::ComboBox::from_label("Heightmap Type")
                     .selected_text(format!(
                         "{}",
-                        state.parameters.heightmap_type
+                        heightmap_type
                     ))
                     .show_ui(ui, |ui| {
                         for ref mut t in HeightmapType::first() {
                             ui.selectable_value(
-                                &mut state.parameters.heightmap_type,
+                                &mut heightmap_type,
                                 *t,
                                 format!("{}", t),
                             );
                         }
                     });
 
-                let mut heightmap_type = state.parameters.heightmap_type;
                 match heightmap_type {
                     HeightmapType::Procedural(ref mut settings) => {
                         procedural_generation_settings(settings, ui, ui_state, state);
                     }
                     _ => (),
                 }
-                state.parameters.heightmap_type = heightmap_type;
+
+                if heightmap_type != state.parameters.heightmap_type {
+                    state.parameters.heightmap_type = heightmap_type;
+                    ui_state.ui_events.push(UiEvent::ReplaceHeightmap);
+                }
             } else {
                 ui.label("Parameters only available for new base layers.");
                 if ui

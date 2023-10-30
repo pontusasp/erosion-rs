@@ -284,6 +284,7 @@ pub async fn run() {
         frame_slots: None,
         blur_sigma: 5.0,
         canny_edge: (2.5, 50.0),
+        isoline: (0.5, 0.05),
     };
 
     let mut state = AppState {

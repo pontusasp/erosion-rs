@@ -90,6 +90,7 @@ pub enum UiEvent {
     Blur,
     EdgeDetect,
     BlurEdgeDetect,
+    Isoline,
 }
 
 impl UiEvent {
@@ -124,6 +125,7 @@ impl UiEvent {
             UiEvent::BlurEdgeDetect => {
                 "Apply blur then canny edge detection to selected state".to_string()
             }
+            UiEvent::Isoline => "Show isoline".to_string(),
         }
     }
 }
@@ -142,6 +144,7 @@ pub struct UiState {
     pub frame_slots: Option<FrameSlots>,
     pub blur_sigma: f32,
     pub canny_edge: (f32, f32),
+    pub isoline: (f32, f32),
 }
 
 impl UiState {
@@ -221,6 +224,7 @@ pub const KEYBINDS: &[UiKeybind] = &[
     UiKeybind::Pressed(UiKey::Single(KeyCode::B), UiEvent::Blur),
     UiKeybind::Pressed(UiKey::Single(KeyCode::C), UiEvent::EdgeDetect),
     UiKeybind::Pressed(UiKey::Single(KeyCode::X), UiEvent::BlurEdgeDetect),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::I), UiEvent::Isoline),
 ];
 
 pub fn poll_ui_keybinds(ui_state: &mut UiState) {
@@ -556,6 +560,12 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 } else {
                     eprintln!("Failed to blur or edge detect selected state!");
                 }
+            }
+            UiEvent::Isoline => {
+                let (value, error) = ui_state.isoline;
+                let hm = Rc::new(state.simulation_state().get_heightmap().isoline(value, error));
+                let tex = Rc::new(heightmap_to_texture(&hm));
+                state.simulation_state_mut().set_active(hm, tex);
             }
         };
     }

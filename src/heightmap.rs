@@ -399,6 +399,19 @@ impl Heightmap {
         Ok(())
     }
 
+    pub fn isoline(&self, height: HeightmapPrecision, error: HeightmapPrecision) -> Self {
+        let func = |x: usize, y: usize| -> HeightmapPrecision {
+            let h = self.data[x][y];
+            if height - error < h && h < height + error {
+                1.0
+            } else {
+                0.0
+            }
+        };
+        
+        create_heightmap_from_closure(self.width, 1.0, &func)
+    }
+
     pub fn metadata_add(&mut self, key: &str, value: String) {
         if let Some(hashmap) = &mut self.metadata {
             hashmap.insert(key.to_string(), value);
