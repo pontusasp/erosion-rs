@@ -9,6 +9,7 @@ use super::SimulationState;
 use crate::heightmap::io::export_heightmaps;
 
 use crate::{partitioning, visualize::heightmap_to_texture};
+use crate::math::UVector2;
 
 use super::{
     mix_heightmap_to_texture,
@@ -144,7 +145,7 @@ pub struct UiState {
     pub frame_slots: Option<FrameSlots>,
     pub blur_sigma: f32,
     pub canny_edge: (f32, f32),
-    pub isoline: (f32, f32),
+    pub isoline: (f32, f32, bool, UVector2),
 }
 
 impl UiState {
@@ -562,8 +563,14 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 }
             }
             UiEvent::Isoline => {
-                let (value, error) = ui_state.isoline;
-                let hm = Rc::new(state.simulation_state().get_heightmap().isoline(value, error));
+                let (value, error, should_flood, flood) = ui_state.isoline;
+                let isoline = state.simulation_state().get_heightmap().isoline(value, error);
+                let flooded = if should_flood {
+                    isoline.flood_less_than(value - error, 0.5, &flood).0.and_then(|h| Some(h))
+                } else {
+                    None
+                };
+                let hm = Rc::new(flooded.unwrap_or(isoline));
                 let tex = Rc::new(heightmap_to_texture(&hm));
                 state.simulation_state_mut().set_active(hm, tex);
             }

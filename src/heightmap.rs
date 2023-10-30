@@ -2,8 +2,11 @@ use bracket_noise::prelude::*;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt::{Display, Formatter};
+use std::mem;
+use std::ops::AddAssign;
+use std::sync::{Arc, Mutex};
 
 use crate::math::{UVector2, Vector2};
 
@@ -408,8 +411,52 @@ impl Heightmap {
                 0.0
             }
         };
-        
+
         create_heightmap_from_closure(self.width, 1.0, &func)
+    }
+
+    pub fn flood_less_than(&self, height: HeightmapPrecision, with: HeightmapPrecision, from: &UVector2) -> (Option<Self>, usize) {
+        if let Some(h) = self.get(from.x, from.y) {
+            if h >= height {
+                return (None, 0);
+            }
+        }
+        if height > with {
+            return (None, 0);
+        }
+        let flooded = Arc::new(Mutex::new(0));
+        let heightmap = Arc::new(Mutex::new(self.clone()));
+        heightmap.lock().unwrap().data[from.x][from.y] = with;
+        let mut queue = Arc::new(Mutex::new(VecDeque::new()));
+        let mut last_queue = Arc::new(Mutex::new(VecDeque::new()));
+        queue.lock().unwrap().push_back(*from);
+
+        while !queue.lock().unwrap().is_empty() {
+            last_queue.lock().unwrap().clear();
+            mem::swap(&mut queue, &mut last_queue);
+            last_queue.lock().unwrap().par_iter().for_each(|pixel| {
+                let adj = &[
+                    (pixel.x != 0, (pixel.x - 1, pixel.y)),
+                    (pixel.x != self.width - 1, (pixel.x + 1, pixel.y)),
+                    (pixel.y != 0, (pixel.x, pixel.y - 1)),
+                    (pixel.y != self.height - 1, (pixel.x, pixel.y + 1)),
+                ];
+                for (has_edge, (x, y)) in *adj {
+                    if has_edge {
+                        let data = &mut heightmap.lock().unwrap().data;
+                        if data[x][y] < height {
+                            data[x][y] = with;
+                            flooded.lock().unwrap().add_assign(1);
+                            queue.lock().unwrap().push_back(UVector2::new(x, y));
+                        }
+                    }
+                }
+            });
+        }
+
+        let heightmap = heightmap.lock().unwrap().clone();
+        let flooded = flooded.lock().unwrap().clone();
+        (Some(heightmap), flooded)
     }
 
     pub fn metadata_add(&mut self, key: &str, value: String) {

@@ -14,6 +14,7 @@ pub mod widgets;
 use crate::erode::DropZone;
 use crate::erode::Parameters;
 use crate::heightmap::{Heightmap, HeightmapType};
+use crate::math::UVector2;
 use crate::partitioning::Method;
 use crate::visualize::ui::*;
 use crate::partitioning;
@@ -275,7 +276,7 @@ pub async fn run() {
         show_ui_keybinds: false,
         show_ui_control_panel: true,
         show_ui_metadata: false,
-        show_ui_metrics: true,
+        show_ui_metrics: false,
         simulation_clear: true,
         simulation_regenerate: false,
         application_quit: false,
@@ -284,7 +285,7 @@ pub async fn run() {
         frame_slots: None,
         blur_sigma: 5.0,
         canny_edge: (2.5, 50.0),
-        isoline: (0.5, 0.05),
+        isoline: (0.5, 0.05, false, UVector2::new(0, 0)),
     };
 
     let mut state = AppState {

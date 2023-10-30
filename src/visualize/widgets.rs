@@ -78,7 +78,7 @@ fn draw_polyline(
     }
 }
 
-pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
+pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState, state: &AppState) {
     egui::CollapsingHeader::new("Post Processing")
         .default_open(true)
         .show(ui, |ui| {
@@ -116,12 +116,27 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                 ui_state.ui_events.push(UiEvent::BlurEdgeDetect);
             }
 
-            let (mut iso_value, mut iso_error) = ui_state.isoline;
+            ui.separator();
+
+            let (mut iso_value, mut iso_error, mut should_flood, mut flood) = ui_state.isoline;
             let mut updated = false;
             updated = updated || ui.add(egui::Slider::new(&mut iso_value, 0.0..=1.0).text("Isoline value")).changed();
             updated = updated || ui.add(egui::Slider::new(&mut iso_error, 0.0..=0.1).text("Isoline error")).changed();
-            if ui.button("Show isoline").clicked() || updated {
-                ui_state.isoline = (iso_value, iso_error);
+            if ui.button("Show isoline").clicked() {
+                updated = true;
+            }
+
+            updated = updated || ui.add(egui::Slider::new(&mut flood.x, 0..=state.simulation_state().get_active().width - 1).text("Flood X")).changed();
+            updated = updated || ui.add(egui::Slider::new(&mut flood.y, 0..=state.simulation_state().get_active().height - 1).text("Flood Y")).changed();
+            let should_flood_ = should_flood.clone();
+            updated = updated || ui.toggle_value(&mut should_flood, if should_flood_ {
+                "Disable Flooding"
+            } else {
+                "Enable Flooding"
+            }).changed();
+
+            if updated {
+                ui_state.isoline = (iso_value, iso_error, should_flood, flood);
                 ui_state.ui_events.push(UiEvent::Isoline);
             }
         });
