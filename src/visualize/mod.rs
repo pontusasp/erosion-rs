@@ -291,6 +291,7 @@ pub async fn run() {
             should_flood: false,
             flooded_areas_lower: None,
             flooded_areas_higher: None,
+            blur_augmentation: (false, 1.0),
         }
     };
 

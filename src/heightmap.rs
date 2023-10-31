@@ -84,6 +84,28 @@ impl Heightmap {
         Some(blurred_heightmap)
     }
 
+    pub fn boolean(mut self, threshold: HeightmapPrecision, round_up: bool, invert: bool) -> Self {
+        let one = if invert { 0.0 } else { 1.0 };
+        let zero = 1.0 - one;
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let d = self.data[x][y];
+                self.data[x][y] = if d == threshold {
+                    if round_up {
+                        one
+                    } else {
+                        zero
+                    }
+                } else if d < threshold {
+                    zero
+                } else {
+                    one
+                }
+            }
+        }
+        self
+    }
+
     pub fn canny_edge(&self, low: f32, high: f32) -> Option<Heightmap> {
         let gray_image: Option<GrayImage> = self.get_gray_image();
         let canny_edge_image = imageproc::edges::canny(&gray_image?, low, high);
@@ -433,6 +455,45 @@ impl Heightmap {
             }
         }
         points
+    }
+
+    pub fn flood_empty(&self, with: HeightmapPrecision, from: &Vec<UVector2>) -> (Self, usize) {
+        let mut flooded = 0;
+        let mut heightmap = self.clone();
+        let mut queue = VecDeque::new();
+        for from in from.iter() {
+            if let Some(h) = heightmap.get(from.x, from.y) {
+                if h != 0.0 {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            flooded += 1;
+            heightmap.data[from.x][from.y] = with;
+            queue.push_back(*from);
+
+            while !queue.is_empty() {
+                let pixel = queue.pop_front().unwrap();
+                let adj = &[
+                    (pixel.x != 0, (pixel.x - 1, pixel.y)),
+                    (pixel.x != self.width - 1, (pixel.x + 1, pixel.y)),
+                    (pixel.y != 0, (pixel.x, pixel.y - 1)),
+                    (pixel.y != self.height - 1, (pixel.x, pixel.y + 1)),
+                ];
+                for (has_edge, (x, y)) in *adj {
+                    if has_edge {
+                        let data = &mut heightmap.data;
+                        if data[x][y] == 0.0 {
+                            data[x][y] = with;
+                            queue.push_back(UVector2::new(x, y));
+                        }
+                    }
+                }
+            }
+        }
+
+        (heightmap, flooded)
     }
 
     pub fn flood_less_than(&self, height: HeightmapPrecision, with: HeightmapPrecision, from: &Vec<UVector2>) -> (Self, usize) {

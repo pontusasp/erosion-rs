@@ -139,6 +139,7 @@ pub struct IsolineProperties {
     pub should_flood: bool,
     pub flooded_areas_lower: Option<usize>,
     pub flooded_areas_higher: Option<usize>,
+    pub blur_augmentation: (bool, f32),
 }
 
 pub struct UiState {
@@ -575,17 +576,24 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             UiEvent::Isoline => {
                 let props = ui_state.isoline;
                 let heightmap = state.simulation_state().get_heightmap();
-                let isoline = heightmap.isoline(props.height, props.error);
+                let isoline = {
+                    let h = heightmap.isoline(props.height, props.error);
+                    if props.blur_augmentation.0 {
+                        h.blur(props.blur_augmentation.1).and_then(|b| Some(b.boolean(0.0, false, false))).unwrap_or(h)
+                    } else {
+                        h
+                    }
+                };
                 let flooded = if props.should_flood {
                     let flood = heightmap.get_flood_points(&isoline, props.flood_lower);
-                    let (flooded, areas) = isoline.flood_less_than(props.height - props.error, 1f32.min(props.height * 2.0), &flood);
-                    let flood_inverse = heightmap.get_flood_points(&flooded, !props.flood_lower);
                     let flood_amount = 1f32.min(props.height + (1.0 - props.height) / 3.0);
+                    let (flooded, areas) = isoline.flood_empty(flood_amount, &flood);
+                    let flood_inverse = heightmap.get_flood_points(&flooded, !props.flood_lower);
                     if props.flood_lower {
                         ui_state.isoline.flooded_areas_lower = Some(areas);
-                        ui_state.isoline.flooded_areas_higher = Some(flooded.flood_less_than(props.height - props.error, flood_amount, &flood_inverse).1);
+                        ui_state.isoline.flooded_areas_higher = Some(flooded.flood_empty(flood_amount, &flood_inverse).1);
                     } else {
-                        ui_state.isoline.flooded_areas_lower = Some(flooded.flood_less_than(props.height - props.error, flood_amount, &flood_inverse).1);
+                        ui_state.isoline.flooded_areas_lower = Some(flooded.flood_empty(flood_amount, &flood_inverse).1);
                         ui_state.isoline.flooded_areas_higher = Some(areas);
                     }
                     Some(flooded)

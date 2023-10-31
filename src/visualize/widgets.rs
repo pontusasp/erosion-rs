@@ -138,6 +138,17 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
             } else {
                 "Enable Flooding"
             }).changed();
+
+            let blur_augmentation_ = props.blur_augmentation.0.clone();
+            updated = updated || ui.toggle_value(&mut props.blur_augmentation.0, if blur_augmentation_ {
+                "Blur augmentation active"
+            } else {
+                "Blur augmentation inactive"
+            }).changed();
+            if blur_augmentation_ {
+                updated = updated || ui.add(egui::Slider::new(&mut props.blur_augmentation.1, 0.0..=5.0).text("Blur amount")).changed();
+            }
+
             let lower = props.flooded_areas_lower.unwrap_or(0);
             let higher = props.flooded_areas_higher.unwrap_or(0);
             let percentage = if higher > 0 {
