@@ -103,7 +103,7 @@ pub fn ui_side_panel(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &m
                 erosion_parameter_selection(ui, state);
                 layer_selection(ui, state);
                 heightmap_generation_settings(ui, ui_state, state);
-                post_processing(ui, ui_state, state);
+                post_processing(ui, ui_state);
             });
         },
     );

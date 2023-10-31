@@ -9,7 +9,7 @@ use super::SimulationState;
 use crate::heightmap::io::export_heightmaps;
 
 use crate::{partitioning, visualize::heightmap_to_texture};
-use crate::math::UVector2;
+use crate::heightmap::HeightmapPrecision;
 
 use super::{
     mix_heightmap_to_texture,
@@ -131,6 +131,16 @@ impl UiEvent {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub struct IsolineProperties {
+    pub height: HeightmapPrecision,
+    pub error: HeightmapPrecision,
+    pub flood_lower: bool,
+    pub should_flood: bool,
+    pub flooded_areas_lower: Option<usize>,
+    pub flooded_areas_higher: Option<usize>,
+}
+
 pub struct UiState {
     pub show_ui_all: bool,
     pub show_ui_keybinds: bool,
@@ -145,7 +155,7 @@ pub struct UiState {
     pub frame_slots: Option<FrameSlots>,
     pub blur_sigma: f32,
     pub canny_edge: (f32, f32),
-    pub isoline: (f32, f32, bool, UVector2),
+    pub isoline: IsolineProperties,
 }
 
 impl UiState {
@@ -563,10 +573,22 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 }
             }
             UiEvent::Isoline => {
-                let (value, error, should_flood, flood) = ui_state.isoline;
-                let isoline = state.simulation_state().get_heightmap().isoline(value, error);
-                let flooded = if should_flood {
-                    isoline.flood_less_than(value - error, 0.5, &flood).0.and_then(|h| Some(h))
+                let props = ui_state.isoline;
+                let heightmap = state.simulation_state().get_heightmap();
+                let isoline = heightmap.isoline(props.height, props.error);
+                let flooded = if props.should_flood {
+                    let flood = heightmap.get_flood_points(&isoline, props.flood_lower);
+                    let (flooded, areas) = isoline.flood_less_than(props.height - props.error, 1f32.min(props.height * 2.0), &flood);
+                    let flood_inverse = heightmap.get_flood_points(&flooded, !props.flood_lower);
+                    let flood_amount = 1f32.min(props.height + (1.0 - props.height) / 3.0);
+                    if props.flood_lower {
+                        ui_state.isoline.flooded_areas_lower = Some(areas);
+                        ui_state.isoline.flooded_areas_higher = Some(flooded.flood_less_than(props.height - props.error, flood_amount, &flood_inverse).1);
+                    } else {
+                        ui_state.isoline.flooded_areas_lower = Some(flooded.flood_less_than(props.height - props.error, flood_amount, &flood_inverse).1);
+                        ui_state.isoline.flooded_areas_higher = Some(areas);
+                    }
+                    Some(flooded)
                 } else {
                     None
                 };

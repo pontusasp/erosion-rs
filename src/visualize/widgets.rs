@@ -78,7 +78,7 @@ fn draw_polyline(
     }
 }
 
-pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState, state: &AppState) {
+pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
     egui::CollapsingHeader::new("Post Processing")
         .default_open(true)
         .show(ui, |ui| {
@@ -118,25 +118,37 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState, state: &AppSta
 
             ui.separator();
 
-            let (mut iso_value, mut iso_error, mut should_flood, mut flood) = ui_state.isoline;
+            let mut props = ui_state.isoline;
             let mut updated = false;
-            updated = updated || ui.add(egui::Slider::new(&mut iso_value, 0.0..=1.0).text("Isoline value")).changed();
-            updated = updated || ui.add(egui::Slider::new(&mut iso_error, 0.0..=0.1).text("Isoline error")).changed();
+            updated = updated || ui.add(egui::Slider::new(&mut props.height, 0.0..=1.0).text("Isoline value")).changed();
+            updated = updated || ui.add(egui::Slider::new(&mut props.error, 0.0..=0.1).text("Isoline error")).changed();
             if ui.button("Show isoline").clicked() {
                 updated = true;
             }
 
-            updated = updated || ui.add(egui::Slider::new(&mut flood.x, 0..=state.simulation_state().get_active().width - 1).text("Flood X")).changed();
-            updated = updated || ui.add(egui::Slider::new(&mut flood.y, 0..=state.simulation_state().get_active().height - 1).text("Flood Y")).changed();
-            let should_flood_ = should_flood.clone();
-            updated = updated || ui.toggle_value(&mut should_flood, if should_flood_ {
+            let should_flood_inside_ = props.flood_lower.clone();
+            updated = updated || ui.toggle_value(&mut props.flood_lower, if should_flood_inside_ {
+                "Flooding inside"
+            } else {
+                "Flooding outside"
+            }).changed();
+            let should_flood_ = props.should_flood.clone();
+            updated = updated || ui.toggle_value(&mut props.should_flood, if should_flood_ {
                 "Disable Flooding"
             } else {
                 "Enable Flooding"
             }).changed();
+            let lower = props.flooded_areas_lower.unwrap_or(0);
+            let higher = props.flooded_areas_higher.unwrap_or(0);
+            let percentage = if higher > 0 {
+                lower as f32 / (lower + higher) as f32 * 100.0
+            } else {
+                0.0
+            };
+            ui.label(format!("Flooded {} / {} areas ({}%)", lower, lower + higher, percentage));
 
             if updated {
-                ui_state.isoline = (iso_value, iso_error, should_flood, flood);
+                ui_state.isoline = props;
                 ui_state.ui_events.push(UiEvent::Isoline);
             }
         });
@@ -502,7 +514,7 @@ pub fn heightmap_generation_settings(
                         heightmap_type
                     ))
                     .show_ui(ui, |ui| {
-                        for ref mut t in HeightmapType::first() {
+                        for ref mut t in HeightmapType::iterator() {
                             ui.selectable_value(
                                 &mut heightmap_type,
                                 *t,

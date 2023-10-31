@@ -4,9 +4,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::{HashMap, VecDeque};
 use std::fmt::{Display, Formatter};
-use std::mem;
-use std::ops::AddAssign;
-use std::sync::{Arc, Mutex};
 
 use crate::math::{UVector2, Vector2};
 
@@ -415,26 +412,50 @@ impl Heightmap {
         create_heightmap_from_closure(self.width, 1.0, &func)
     }
 
-    pub fn flood_less_than(&self, height: HeightmapPrecision, with: HeightmapPrecision, from: &UVector2) -> (Option<Self>, usize) {
-        if let Some(h) = self.get(from.x, from.y) {
-            if h >= height {
-                return (None, 0);
+    pub fn get_flood_points(&self, isoline: &Self, inside: bool) -> Vec<UVector2> {
+        let mut points = Vec::new();
+        for x0 in 0..self.width {
+            for y0 in 0..self.height {
+                if isoline.data[x0][y0] == 0.0 {
+                    continue;
+                }
+                let adj = &[
+                    (x0 != 0, (x0 - 1, y0)),
+                    (x0 != self.width - 1, (x0 + 1, y0)),
+                    (y0 != 0, (x0, y0 - 1)),
+                    (y0 != self.height - 1, (x0, y0 + 1)),
+                ];
+                for (has_edge, (x1, y1)) in *adj {
+                    if has_edge && isoline.data[x1][y1] == 0.0 && ((inside && self.data[x1][y1] < self.data[x0][y0]) || (!inside && self.data[x0][y0] < self.data[x1][y1])) {
+                        points.push(UVector2::new(x1, y1));
+                    }
+                }
             }
         }
-        if height > with {
-            return (None, 0);
-        }
-        let flooded = Arc::new(Mutex::new(0));
-        let heightmap = Arc::new(Mutex::new(self.clone()));
-        heightmap.lock().unwrap().data[from.x][from.y] = with;
-        let mut queue = Arc::new(Mutex::new(VecDeque::new()));
-        let mut last_queue = Arc::new(Mutex::new(VecDeque::new()));
-        queue.lock().unwrap().push_back(*from);
+        points
+    }
 
-        while !queue.lock().unwrap().is_empty() {
-            last_queue.lock().unwrap().clear();
-            mem::swap(&mut queue, &mut last_queue);
-            last_queue.lock().unwrap().par_iter().for_each(|pixel| {
+    pub fn flood_less_than(&self, height: HeightmapPrecision, with: HeightmapPrecision, from: &Vec<UVector2>) -> (Self, usize) {
+        if height > with {
+            panic!("Must flood with greater value than given height. ('height' must be <= 'with', {} !<= {})", height, with);
+        }
+        let mut flooded = 0;
+        let mut heightmap = self.clone();
+        let mut queue = VecDeque::new();
+        for from in from.iter() {
+            if let Some(h) = heightmap.get(from.x, from.y) {
+                if h >= height {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            flooded += 1;
+            heightmap.data[from.x][from.y] = with;
+            queue.push_back(*from);
+
+            while !queue.is_empty() {
+                let pixel = queue.pop_front().unwrap();
                 let adj = &[
                     (pixel.x != 0, (pixel.x - 1, pixel.y)),
                     (pixel.x != self.width - 1, (pixel.x + 1, pixel.y)),
@@ -443,20 +464,17 @@ impl Heightmap {
                 ];
                 for (has_edge, (x, y)) in *adj {
                     if has_edge {
-                        let data = &mut heightmap.lock().unwrap().data;
-                        if data[x][y] < height {
+                        let data = &mut heightmap.data;
+                        if data[x][y] < with {
                             data[x][y] = with;
-                            flooded.lock().unwrap().add_assign(1);
-                            queue.lock().unwrap().push_back(UVector2::new(x, y));
+                            queue.push_back(UVector2::new(x, y));
                         }
                     }
                 }
-            });
+            }
         }
 
-        let heightmap = heightmap.lock().unwrap().clone();
-        let flooded = flooded.lock().unwrap().clone();
-        (Some(heightmap), flooded)
+        (heightmap, flooded)
     }
 
     pub fn metadata_add(&mut self, key: &str, value: String) {
@@ -590,6 +608,18 @@ impl HeightmapType {
     pub fn first() -> Self {
         HeightmapType::Procedural(ProceduralHeightmapSettings::default())
     }
+
+    pub fn iterator() -> impl Iterator<Item = HeightmapType> {
+        static TYPES: [HeightmapType; 6] = [
+            HeightmapType::Procedural(ProceduralHeightmapSettings::static_default()),
+            HeightmapType::YGradient,
+            HeightmapType::InvertedYGradient,
+            HeightmapType::YHyperbolaGradient,
+            HeightmapType::CenteredHillGradient,
+            HeightmapType::CenteredHillSmallGradient,
+        ];
+        TYPES.iter().copied()
+    }
 }
 
 impl Iterator for HeightmapType {
@@ -688,7 +718,23 @@ pub struct ProceduralHeightmapSettings {
     pub height: usize,
 }
 
+const DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS: ProceduralHeightmapSettings = ProceduralHeightmapSettings {
+    seed: 1337,
+    noise_type: NoiseType::PerlinFractal,
+    fractal_type: FractalType::FBM,
+    fractal_octaves: 5,
+    fractal_gain: 0.6,
+    fractal_lacunarity: 2.0,
+    frequency: 2.0,
+    width: 512,
+    height: 512,
+};
+
 impl ProceduralHeightmapSettings {
+    const fn static_default() -> Self {
+        DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS
+    }
+
     pub fn reset(&mut self) {
         *self = ProceduralHeightmapSettings::default()
     }
@@ -696,17 +742,7 @@ impl ProceduralHeightmapSettings {
 
 impl Default for ProceduralHeightmapSettings {
     fn default() -> Self {
-        ProceduralHeightmapSettings {
-            seed: 1337,
-            noise_type: NoiseType::PerlinFractal,
-            fractal_type: FractalType::FBM,
-            fractal_octaves: 5,
-            fractal_gain: 0.6,
-            fractal_lacunarity: 2.0,
-            frequency: 2.0,
-            width: 512,
-            height: 512,
-        }
+        DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS
     }
 }
 
