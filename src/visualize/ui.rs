@@ -576,6 +576,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             UiEvent::Isoline => {
                 let props = ui_state.isoline;
                 let heightmap = state.simulation_state().get_heightmap();
+                let outside = (*heightmap).clone().boolean(props.height + props.error * if props.flood_lower { 1.0 } else { -1.0 }, true, props.flood_lower);
                 let isoline = {
                     let h = heightmap.isoline(props.height, props.error);
                     if props.blur_augmentation.0 {
@@ -601,7 +602,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                     None
                 };
                 let hm = Rc::new(flooded.unwrap_or(isoline));
-                let tex = Rc::new(heightmap_to_texture(&hm));
+                let tex = Rc::new(mix_heightmap_to_texture(&hm, &outside, 0, false, false));
                 state.simulation_state_mut().set_active(hm, tex);
             }
         };
