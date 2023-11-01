@@ -14,9 +14,9 @@ pub mod widgets;
 use crate::erode::DropZone;
 use crate::erode::Parameters;
 use crate::heightmap::{Heightmap, HeightmapType};
+use crate::partitioning;
 use crate::partitioning::Method;
 use crate::visualize::ui::*;
-use crate::partitioning;
 
 const SUBDIVISIONS: u32 = 3;
 const GRID_SIZE: usize = 6;
@@ -33,7 +33,8 @@ impl SimulationState {
         heightmap_type: &HeightmapType,
         parameters: &Parameters,
     ) -> Self {
-        let mut heightmap = heightmap::create_heightmap_from_preset(heightmap_type, PRESET_HEIGHTMAP_SIZE);
+        let mut heightmap =
+            heightmap::create_heightmap_from_preset(heightmap_type, PRESET_HEIGHTMAP_SIZE);
         heightmap.calculate_total_height();
         let texture = Rc::new(heightmap_to_texture(&heightmap));
         let heightmap = Rc::new(heightmap);
@@ -292,7 +293,7 @@ pub async fn run() {
             flooded_areas_lower: None,
             flooded_areas_higher: None,
             blur_augmentation: (false, 1.0),
-        }
+        },
     };
 
     let mut state = AppState {
