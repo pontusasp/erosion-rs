@@ -2,8 +2,8 @@ use bracket_noise::prelude::NoiseType;
 use egui::{Color32, Vec2};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::{erode::Parameters, heightmap::ProceduralHeightmapSettings, partitioning};
 use crate::heightmap::HeightmapType;
+use crate::{erode::Parameters, heightmap::ProceduralHeightmapSettings, partitioning};
 
 use super::{
     canvas::Canvas,
@@ -114,6 +114,88 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
             }
             if ui.button("Blur + Edge Detect").clicked() {
                 ui_state.ui_events.push(UiEvent::BlurEdgeDetect);
+            }
+
+            ui.separator();
+
+            let mut props = ui_state.isoline;
+            let mut updated = false;
+            updated = updated
+                || ui
+                    .add(egui::Slider::new(&mut props.height, 0.0..=1.0).text("Isoline value"))
+                    .changed();
+            updated = updated
+                || ui
+                    .add(egui::Slider::new(&mut props.error, 0.0..=0.1).text("Isoline error"))
+                    .changed();
+            if ui.button("Show isoline").clicked() {
+                updated = true;
+            }
+
+            let should_flood_inside_ = props.flood_lower.clone();
+            updated = updated
+                || ui
+                    .toggle_value(
+                        &mut props.flood_lower,
+                        if should_flood_inside_ {
+                            "Flooding inside"
+                        } else {
+                            "Flooding outside"
+                        },
+                    )
+                    .changed();
+            let should_flood_ = props.should_flood.clone();
+            updated = updated
+                || ui
+                    .toggle_value(
+                        &mut props.should_flood,
+                        if should_flood_ {
+                            "Disable Flooding"
+                        } else {
+                            "Enable Flooding"
+                        },
+                    )
+                    .changed();
+
+            let blur_augmentation_ = props.blur_augmentation.0.clone();
+            updated = updated
+                || ui
+                    .toggle_value(
+                        &mut props.blur_augmentation.0,
+                        if blur_augmentation_ {
+                            "Blur augmentation active"
+                        } else {
+                            "Blur augmentation inactive"
+                        },
+                    )
+                    .changed();
+            if blur_augmentation_ {
+                updated = updated
+                    || ui
+                        .add(
+                            egui::Slider::new(&mut props.blur_augmentation.1, 0.0..=5.0)
+                                .text("Blur amount"),
+                        )
+                        .changed();
+            }
+
+            let lower = props.flooded_areas_lower.unwrap_or(0);
+            let higher = props.flooded_areas_higher.unwrap_or(0);
+            let percentage = if higher > 0 {
+                lower as f32 / (lower + higher) as f32 * 100.0
+            } else {
+                0.0
+            };
+            ui.label(format!(
+                "Flooded {} / {} areas ({}%)",
+                lower,
+                lower + higher,
+                percentage
+            ));
+
+            if updated {
+                ui_state.isoline = props;
+                ui_state.ui_events.push(UiEvent::Isoline);
             }
         });
     ui.separator();
@@ -257,7 +339,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.num_iterations,
-                    0..=2000000,
+                    0..=10000000,
                 )
                 .text("Num Iterations"),
             )
@@ -322,68 +404,39 @@ fn procedural_generation_settings(
 
     updated = updated
         || ui
-        .add(
-            egui::Slider::new(
-                &mut settings.seed,
-                0..=10000000000,
-            )
-                .text("Seed"),
-        )
-        .changed();
+            .add(egui::Slider::new(&mut settings.seed, 0..=10000000000).text("Seed"))
+            .changed();
 
     let noise_type = settings.noise_type;
     egui::ComboBox::from_label("Noise Type")
-        .selected_text(format!(
-            "{:?}",
-            settings.noise_type
-        ))
+        .selected_text(format!("{:?}", settings.noise_type))
         .show_ui(ui, |ui| {
-            ui.selectable_value(
-                &mut settings.noise_type,
-                NoiseType::Value,
-                "Value",
-            );
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Value, "Value");
             ui.selectable_value(
                 &mut settings.noise_type,
                 NoiseType::ValueFractal,
                 "Value Fractal",
             );
-            ui.selectable_value(
-                &mut settings.noise_type,
-                NoiseType::Perlin,
-                "Perlin",
-            );
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Perlin, "Perlin");
             ui.selectable_value(
                 &mut settings.noise_type,
                 NoiseType::PerlinFractal,
                 "Perlin
     Fractal",
             );
-            ui.selectable_value(
-                &mut settings.noise_type,
-                NoiseType::Simplex,
-                "Simplex",
-            );
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Simplex, "Simplex");
             ui.selectable_value(
                 &mut settings.noise_type,
                 NoiseType::SimplexFractal,
                 "Simplex Fractal",
             );
-            ui.selectable_value(
-                &mut settings.noise_type,
-                NoiseType::Cellular,
-                "Cellular",
-            );
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Cellular, "Cellular");
             ui.selectable_value(
                 &mut settings.noise_type,
                 NoiseType::WhiteNoise,
                 "WhiteNoise",
             );
-            ui.selectable_value(
-                &mut settings.noise_type,
-                NoiseType::Cubic,
-                "Cubic",
-            );
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Cubic, "Cubic");
             ui.selectable_value(
                 &mut settings.noise_type,
                 NoiseType::CubicFractal,
@@ -394,49 +447,28 @@ fn procedural_generation_settings(
 
     updated = updated
         || ui
-        .add(
-            egui::Slider::new(
-                &mut settings.fractal_octaves,
-                0..=28,
-            )
-                .text("Fractal Octaves"),
-        )
-        .drag_released();
+            .add(egui::Slider::new(&mut settings.fractal_octaves, 0..=28).text("Fractal Octaves"))
+            .drag_released();
     updated = updated
         || ui
-        .add(
-            egui::Slider::new(
-                &mut settings.fractal_gain,
-                0.0..=2.0,
-            )
-                .text("Fractal Gain"),
-        )
-        .changed();
+            .add(egui::Slider::new(&mut settings.fractal_gain, 0.0..=2.0).text("Fractal Gain"))
+            .changed();
     updated = updated
         || ui
-        .add(
-            egui::Slider::new(
-                &mut settings.fractal_lacunarity,
-                0.0..=7.0,
+            .add(
+                egui::Slider::new(&mut settings.fractal_lacunarity, 0.0..=7.0)
+                    .text("Fractal Lacunarity"),
             )
-                .text("Fractal Lacunarity"),
-        )
-        .drag_released();
+            .drag_released();
     updated = updated
         || ui
-        .add(
-            egui::Slider::new(
-                &mut settings.frequency,
-                0.0..=5.0,
-            )
-                .text("Frequency"),
-        )
-        .changed();
+            .add(egui::Slider::new(&mut settings.frequency, 0.0..=5.0).text("Frequency"))
+            .changed();
     let mut size = settings.width;
     updated = updated
         || ui
-        .add(egui::Slider::new(&mut size, 64..=1024).text("Resolution"))
-        .changed();
+            .add(egui::Slider::new(&mut size, 64..=1024).text("Resolution"))
+            .changed();
     settings.width = size;
     settings.height = size;
 
@@ -471,29 +503,26 @@ pub fn heightmap_generation_settings(
             if state.simulation_state().eroded().is_none()
                 && state.simulation_state().id() == state.simulation_base_indices.len() - 1
             {
+                let mut heightmap_type = state.parameters.heightmap_type;
                 egui::ComboBox::from_label("Heightmap Type")
-                    .selected_text(format!(
-                        "{}",
-                        state.parameters.heightmap_type
-                    ))
+                    .selected_text(format!("{}", heightmap_type))
                     .show_ui(ui, |ui| {
-                        for ref mut t in HeightmapType::first() {
-                            ui.selectable_value(
-                                &mut state.parameters.heightmap_type,
-                                *t,
-                                format!("{}", t),
-                            );
+                        for ref mut t in HeightmapType::iterator() {
+                            ui.selectable_value(&mut heightmap_type, *t, format!("{}", t));
                         }
                     });
 
-                let mut heightmap_type = state.parameters.heightmap_type;
                 match heightmap_type {
                     HeightmapType::Procedural(ref mut settings) => {
                         procedural_generation_settings(settings, ui, ui_state, state);
                     }
                     _ => (),
                 }
-                state.parameters.heightmap_type = heightmap_type;
+
+                if heightmap_type != state.parameters.heightmap_type {
+                    state.parameters.heightmap_type = heightmap_type;
+                    ui_state.ui_events.push(UiEvent::ReplaceHeightmap);
+                }
             } else {
                 ui.label("Parameters only available for new base layers.");
                 if ui

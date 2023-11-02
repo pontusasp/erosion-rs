@@ -8,6 +8,7 @@ use super::SimulationState;
 #[cfg(feature = "export")]
 use crate::heightmap::io::export_heightmaps;
 
+use crate::heightmap::HeightmapPrecision;
 use crate::{partitioning, visualize::heightmap_to_texture};
 
 use super::{
@@ -90,6 +91,7 @@ pub enum UiEvent {
     Blur,
     EdgeDetect,
     BlurEdgeDetect,
+    Isoline,
 }
 
 impl UiEvent {
@@ -124,8 +126,20 @@ impl UiEvent {
             UiEvent::BlurEdgeDetect => {
                 "Apply blur then canny edge detection to selected state".to_string()
             }
+            UiEvent::Isoline => "Show isoline".to_string(),
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct IsolineProperties {
+    pub height: HeightmapPrecision,
+    pub error: HeightmapPrecision,
+    pub flood_lower: bool,
+    pub should_flood: bool,
+    pub flooded_areas_lower: Option<usize>,
+    pub flooded_areas_higher: Option<usize>,
+    pub blur_augmentation: (bool, f32),
 }
 
 pub struct UiState {
@@ -142,6 +156,7 @@ pub struct UiState {
     pub frame_slots: Option<FrameSlots>,
     pub blur_sigma: f32,
     pub canny_edge: (f32, f32),
+    pub isoline: IsolineProperties,
 }
 
 impl UiState {
@@ -221,6 +236,7 @@ pub const KEYBINDS: &[UiKeybind] = &[
     UiKeybind::Pressed(UiKey::Single(KeyCode::B), UiEvent::Blur),
     UiKeybind::Pressed(UiKey::Single(KeyCode::C), UiEvent::EdgeDetect),
     UiKeybind::Pressed(UiKey::Single(KeyCode::X), UiEvent::BlurEdgeDetect),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::I), UiEvent::Isoline),
 ];
 
 pub fn poll_ui_keybinds(ui_state: &mut UiState) {
@@ -556,6 +572,46 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 } else {
                     eprintln!("Failed to blur or edge detect selected state!");
                 }
+            }
+            UiEvent::Isoline => {
+                let props = ui_state.isoline;
+                let heightmap = state.simulation_state().get_heightmap();
+                let outside = (*heightmap).clone().boolean(
+                    props.height + props.error * if props.flood_lower { 1.0 } else { -1.0 },
+                    true,
+                    props.flood_lower,
+                );
+                let isoline = {
+                    let h = heightmap.isoline(props.height, props.error);
+                    if props.blur_augmentation.0 {
+                        h.blur(props.blur_augmentation.1)
+                            .and_then(|b| Some(b.boolean(0.0, false, false)))
+                            .unwrap_or(h)
+                    } else {
+                        h
+                    }
+                };
+                let flooded = if props.should_flood {
+                    let flood = heightmap.get_flood_points(&isoline, props.flood_lower);
+                    let flood_amount = 1f32.min(props.height + (1.0 - props.height) / 3.0);
+                    let (flooded, areas) = isoline.flood_empty(flood_amount, &flood);
+                    let flood_inverse = heightmap.get_flood_points(&flooded, !props.flood_lower);
+                    if props.flood_lower {
+                        ui_state.isoline.flooded_areas_lower = Some(areas);
+                        ui_state.isoline.flooded_areas_higher =
+                            Some(flooded.flood_empty(flood_amount, &flood_inverse).1);
+                    } else {
+                        ui_state.isoline.flooded_areas_lower =
+                            Some(flooded.flood_empty(flood_amount, &flood_inverse).1);
+                        ui_state.isoline.flooded_areas_higher = Some(areas);
+                    }
+                    Some(flooded)
+                } else {
+                    None
+                };
+                let hm = Rc::new(flooded.unwrap_or(isoline));
+                let tex = Rc::new(mix_heightmap_to_texture(&hm, &outside, 0, false, false));
+                state.simulation_state_mut().set_active(hm, tex);
             }
         };
     }

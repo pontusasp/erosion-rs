@@ -2,7 +2,8 @@ use bracket_noise::prelude::*;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::f32::consts::PI;
 use std::fmt::{Display, Formatter};
 
 use crate::math::{UVector2, Vector2};
@@ -82,6 +83,28 @@ impl Heightmap {
         let blurred_heightmap =
             Heightmap::from_u8(blurred_gray_image.as_raw(), self.width, self.height);
         Some(blurred_heightmap)
+    }
+
+    pub fn boolean(mut self, threshold: HeightmapPrecision, round_up: bool, invert: bool) -> Self {
+        let one = if invert { 0.0 } else { 1.0 };
+        let zero = 1.0 - one;
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let d = self.data[x][y];
+                self.data[x][y] = if d == threshold {
+                    if round_up {
+                        one
+                    } else {
+                        zero
+                    }
+                } else if d < threshold {
+                    zero
+                } else {
+                    one
+                }
+            }
+        }
+        self
     }
 
     pub fn canny_edge(&self, low: f32, high: f32) -> Option<Heightmap> {
@@ -399,6 +422,132 @@ impl Heightmap {
         Ok(())
     }
 
+    pub fn isoline(&self, height: HeightmapPrecision, error: HeightmapPrecision) -> Self {
+        let func = |x: usize, y: usize| -> HeightmapPrecision {
+            let h = self.data[x][y];
+            if height - error < h && h < height + error {
+                1.0
+            } else {
+                0.0
+            }
+        };
+
+        create_heightmap_from_closure(self.width, 1.0, &func)
+    }
+
+    pub fn get_flood_points(&self, isoline: &Self, inside: bool) -> Vec<UVector2> {
+        let mut points = Vec::new();
+        for x0 in 0..self.width {
+            for y0 in 0..self.height {
+                if isoline.data[x0][y0] == 0.0 {
+                    continue;
+                }
+                let adj = &[
+                    (x0 != 0, (x0 - 1, y0)),
+                    (x0 != self.width - 1, (x0 + 1, y0)),
+                    (y0 != 0, (x0, y0 - 1)),
+                    (y0 != self.height - 1, (x0, y0 + 1)),
+                ];
+                for (has_edge, (x1, y1)) in *adj {
+                    if has_edge
+                        && isoline.data[x1][y1] == 0.0
+                        && ((inside && self.data[x1][y1] < self.data[x0][y0])
+                            || (!inside && self.data[x0][y0] < self.data[x1][y1]))
+                    {
+                        points.push(UVector2::new(x1, y1));
+                    }
+                }
+            }
+        }
+        points
+    }
+
+    pub fn flood_empty(&self, with: HeightmapPrecision, from: &Vec<UVector2>) -> (Self, usize) {
+        let mut flooded = 0;
+        let mut heightmap = self.clone();
+        let mut queue = VecDeque::new();
+        for from in from.iter() {
+            if let Some(h) = heightmap.get(from.x, from.y) {
+                if h != 0.0 {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            flooded += 1;
+            heightmap.data[from.x][from.y] = with;
+            queue.push_back(*from);
+
+            while !queue.is_empty() {
+                let pixel = queue.pop_front().unwrap();
+                let adj = &[
+                    (pixel.x != 0, (pixel.x - 1, pixel.y)),
+                    (pixel.x != self.width - 1, (pixel.x + 1, pixel.y)),
+                    (pixel.y != 0, (pixel.x, pixel.y - 1)),
+                    (pixel.y != self.height - 1, (pixel.x, pixel.y + 1)),
+                ];
+                for (has_edge, (x, y)) in *adj {
+                    if has_edge {
+                        let data = &mut heightmap.data;
+                        if data[x][y] == 0.0 {
+                            data[x][y] = with;
+                            queue.push_back(UVector2::new(x, y));
+                        }
+                    }
+                }
+            }
+        }
+
+        (heightmap, flooded)
+    }
+
+    pub fn flood_less_than(
+        &self,
+        height: HeightmapPrecision,
+        with: HeightmapPrecision,
+        from: &Vec<UVector2>,
+    ) -> (Self, usize) {
+        if height > with {
+            panic!("Must flood with greater value than given height. ('height' must be <= 'with', {} !<= {})", height, with);
+        }
+        let mut flooded = 0;
+        let mut heightmap = self.clone();
+        let mut queue = VecDeque::new();
+        for from in from.iter() {
+            if let Some(h) = heightmap.get(from.x, from.y) {
+                if h >= height {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            flooded += 1;
+            heightmap.data[from.x][from.y] = with;
+            queue.push_back(*from);
+
+            while !queue.is_empty() {
+                let pixel = queue.pop_front().unwrap();
+                let adj = &[
+                    (pixel.x != 0, (pixel.x - 1, pixel.y)),
+                    (pixel.x != self.width - 1, (pixel.x + 1, pixel.y)),
+                    (pixel.y != 0, (pixel.x, pixel.y - 1)),
+                    (pixel.y != self.height - 1, (pixel.x, pixel.y + 1)),
+                ];
+                for (has_edge, (x, y)) in *adj {
+                    if has_edge {
+                        let data = &mut heightmap.data;
+                        if data[x][y] < with {
+                            data[x][y] = with;
+                            queue.push_back(UVector2::new(x, y));
+                        }
+                    }
+                }
+            }
+        }
+
+        (heightmap, flooded)
+    }
+
     pub fn metadata_add(&mut self, key: &str, value: String) {
         if let Some(hashmap) = &mut self.metadata {
             hashmap.insert(key.to_string(), value);
@@ -500,11 +649,12 @@ impl PartialHeightmap {
 #[derive(PartialEq, Copy, Clone)]
 pub enum HeightmapType {
     Procedural(ProceduralHeightmapSettings),
-    YGradient,
-    InvertedYGradient,
-    YHyperbolaGradient,
-    CenteredHillGradient,
-    CenteredHillSmallGradient,
+    XGradient,
+    XGradientRepeating(f32),
+    XGradientRepeatingAlternating(f32),
+    XHyperbolaGradient,
+    CenteredHillGradient(f32),
+    XSinWave(f32),
 }
 
 impl Default for HeightmapType {
@@ -517,11 +667,12 @@ impl Display for HeightmapType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             HeightmapType::Procedural(_) => f.collect_str("Procedural"),
-            HeightmapType::YGradient => f.collect_str("Vertical Gradient 1"),
-            HeightmapType::InvertedYGradient => f.collect_str("Vertical Gradient 2"),
-            HeightmapType::YHyperbolaGradient => f.collect_str("Vertical Hyperbola Gradient"),
-            HeightmapType::CenteredHillGradient => f.collect_str("Centered Hill"),
-            HeightmapType::CenteredHillSmallGradient => f.collect_str("Centered Hill Small"),
+            HeightmapType::XGradient => f.collect_str("Gradient"),
+            HeightmapType::XGradientRepeating(_) => f.collect_str("Gradient Repeating"),
+            HeightmapType::XGradientRepeatingAlternating(_) => f.collect_str("Gradient Repeating Alternating"),
+            HeightmapType::XHyperbolaGradient => f.collect_str("Hyperbola Gradient"),
+            HeightmapType::CenteredHillGradient(_) => f.collect_str("Centered Hill"),
+            HeightmapType::XSinWave(_) => f.collect_str("Sin Wave"),
         }
     }
 }
@@ -530,57 +681,56 @@ impl HeightmapType {
     pub fn first() -> Self {
         HeightmapType::Procedural(ProceduralHeightmapSettings::default())
     }
-}
 
-impl Iterator for HeightmapType {
-    type Item = Self;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        *self = match self {
-            HeightmapType::Procedural(_) => HeightmapType::YGradient,
-            HeightmapType::YGradient => HeightmapType::InvertedYGradient,
-            HeightmapType::InvertedYGradient => HeightmapType::YHyperbolaGradient,
-            HeightmapType::YHyperbolaGradient => HeightmapType::CenteredHillGradient,
-            HeightmapType::CenteredHillGradient => HeightmapType::CenteredHillSmallGradient,
-            HeightmapType::CenteredHillSmallGradient => return None,
-        };
-        Some(*self)
+    pub fn iterator() -> impl Iterator<Item = HeightmapType> {
+        static TYPES: [HeightmapType; 7] = [
+            HeightmapType::Procedural(ProceduralHeightmapSettings::static_default()),
+            HeightmapType::XGradient,
+            HeightmapType::XGradientRepeating(8.0),
+            HeightmapType::XGradientRepeatingAlternating(8.0),
+            HeightmapType::XHyperbolaGradient,
+            HeightmapType::CenteredHillGradient(0.75),
+            HeightmapType::XSinWave(8.0),
+        ];
+        TYPES.iter().copied()
     }
 }
 
 pub fn create_heightmap_from_preset(preset: &HeightmapType, size: usize) -> Heightmap {
     match preset {
-        HeightmapType::YGradient => {
-            create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| {
-                y as HeightmapPrecision / size as HeightmapPrecision
+        HeightmapType::Procedural(settings) => create_perlin_heightmap(&settings),
+        HeightmapType::XGradient => {
+            create_heightmap_from_closure(size, 1.0, &|x: usize, _: usize| {
+                x as HeightmapPrecision / size as HeightmapPrecision
             })
         }
-        HeightmapType::InvertedYGradient => {
-            create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| {
-                1.0 - y as HeightmapPrecision / size as HeightmapPrecision
+        HeightmapType::XGradientRepeating(repetitions) => {
+            create_heightmap_from_closure(size, 1.0, &|x: usize, _: usize| {
+                (repetitions * x as HeightmapPrecision / size as HeightmapPrecision).fract()
             })
         }
-        HeightmapType::YHyperbolaGradient => {
-            create_heightmap_from_closure(size, 1.0, &|_: usize, y: usize| {
-                let gradient = y as HeightmapPrecision / size as HeightmapPrecision;
+        HeightmapType::XGradientRepeatingAlternating(repetitions) => {
+            create_heightmap_from_closure(size, 1.0, &|x: usize, _: usize| {
+                let v = repetitions * x as HeightmapPrecision / size as HeightmapPrecision;
+                if v.trunc() % 2.0 == 0.0 {
+                    v.fract()
+                } else {
+                    1.0 - v.fract()
+                }
+            })
+        }
+        HeightmapType::XHyperbolaGradient => {
+            create_heightmap_from_closure(size, 1.0, &|x: usize, _: usize| {
+                let gradient = x as HeightmapPrecision / size as HeightmapPrecision;
                 gradient.powi(2)
             })
         }
-        HeightmapType::CenteredHillGradient => {
-            create_heightmap_from_closure(size, 1.0, &|x: usize, y: usize| {
-                let gradient = (x as HeightmapPrecision - size as HeightmapPrecision / 2.0).powi(2)
-                    + (y as HeightmapPrecision - size as HeightmapPrecision / 2.0).powi(2);
-                1.0 - gradient / (size as HeightmapPrecision / 2.0).powi(2)
-            })
-        }
-        HeightmapType::CenteredHillSmallGradient => {
+        HeightmapType::CenteredHillGradient(hill_radius)  => {
             create_heightmap_from_closure(size, 1.0, &|x: usize, y: usize| {
                 let radius = size as HeightmapPrecision / 2.0;
                 let x = x as HeightmapPrecision;
                 let y = y as HeightmapPrecision;
                 let distance = ((x - radius).powf(2.0) + (y - radius).powf(2.0)).sqrt();
-
-                let hill_radius = 0.75;
 
                 if distance < radius * hill_radius {
                     let to = radius * hill_radius;
@@ -592,8 +742,11 @@ pub fn create_heightmap_from_preset(preset: &HeightmapType, size: usize) -> Heig
                 }
             })
         }
-        HeightmapType::Procedural(settings) => {
-            create_perlin_heightmap(&settings)
+        HeightmapType::XSinWave(inverse_frequency) => {
+            create_heightmap_from_closure(size, 1.0, &|x: usize, _| {
+                let t = x as HeightmapPrecision / size as HeightmapPrecision;
+                ((t * PI * inverse_frequency + PI).cos() + 1.0) / 2.0
+            })
         }
     }
 }
@@ -628,7 +781,24 @@ pub struct ProceduralHeightmapSettings {
     pub height: usize,
 }
 
+const DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS: ProceduralHeightmapSettings =
+    ProceduralHeightmapSettings {
+        seed: 1337,
+        noise_type: NoiseType::Perlin,
+        fractal_type: FractalType::FBM,
+        fractal_octaves: 5,
+        fractal_gain: 0.6,
+        fractal_lacunarity: 2.0,
+        frequency: 0.5,
+        width: 512,
+        height: 512,
+    };
+
 impl ProceduralHeightmapSettings {
+    const fn static_default() -> Self {
+        DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS
+    }
+
     pub fn reset(&mut self) {
         *self = ProceduralHeightmapSettings::default()
     }
@@ -636,17 +806,7 @@ impl ProceduralHeightmapSettings {
 
 impl Default for ProceduralHeightmapSettings {
     fn default() -> Self {
-        ProceduralHeightmapSettings {
-            seed: 1337,
-            noise_type: NoiseType::PerlinFractal,
-            fractal_type: FractalType::FBM,
-            fractal_octaves: 5,
-            fractal_gain: 0.6,
-            fractal_lacunarity: 2.0,
-            frequency: 2.0,
-            width: 512,
-            height: 512,
-        }
+        DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS
     }
 }
 
