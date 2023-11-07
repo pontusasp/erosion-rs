@@ -1,8 +1,9 @@
 use crate::heightmap::*;
 use crate::math::Vector2;
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Parameters {
     pub erosion_radius: usize,         // [2, 8], 3
     pub inertia: f32,                  // [0, 1], 0.05
@@ -37,7 +38,7 @@ impl Default for Parameters {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum DropZoneValidator {
     None,
     Circle(f32),
@@ -58,7 +59,7 @@ impl DropZoneValidator {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DropZone {
     _min: Vector2,
     _max: Vector2,

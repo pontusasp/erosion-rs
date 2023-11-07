@@ -6,11 +6,12 @@ use rayon::prelude::*;
 use std::f32::consts::PI;
 use std::slice::Iter;
 use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Serialize};
 
 pub const GAUSSIAN_DEFAULT_SIGMA: f32 = 2.0;
 pub const GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS: u16 = 2;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Method {
     Default,
     Subdivision,

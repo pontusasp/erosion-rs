@@ -5,7 +5,9 @@ use std::rc::Rc;
 
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;
+use serde::{Deserialize, Serialize};
 
+pub mod wrappers;
 pub mod canvas;
 pub mod panels;
 pub mod ui;
@@ -22,6 +24,7 @@ const SUBDIVISIONS: u32 = 3;
 const GRID_SIZE: usize = 6;
 const PRESET_HEIGHTMAP_SIZE: usize = 512;
 
+#[derive(Serialize, Deserialize)]
 pub enum SimulationState {
     Base(BaseState),
     Eroded((BaseState, ErodedState)),
@@ -121,7 +124,7 @@ impl SimulationState {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct BaseState {
     pub id: usize,
     pub erosion_method: Method,
@@ -211,6 +214,7 @@ impl BaseState {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct ErodedState {
     pub id: usize,
     pub base_id: usize,
@@ -236,6 +240,7 @@ impl ErodedState {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct AppParameters {
     pub erosion_params: Parameters,
     pub heightmap_type: HeightmapType,
@@ -252,6 +257,7 @@ impl Default for AppParameters {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct AppState {
     pub simulation_states: Vec<SimulationState>,
     pub simulation_base_indices: Vec<usize>,

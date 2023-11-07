@@ -411,35 +411,35 @@ fn procedural_generation_settings(
     egui::ComboBox::from_label("Noise Type")
         .selected_text(format!("{:?}", settings.noise_type))
         .show_ui(ui, |ui| {
-            ui.selectable_value(&mut settings.noise_type, NoiseType::Value, "Value");
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Value.into(), "Value");
             ui.selectable_value(
                 &mut settings.noise_type,
-                NoiseType::ValueFractal,
+                NoiseType::ValueFractal.into(),
                 "Value Fractal",
             );
-            ui.selectable_value(&mut settings.noise_type, NoiseType::Perlin, "Perlin");
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Perlin.into(), "Perlin");
             ui.selectable_value(
                 &mut settings.noise_type,
-                NoiseType::PerlinFractal,
+                NoiseType::PerlinFractal.into(),
                 "Perlin
     Fractal",
             );
-            ui.selectable_value(&mut settings.noise_type, NoiseType::Simplex, "Simplex");
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Simplex.into(), "Simplex");
             ui.selectable_value(
                 &mut settings.noise_type,
-                NoiseType::SimplexFractal,
+                NoiseType::SimplexFractal.into(),
                 "Simplex Fractal",
             );
-            ui.selectable_value(&mut settings.noise_type, NoiseType::Cellular, "Cellular");
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Cellular.into(), "Cellular");
             ui.selectable_value(
                 &mut settings.noise_type,
-                NoiseType::WhiteNoise,
+                NoiseType::WhiteNoise.into(),
                 "WhiteNoise",
             );
-            ui.selectable_value(&mut settings.noise_type, NoiseType::Cubic, "Cubic");
+            ui.selectable_value(&mut settings.noise_type, NoiseType::Cubic.into(), "Cubic");
             ui.selectable_value(
                 &mut settings.noise_type,
-                NoiseType::CubicFractal,
+                NoiseType::CubicFractal.into(),
                 "Cubic Fractal",
             );
         });

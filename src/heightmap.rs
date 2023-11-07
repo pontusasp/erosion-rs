@@ -9,6 +9,7 @@ use std::fmt::{Display, Formatter};
 use crate::math::{UVector2, Vector2};
 
 use image::*;
+use crate::visualize::wrappers::{FractalTypeWrapper, NoiseTypeWrapper};
 
 pub type HeightmapPrecision = f32;
 pub type HeightmapData = Vec<Vec<HeightmapPrecision>>;
@@ -646,7 +647,7 @@ impl PartialHeightmap {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum HeightmapType {
     Procedural(ProceduralHeightmapSettings),
     XGradient,
@@ -768,11 +769,11 @@ pub fn create_heightmap_from_closure(
     Heightmap::new(data, size, size, 1.0, original_depth, None)
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct ProceduralHeightmapSettings {
     pub seed: u64,
-    pub noise_type: NoiseType,
-    pub fractal_type: FractalType,
+    pub noise_type: NoiseTypeWrapper,
+    pub fractal_type: FractalTypeWrapper,
     pub fractal_octaves: i32,
     pub fractal_gain: f32,
     pub fractal_lacunarity: f32,
@@ -784,8 +785,8 @@ pub struct ProceduralHeightmapSettings {
 const DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS: ProceduralHeightmapSettings =
     ProceduralHeightmapSettings {
         seed: 1337,
-        noise_type: NoiseType::Perlin,
-        fractal_type: FractalType::FBM,
+        noise_type: NoiseType::Perlin.into(),
+        fractal_type: FractalType::FBM.into(),
         fractal_octaves: 5,
         fractal_gain: 0.6,
         fractal_lacunarity: 2.0,
@@ -812,8 +813,8 @@ impl Default for ProceduralHeightmapSettings {
 
 pub fn create_perlin_heightmap(settings: &ProceduralHeightmapSettings) -> Heightmap {
     let mut noise = FastNoise::seeded(settings.seed);
-    noise.set_noise_type(settings.noise_type);
-    noise.set_fractal_type(settings.fractal_type);
+    noise.set_noise_type(settings.noise_type.into());
+    noise.set_fractal_type(settings.fractal_type.into());
     noise.set_fractal_octaves(settings.fractal_octaves);
     noise.set_fractal_gain(settings.fractal_gain);
     noise.set_fractal_lacunarity(settings.fractal_lacunarity);
