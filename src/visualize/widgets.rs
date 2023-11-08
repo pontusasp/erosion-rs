@@ -3,16 +3,14 @@ use egui::{Color32, Vec2};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::heightmap::HeightmapType;
+use crate::visualize::events::UiEvent;
+use crate::visualize::keybinds::{
+    KEYCODE_NEW_HEIGHTMAP, KEYCODE_NEXT_PARTITIONING_METHOD, KEYCODE_PREVIOUS_PARTITIONING_METHOD,
+};
+use crate::visualize::ui::UiState;
 use crate::{erode::Parameters, heightmap::ProceduralHeightmapSettings, partitioning};
 
-use super::{
-    canvas::Canvas,
-    ui::{
-        UiEvent, UiState, KEYCODE_NEW_HEIGHTMAP, KEYCODE_NEXT_PARTITIONING_METHOD,
-        KEYCODE_PREVIOUS_PARTITIONING_METHOD,
-    },
-    AppState, SimulationState,
-};
+use super::{canvas::Canvas, AppState, SimulationState};
 
 const GAUSSIAN_BLUR_SIGMA_RANGE_MIN: f32 = 0.0;
 const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;

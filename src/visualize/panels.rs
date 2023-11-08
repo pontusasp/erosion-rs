@@ -1,14 +1,12 @@
+use crate::visualize::events::{UiEvent, UiWindow};
+use crate::visualize::keybinds::{
+    UiKey, UiKeybind, KEYBINDS, KEYCODE_TOGGLE_ALL_UI, KEYCODE_TOGGLE_CONTROL_PANEL_UI,
+    KEYCODE_TOGGLE_KEYBINDS_UI, KEYCODE_TOGGLE_METADATA_UI, KEYCODE_TOGGLE_METRICS_UI,
+};
+use crate::visualize::ui::UiState;
 use egui::Rect;
 
-use super::{
-    ui::{
-        UiEvent, UiKey, UiKeybind, UiState, UiWindow, KEYBINDS, KEYCODE_TOGGLE_ALL_UI,
-        KEYCODE_TOGGLE_CONTROL_PANEL_UI, KEYCODE_TOGGLE_KEYBINDS_UI, KEYCODE_TOGGLE_METADATA_UI,
-        KEYCODE_TOGGLE_METRICS_UI,
-    },
-    widgets::*,
-    AppState,
-};
+use super::{widgets::*, AppState};
 
 pub fn ui_top_panel(egui_ctx: &egui::Context, ui_state: &mut UiState) {
     egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {

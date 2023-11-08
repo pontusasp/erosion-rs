@@ -207,6 +207,13 @@ impl SimulationState {
         }
     }
 
+    pub fn eroded_mut(&mut self) -> Option<&mut ErodedState> {
+        match self {
+            SimulationState::Base(_) => None,
+            SimulationState::Eroded((_, eroded)) => Some(eroded),
+        }
+    }
+
     pub fn eroded(&self) -> Option<&ErodedState> {
         match self {
             SimulationState::Base(_) => None,
@@ -257,8 +264,11 @@ impl SimulationState {
 pub mod io {
     use super::AppState;
     use std::{fs, io};
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    use crate::visualize::wrappers::HeightmapTexture;
 
-    pub fn export(app_state: &AppState, file_path: &str) {
+    pub fn export_json(app_state: &AppState, file_path: &str) {
         let result = serde_json::to_string(app_state);
         if let Ok(json) = result {
             fs::write(file_path, json)
@@ -268,26 +278,81 @@ pub mod io {
         }
     }
 
-    pub enum AppStateImportError {
-        ReadError(io::Error),
+    #[derive(Debug)]
+    pub enum AppStateIoError {
+        RWError(io::Error),
         InvalidFileFormat(serde_json::Error),
+        InvalidBinary(bincode::Error),
     }
 
-    impl From<io::Error> for AppStateImportError {
+    impl From<io::Error> for AppStateIoError {
         fn from(err: io::Error) -> Self {
-            AppStateImportError::ReadError(err)
+            AppStateIoError::RWError(err)
         }
     }
 
-    impl From<serde_json::Error> for AppStateImportError {
+    impl From<serde_json::Error> for AppStateIoError {
         fn from(err: serde_json::Error) -> Self {
-            AppStateImportError::InvalidFileFormat(err)
+            AppStateIoError::InvalidFileFormat(err)
         }
     }
 
-    pub fn import(file_path: &str) -> Result<AppState, AppStateImportError> {
+    impl From<bincode::Error> for AppStateIoError {
+        fn from(err: bincode::Error) -> Self {
+            AppStateIoError::InvalidBinary(err)
+        }
+    }
+
+    pub fn import_json(file_path: &str) -> Result<AppState, AppStateIoError> {
         let data = fs::read_to_string(file_path)?;
-        let result: AppState = serde_json::from_str(&data)?;
+        let mut result: AppState = serde_json::from_str(&data)?;
+        repair_states(&mut result);
         Ok(result)
     }
+
+    pub fn export_binary(app_state: &AppState, file_path: &str) -> Result<(), AppStateIoError> {
+        let result = bincode::serialize(app_state)?;
+        fs::write(file_path, result)?;
+        Ok(())
+    }
+
+    pub fn import_binary(file_path: &str) -> Result<AppState, AppStateIoError> {
+        let data = fs::read(file_path)?;
+        let mut result: AppState = bincode::deserialize(&data)?;
+        repair_states(&mut result);
+        Ok(result)
+    }
+
+    fn repair_states(app_state: &mut AppState) {
+        for ref mut state in &mut app_state.simulation_states {
+            let active_hm = &state.base().heightmap_active.heightmap;
+            let active = HeightmapTexture::from(active_hm);
+            state.base_mut().heightmap_active = Rc::new(active);
+
+            let base_hm = &state.base().heightmap_base.heightmap;
+            let base = HeightmapTexture::from(base_hm);
+            state.base_mut().heightmap_base = Rc::new(base);
+
+            if let Some(eroded_state) = state.eroded_mut() {
+                let eroded_hm = &eroded_state.heightmap_eroded.heightmap;
+                let eroded = HeightmapTexture::from(eroded_hm);
+                eroded_state.heightmap_eroded = Rc::new(eroded);
+
+                let mut diffs = Vec::new();
+                for diff in eroded_state.heightmap_difference.borrow().iter() {
+                    let diff_fixed = HeightmapTexture::from(&diff.heightmap);
+                    diffs.push(Rc::new(diff_fixed));
+                }
+                eroded_state.heightmap_difference = Rc::new(RefCell::new(diffs));
+
+                let mut diffs = Vec::new();
+                for diff in eroded_state.heightmap_difference_normalized.borrow().iter() {
+                    let diff_fixed = HeightmapTexture::from(&diff.heightmap);
+                    diffs.push(Rc::new(diff_fixed));
+                }
+                eroded_state.heightmap_difference_normalized = Rc::new(RefCell::new(diffs));
+            }
+        }
+    }
+
 }

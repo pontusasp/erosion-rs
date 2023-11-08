@@ -1,3 +1,4 @@
+use std::mem;
 use std::rc::Rc;
 
 #[cfg(feature = "export")]
@@ -84,6 +85,8 @@ pub enum UiEvent {
     EdgeDetect,
     BlurEdgeDetect,
     Isoline,
+    ExportState,
+    ReadState,
 }
 
 impl UiEvent {
@@ -119,6 +122,8 @@ impl UiEvent {
                 "Apply blur then canny edge detection to selected state".to_string()
             }
             UiEvent::Isoline => "Show isoline".to_string(),
+            UiEvent::ExportState => "Export State".to_string(),
+            UiEvent::ReadState => "Read State from Disk".to_string(),
         }
     }
 }
@@ -431,6 +436,17 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 state
                     .simulation_state_mut()
                     .set_active(Rc::new(HeightmapTexture::new(hm, Some(tex))));
+            }
+            UiEvent::ExportState => {
+                crate::visualize::app_state::io::export_binary(state, "app_state.bin").expect("Failed to export state!");
+            }
+            UiEvent::ReadState => {
+                let mut result = crate::visualize::app_state::io::import_binary("app_state.bin");
+                if let Ok(ref mut app_state) = result {
+                    mem::swap(state, app_state)
+                } else {
+                    eprintln!("Failed to read state! {:?}", result.err().unwrap());
+                }
             }
         };
     }

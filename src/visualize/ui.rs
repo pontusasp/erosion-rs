@@ -1,20 +1,12 @@
-use std::{collections::HashSet, mem, rc::Rc};
+use std::mem;
 
 use egui::{Color32, Rect};
 use macroquad::prelude::*;
 
-#[cfg(feature = "export")]
-use super::SimulationState;
-#[cfg(feature = "export")]
-use crate::heightmap::io::export_heightmaps;
-
 use crate::heightmap::HeightmapPrecision;
-use crate::partitioning;
 use crate::visualize::events::UiEvent;
-use crate::visualize::wrappers::HeightmapTexture;
 
 use super::{
-    mix_heightmap_to_texture,
     panels::{
         ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
     },

@@ -2,7 +2,6 @@ use crate::heightmap;
 
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;
-use serde::{Deserialize, Serialize};
 
 pub mod app_state;
 pub mod canvas;
@@ -16,6 +15,8 @@ pub mod wrappers;
 use crate::erode::Parameters;
 use crate::heightmap::{Heightmap, HeightmapType};
 use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
+use crate::visualize::events::{poll_ui_events, UiEvent};
+use crate::visualize::keybinds::poll_ui_keybinds;
 use crate::visualize::ui::*;
 
 const SUBDIVISIONS: u32 = 3;
