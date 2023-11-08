@@ -159,12 +159,27 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
             ui.heading("Base Heightmap");
             ui.label(format!(
                 "Width x Height: {} x {}",
-                state.simulation_state().base().heightmap_base.heightmap.width,
-                state.simulation_state().base().heightmap_base.heightmap.height
+                state
+                    .simulation_state()
+                    .base()
+                    .heightmap_base
+                    .heightmap
+                    .width,
+                state
+                    .simulation_state()
+                    .base()
+                    .heightmap_base
+                    .heightmap
+                    .height
             ));
             ui.label(format!(
                 "Depth: {}",
-                state.simulation_state().base().heightmap_base.heightmap.depth
+                state
+                    .simulation_state()
+                    .base()
+                    .heightmap_base
+                    .heightmap
+                    .depth
             ));
             ui.label(format!(
                 "Original Depth: {}",
@@ -182,7 +197,13 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
             {
                 ui.label(format!("Average Height: {}", height));
             }
-            if let Some(height) = state.simulation_state().base().heightmap_base.heightmap.total_height {
+            if let Some(height) = state
+                .simulation_state()
+                .base()
+                .heightmap_base
+                .heightmap
+                .total_height
+            {
                 ui.label(format!("Total Depth: {}", height));
             }
             if let Some(metadata) = state
@@ -202,9 +223,17 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
                 ui.label(format!(
                     "Width x Height: {} x {}",
                     eroded.heightmap_eroded.heightmap.width,
-                    state.simulation_state().base().heightmap_base.heightmap.height
+                    state
+                        .simulation_state()
+                        .base()
+                        .heightmap_base
+                        .heightmap
+                        .height
                 ));
-                ui.label(format!("Depth: {}", eroded.heightmap_eroded.heightmap.depth));
+                ui.label(format!(
+                    "Depth: {}",
+                    eroded.heightmap_eroded.heightmap.depth
+                ));
                 ui.label(format!(
                     "Original Depth: {}",
                     eroded.heightmap_eroded.heightmap.original_depth

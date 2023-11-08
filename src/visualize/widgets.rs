@@ -424,13 +424,21 @@ fn procedural_generation_settings(
                 "Perlin
     Fractal",
             );
-            ui.selectable_value(&mut settings.noise_type, NoiseType::Simplex.into(), "Simplex");
+            ui.selectable_value(
+                &mut settings.noise_type,
+                NoiseType::Simplex.into(),
+                "Simplex",
+            );
             ui.selectable_value(
                 &mut settings.noise_type,
                 NoiseType::SimplexFractal.into(),
                 "Simplex Fractal",
             );
-            ui.selectable_value(&mut settings.noise_type, NoiseType::Cellular.into(), "Cellular");
+            ui.selectable_value(
+                &mut settings.noise_type,
+                NoiseType::Cellular.into(),
+                "Cellular",
+            );
             ui.selectable_value(
                 &mut settings.noise_type,
                 NoiseType::WhiteNoise.into(),

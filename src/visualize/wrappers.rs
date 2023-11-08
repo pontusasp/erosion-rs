@@ -1,9 +1,9 @@
-use std::rc::Rc;
+use crate::heightmap::Heightmap;
+use crate::visualize::heightmap_to_texture;
 use bracket_noise::prelude::{FractalType, NoiseType};
 use macroquad::texture::Texture2D;
 use serde::{Deserialize, Serialize};
-use crate::heightmap::Heightmap;
-use crate::visualize::heightmap_to_texture;
+use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum NoiseTypeWrapper {
@@ -25,7 +25,7 @@ impl From<NoiseType> for NoiseTypeWrapper {
             NoiseType::Value => NoiseTypeWrapper::Value,
             NoiseType::ValueFractal => NoiseTypeWrapper::ValueFractal,
             NoiseType::Perlin => NoiseTypeWrapper::Perlin,
-            NoiseType::PerlinFractal => NoiseTypeWrapper::PerlinFractal ,
+            NoiseType::PerlinFractal => NoiseTypeWrapper::PerlinFractal,
             NoiseType::Simplex => NoiseTypeWrapper::Simplex,
             NoiseType::SimplexFractal => NoiseTypeWrapper::SimplexFractal,
             NoiseType::Cellular => NoiseTypeWrapper::Cellular,
@@ -42,7 +42,7 @@ impl From<NoiseTypeWrapper> for NoiseType {
             NoiseTypeWrapper::Value => NoiseType::Value,
             NoiseTypeWrapper::ValueFractal => NoiseType::ValueFractal,
             NoiseTypeWrapper::Perlin => NoiseType::Perlin,
-            NoiseTypeWrapper::PerlinFractal => NoiseType::PerlinFractal ,
+            NoiseTypeWrapper::PerlinFractal => NoiseType::PerlinFractal,
             NoiseTypeWrapper::Simplex => NoiseType::Simplex,
             NoiseTypeWrapper::SimplexFractal => NoiseType::SimplexFractal,
             NoiseTypeWrapper::Cellular => NoiseType::Cellular,
@@ -52,7 +52,6 @@ impl From<NoiseTypeWrapper> for NoiseType {
         }
     }
 }
-
 
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum FractalTypeWrapper {
@@ -89,12 +88,8 @@ pub struct HeightmapTexture {
 }
 
 impl HeightmapTexture {
-
     pub fn new(heightmap: Rc<Heightmap>, texture: Option<Rc<Texture2D>>) -> Self {
-        Self {
-            heightmap,
-            texture,
-        }
+        Self { heightmap, texture }
     }
 
     pub fn get_or_generate(&self) -> Rc<Texture2D> {

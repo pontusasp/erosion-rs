@@ -8,8 +8,8 @@ use std::fmt::{Display, Formatter};
 
 use crate::math::{UVector2, Vector2};
 
-use image::*;
 use crate::visualize::wrappers::{FractalTypeWrapper, NoiseTypeWrapper};
+use image::*;
 
 pub type HeightmapPrecision = f32;
 pub type HeightmapData = Vec<Vec<HeightmapPrecision>>;
@@ -670,7 +670,9 @@ impl Display for HeightmapType {
             HeightmapType::Procedural(_) => f.collect_str("Procedural"),
             HeightmapType::XGradient => f.collect_str("Gradient"),
             HeightmapType::XGradientRepeating(_) => f.collect_str("Gradient Repeating"),
-            HeightmapType::XGradientRepeatingAlternating(_) => f.collect_str("Gradient Repeating Alternating"),
+            HeightmapType::XGradientRepeatingAlternating(_) => {
+                f.collect_str("Gradient Repeating Alternating")
+            }
             HeightmapType::XHyperbolaGradient => f.collect_str("Hyperbola Gradient"),
             HeightmapType::CenteredHillGradient(_) => f.collect_str("Centered Hill"),
             HeightmapType::XSinWave(_) => f.collect_str("Sin Wave"),
@@ -726,7 +728,7 @@ pub fn create_heightmap_from_preset(preset: &HeightmapType, size: usize) -> Heig
                 gradient.powi(2)
             })
         }
-        HeightmapType::CenteredHillGradient(hill_radius)  => {
+        HeightmapType::CenteredHillGradient(hill_radius) => {
             create_heightmap_from_closure(size, 1.0, &|x: usize, y: usize| {
                 let radius = size as HeightmapPrecision / 2.0;
                 let x = x as HeightmapPrecision;
