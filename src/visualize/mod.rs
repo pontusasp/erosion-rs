@@ -1,4 +1,4 @@
-use crate::heightmap;
+use crate::{heightmap, State};
 
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;
@@ -18,7 +18,6 @@ use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
 use crate::visualize::events::{poll_ui_events, UiEvent};
 use crate::visualize::keybinds::poll_ui_keybinds;
 use crate::visualize::ui::*;
-
 const SUBDIVISIONS: u32 = 3;
 const GRID_SIZE: usize = 6;
 const PRESET_HEIGHTMAP_SIZE: usize = 512;
@@ -26,64 +25,72 @@ const PRESET_HEIGHTMAP_SIZE: usize = 512;
 pub async fn run() {
     prevent_quit();
 
-    let mut ui_state = UiState {
-        show_ui_all: true,
-        show_ui_keybinds: false,
-        show_ui_control_panel: true,
-        show_ui_metadata: false,
-        show_ui_metrics: false,
-        simulation_clear: true,
-        simulation_regenerate: false,
-        application_quit: false,
-        ui_events: Vec::<UiEvent>::new(),
-        ui_events_previous: Vec::<UiEvent>::new(),
-        frame_slots: None,
-        blur_sigma: 5.0,
-        canny_edge: (2.5, 50.0),
-        isoline: IsolineProperties {
-            height: 0.2,
-            error: 0.01,
-            flood_lower: false,
-            should_flood: false,
-            flooded_areas_lower: None,
-            flooded_areas_higher: None,
-            blur_augmentation: (false, 1.0),
+    let mut state = State {
+        app_state: AppState {
+            simulation_states: vec![SimulationState::get_new_base(
+                0,
+                &HeightmapType::default(),
+                &Parameters::default(),
+            )],
+            simulation_base_indices: vec![0],
+            parameters: AppParameters::default(),
+        },
+        ui_state: UiState {
+            show_ui_all: true,
+            show_ui_keybinds: false,
+            show_ui_control_panel: true,
+            show_ui_metadata: false,
+            show_ui_metrics: false,
+            simulation_clear: true,
+            simulation_regenerate: false,
+            application_quit: false,
+            ui_events: Vec::<UiEvent>::new(),
+            ui_events_previous: Vec::<UiEvent>::new(),
+            frame_slots: None,
+            blur_sigma: 5.0,
+            canny_edge: (2.5, 50.0),
+            isoline: IsolineProperties {
+                height: 0.2,
+                error: 0.01,
+                flood_lower: false,
+                should_flood: false,
+                flooded_areas_lower: None,
+                flooded_areas_higher: None,
+                blur_augmentation: (false, 1.0),
+            },
         },
     };
-
-    let mut state = AppState {
-        simulation_states: vec![SimulationState::get_new_base(
-            0,
-            &HeightmapType::default(),
-            &Parameters::default(),
-        )],
-        simulation_base_indices: vec![0],
-        parameters: AppParameters::default(),
-    };
-
     let mut corrected_size = false;
 
     // Update heightmap data
-    while ui_state.simulation_clear && !ui_state.application_quit {
-        ui_state.simulation_clear = false;
+    while state.ui_state.simulation_clear && !state.ui_state.application_quit {
+        state.ui_state.simulation_clear = false;
 
-        if ui_state.simulation_regenerate {
-            state.simulation_states.push(SimulationState::get_new_base(
-                state.simulation_states.len(),
-                &state.parameters.heightmap_type,
-                &state.parameters.erosion_params,
-            ));
+        if state.ui_state.simulation_regenerate {
             state
+                .app_state
+                .simulation_states
+                .push(SimulationState::get_new_base(
+                    state.app_state.simulation_states.len(),
+                    &state.app_state.parameters.heightmap_type,
+                    &state.app_state.parameters.erosion_params,
+                ));
+            state
+                .app_state
                 .simulation_base_indices
-                .push(state.simulation_states.len() - 1);
-            ui_state.simulation_regenerate = false;
+                .push(state.app_state.simulation_states.len() - 1);
+            state.ui_state.simulation_regenerate = false;
         }
 
         // Update UI
-        while !is_quit_requested() && !ui_state.simulation_clear && !ui_state.application_quit {
+        while !is_quit_requested()
+            && !state.ui_state.simulation_clear
+            && !state.ui_state.application_quit
+        {
             clear_background(BLACK);
 
-            let canvas_rect = ui_state
+            let canvas_rect = state
+                .ui_state
                 .frame_slots
                 .as_ref()
                 .and_then(|slots| slots.canvas)
@@ -103,12 +110,17 @@ pub async fn run() {
                 );
                 corrected_size = true;
             }
-            draw_frame(&canvas_rect, &state.simulation_state().get_active_texture());
+            draw_frame(
+                &canvas_rect,
+                &state.app_state.simulation_state().get_active_texture(),
+            );
 
-            ui_state.frame_slots = ui_draw(&mut ui_state, &mut state);
+            state.ui_state.frame_slots = ui_draw(&mut state);
 
-            poll_ui_events(&mut ui_state, &mut state);
-            poll_ui_keybinds(&mut ui_state);
+            let app_state = &mut state.app_state;
+            let ui_state = &mut state.ui_state;
+            poll_ui_events(ui_state, app_state);
+            poll_ui_keybinds(&mut state.ui_state);
             next_frame().await;
         }
     }

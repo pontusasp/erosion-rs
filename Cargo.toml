@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bracket-noise = "0.8.7"
-egui = "0.21.0"
+egui = { version = "0.21.0", features = ["serde"] }
 egui-macroquad = "0.15.0"
 macroquad = "0.3.25"
 rand = "0.8.5"

@@ -2,18 +2,19 @@ use std::mem;
 
 use egui::{Color32, Rect};
 use macroquad::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::heightmap::HeightmapPrecision;
 use crate::visualize::events::UiEvent;
+use crate::State;
 
 use super::{
     panels::{
         ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
     },
-    AppState,
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct IsolineProperties {
     pub height: HeightmapPrecision,
     pub error: HeightmapPrecision,
@@ -24,6 +25,7 @@ pub struct IsolineProperties {
     pub blur_augmentation: (bool, f32),
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct UiState {
     pub show_ui_all: bool,
     pub show_ui_keybinds: bool,
@@ -48,11 +50,14 @@ impl UiState {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FrameSlots {
     pub canvas: Option<Rect>,
 }
 
-pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<FrameSlots> {
+pub fn ui_draw(state: &mut State) -> Option<FrameSlots> {
+    let ui_state = &mut state.ui_state;
+    let app_state = &mut state.app_state;
     if ui_state.show_ui_all {
         let mut central_rect = None;
         egui_macroquad::ui(|egui_ctx| {
@@ -60,7 +65,7 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<FrameSlot
             ui_top_panel(egui_ctx, ui_state);
 
             // Side Panel
-            ui_side_panel(egui_ctx, ui_state, state);
+            ui_side_panel(egui_ctx, ui_state, app_state);
 
             // Central Panel
             central_rect = Some(
@@ -75,8 +80,8 @@ pub fn ui_draw(ui_state: &mut UiState, state: &mut AppState) -> Option<FrameSlot
             );
 
             ui_keybinds_window(egui_ctx, ui_state);
-            ui_metadata_window(egui_ctx, ui_state, state);
-            ui_metrics_window(egui_ctx, ui_state, state);
+            ui_metadata_window(egui_ctx, ui_state, app_state);
+            ui_metrics_window(egui_ctx, ui_state, app_state);
         });
 
         egui_macroquad::draw();

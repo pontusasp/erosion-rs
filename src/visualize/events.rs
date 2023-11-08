@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::mem;
 use std::rc::Rc;
 
@@ -6,9 +7,9 @@ use super::SimulationState;
 #[cfg(feature = "export")]
 use crate::heightmap::io::export_heightmaps;
 
-use crate::partitioning;
 use crate::visualize::ui::UiState;
 use crate::visualize::wrappers::HeightmapTexture;
+use crate::{partitioning, State};
 
 use super::{mix_heightmap_to_texture, AppState};
 
@@ -38,7 +39,7 @@ ui.label("[J] Select Next Partitioning Method");
 ui.label("[K] Select Previous Partitioning Method");
  */
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiWindow {
     All,
     Keybinds,
@@ -59,7 +60,7 @@ impl UiWindow {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum UiEvent {
     NewHeightmap,
     ReplaceHeightmap,
@@ -182,8 +183,8 @@ fn try_set_eroded_layer_active(state: &mut AppState) {
     }
 }
 
-pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
-    for event in ui_state.ui_events.iter() {
+pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
+    for event in ui_state.ui_events.clone().iter() {
         match event {
             UiEvent::NewHeightmap => {
                 println!("Regenerating heightmap");
@@ -192,8 +193,8 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
             }
             UiEvent::ReplaceHeightmap => {
                 println!("Regenerating heightmap");
-                state.simulation_states.pop();
-                state.simulation_base_indices.pop();
+                app_state.simulation_states.pop();
+                app_state.simulation_base_indices.pop();
                 ui_state.simulation_clear = true;
                 ui_state.simulation_regenerate = true;
             }
@@ -202,7 +203,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 ui_state.simulation_clear = true;
             }
             #[cfg(feature = "export")]
-            UiEvent::Export => match state.simulation_state() {
+            UiEvent::Export => match app_state.simulation_state() {
                 SimulationState::Base(base) => {
                     export_heightmaps(
                         vec![&base.heightmap_base.heightmap],
@@ -250,27 +251,28 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 }
             },
             UiEvent::RunSimulation => {
-                let simulation_state = state.simulation_state().get_new_eroded(
-                    state.simulation_states.len(),
-                    &state.parameters.erosion_params,
+                let simulation_state = app_state.simulation_state().get_new_eroded(
+                    app_state.simulation_states.len(),
+                    &app_state.parameters.erosion_params,
                 );
-                state.simulation_states.push(simulation_state);
-                state
+                app_state.simulation_states.push(simulation_state);
+                app_state
                     .simulation_base_indices
-                    .push(state.simulation_states.len() - 1);
-                try_set_eroded_layer_active(state);
+                    .push(app_state.simulation_states.len() - 1);
+                try_set_eroded_layer_active(app_state);
             }
             UiEvent::Quit => {
                 println!("Quitting...");
                 ui_state.application_quit = true;
             }
             UiEvent::ShowBaseLayer => {
-                let heightmap = Rc::clone(&state.simulation_state().base().heightmap_base);
-                state.simulation_state_mut().set_active(heightmap);
+                let heightmap = Rc::clone(&app_state.simulation_state().base().heightmap_base);
+                app_state.simulation_state_mut().set_active(heightmap);
             }
             UiEvent::ShowDifference => {
-                let texture = if let Some(eroded) = state.simulation_state().eroded() {
-                    let diff_index: usize = get_or_calculate_selected_diff_index(state).unwrap();
+                let texture = if let Some(eroded) = app_state.simulation_state().eroded() {
+                    let diff_index: usize =
+                        get_or_calculate_selected_diff_index(app_state).unwrap();
                     let diff_heightmap =
                         Rc::clone(&eroded.heightmap_difference.borrow()[diff_index]);
                     Some(diff_heightmap)
@@ -279,12 +281,13 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 };
 
                 if let Some(heightmap) = texture {
-                    state.simulation_state_mut().set_active(heightmap);
+                    app_state.simulation_state_mut().set_active(heightmap);
                 }
             }
             UiEvent::ShowDifferenceNormalized => {
-                let texture = if let Some(eroded) = state.simulation_state().eroded() {
-                    let diff_index: usize = get_or_calculate_selected_diff_index(state).unwrap();
+                let texture = if let Some(eroded) = app_state.simulation_state().eroded() {
+                    let diff_index: usize =
+                        get_or_calculate_selected_diff_index(app_state).unwrap();
                     let diff_heightmap =
                         Rc::clone(&eroded.heightmap_difference_normalized.borrow()[diff_index]);
                     Some(diff_heightmap)
@@ -293,95 +296,116 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 };
 
                 if let Some(heightmap) = texture {
-                    state.simulation_state_mut().set_active(heightmap);
+                    app_state.simulation_state_mut().set_active(heightmap);
                 }
             }
             UiEvent::NextPartitioningMethod => {
-                state.simulation_state_mut().base_mut().erosion_method =
-                    state.simulation_state().base().erosion_method.next();
+                app_state.simulation_state_mut().base_mut().erosion_method =
+                    app_state.simulation_state().base().erosion_method.next();
 
                 println!(
                     "Selected {} method.",
-                    state.simulation_state().base().erosion_method.to_string()
+                    app_state
+                        .simulation_state()
+                        .base()
+                        .erosion_method
+                        .to_string()
                 );
             }
             UiEvent::PreviousPartitioningMethod => {
-                state.simulation_state_mut().base_mut().erosion_method =
-                    state.simulation_state().base().erosion_method.previous();
+                app_state.simulation_state_mut().base_mut().erosion_method = app_state
+                    .simulation_state()
+                    .base()
+                    .erosion_method
+                    .previous();
                 println!(
                     "Selected {} method.",
-                    state.simulation_state().base().erosion_method.to_string()
+                    app_state
+                        .simulation_state()
+                        .base()
+                        .erosion_method
+                        .to_string()
                 );
             }
             UiEvent::SelectMethod(method) => {
-                state.simulation_state_mut().base_mut().erosion_method = *method;
+                app_state.simulation_state_mut().base_mut().erosion_method = *method;
                 println!(
                     "Selected {} method.",
-                    state.simulation_state().base().erosion_method.to_string()
+                    app_state
+                        .simulation_state()
+                        .base()
+                        .erosion_method
+                        .to_string()
                 );
             }
             UiEvent::NextState => {
-                let index = state.simulation_base_indices[state.simulation_base_indices.len() - 1];
-                let len = state.simulation_base_indices.len();
-                state.simulation_base_indices[len - 1] = (index + 1) % len;
+                let index =
+                    app_state.simulation_base_indices[app_state.simulation_base_indices.len() - 1];
+                let len = app_state.simulation_base_indices.len();
+                app_state.simulation_base_indices[len - 1] = (index + 1) % len;
             }
             UiEvent::PreviousState => {
-                let index = state.simulation_base_indices[state.simulation_base_indices.len() - 1];
-                let len = state.simulation_base_indices.len();
-                state.simulation_base_indices[len - 1] = (index + len - 1) % len;
+                let index =
+                    app_state.simulation_base_indices[app_state.simulation_base_indices.len() - 1];
+                let len = app_state.simulation_base_indices.len();
+                app_state.simulation_base_indices[len - 1] = (index + len - 1) % len;
             }
             UiEvent::SelectState(id) => {
-                let len = state.simulation_base_indices.len();
-                state.simulation_base_indices[len - 1] = id % len;
+                let len = app_state.simulation_base_indices.len();
+                app_state.simulation_base_indices[len - 1] = id % len;
             }
             UiEvent::NextDiff => {
-                if let Some(eroded) = state.simulation_state().eroded() {
+                if let Some(eroded) = app_state.simulation_state().eroded() {
                     let mut selected_diff = *eroded.selected_diff.borrow();
-                    let len = state.simulation_base_indices.len();
+                    let len = app_state.simulation_base_indices.len();
                     selected_diff = (selected_diff + 1) % len;
                     eroded.selected_diff.replace(selected_diff);
                 }
             }
             UiEvent::PreviousDiff => {
-                if let Some(eroded) = state.simulation_state().eroded() {
+                if let Some(eroded) = app_state.simulation_state().eroded() {
                     let mut selected_diff = *eroded.selected_diff.borrow();
-                    let len = state.simulation_base_indices.len();
+                    let len = app_state.simulation_base_indices.len();
                     selected_diff = (selected_diff + len - 1) % len;
                     eroded.selected_diff.replace(selected_diff);
                 }
             }
             UiEvent::ShowErodedLayer => {
-                try_set_eroded_layer_active(state);
+                try_set_eroded_layer_active(app_state);
             }
 
             UiEvent::Blur => {
-                if let Some(heightmap) = state
+                if let Some(heightmap) = app_state
                     .simulation_state()
                     .get_heightmap()
                     .blur(ui_state.blur_sigma)
                 {
                     let heightmap_texture = Rc::new(heightmap.into());
-                    state.simulation_state_mut().set_active(heightmap_texture);
+                    app_state
+                        .simulation_state_mut()
+                        .set_active(heightmap_texture);
                 } else {
                     eprintln!("Failed to blur selected state!");
                 }
             }
             UiEvent::EdgeDetect => {
                 let (low, high) = ui_state.canny_edge;
-                let og = state.simulation_state().get_heightmap();
+                let og = app_state.simulation_state().get_heightmap();
                 if let Some(heightmap) = og.canny_edge(low, high) {
                     let texture =
                         Rc::new(mix_heightmap_to_texture(&og, &heightmap, 0, true, false));
                     let heightmap_texture =
                         Rc::new(HeightmapTexture::new(Rc::new(heightmap), Some(texture)));
-                    state.simulation_state_mut().set_active(heightmap_texture);
+                    app_state
+                        .simulation_state_mut()
+                        .set_active(heightmap_texture);
                 } else {
                     eprintln!("Failed to edge detect selected state!");
                 }
             }
             UiEvent::BlurEdgeDetect => {
                 let (low, high) = ui_state.canny_edge;
-                let og = state.simulation_state().get_heightmap();
+                let og = app_state.simulation_state().get_heightmap();
                 if let Some(heightmap) = og
                     .blur(ui_state.blur_sigma)
                     .and_then(|blurred| blurred.canny_edge(low, high))
@@ -390,14 +414,16 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                         Rc::new(mix_heightmap_to_texture(&og, &heightmap, 0, true, false));
                     let heightmap_texture =
                         Rc::new(HeightmapTexture::new(Rc::new(heightmap), Some(texture)));
-                    state.simulation_state_mut().set_active(heightmap_texture);
+                    app_state
+                        .simulation_state_mut()
+                        .set_active(heightmap_texture);
                 } else {
                     eprintln!("Failed to blur or edge detect selected state!");
                 }
             }
             UiEvent::Isoline => {
                 let props = ui_state.isoline;
-                let heightmap = state.simulation_state().get_heightmap();
+                let heightmap = app_state.simulation_state().get_heightmap();
                 let outside = (*heightmap).clone().boolean(
                     props.height + props.error * if props.flood_lower { 1.0 } else { -1.0 },
                     true,
@@ -433,17 +459,29 @@ pub fn poll_ui_events(ui_state: &mut UiState, state: &mut AppState) {
                 };
                 let hm = Rc::new(flooded.unwrap_or(isoline));
                 let tex = Rc::new(mix_heightmap_to_texture(&hm, &outside, 0, false, false));
-                state
+                app_state
                     .simulation_state_mut()
                     .set_active(Rc::new(HeightmapTexture::new(hm, Some(tex))));
             }
             UiEvent::ExportState => {
-                crate::visualize::app_state::io::export_binary(state, "app_state.bin").expect("Failed to export state!");
+                crate::io::export_binary(
+                    &State {
+                        app_state: app_state.clone(),
+                        ui_state: ui_state.clone(),
+                    },
+                    "state.bin",
+                )
+                .expect("Failed to export state!");
             }
             UiEvent::ReadState => {
-                let mut result = crate::visualize::app_state::io::import_binary("app_state.bin");
-                if let Ok(ref mut app_state) = result {
-                    mem::swap(state, app_state)
+                let mut result = crate::io::import_binary("state.bin");
+                if let Ok(State {
+                    app_state: ref mut app_state_,
+                    ui_state: ref mut ui_state_,
+                }) = result
+                {
+                    mem::swap(app_state, app_state_);
+                    mem::swap(ui_state, ui_state_);
                 } else {
                     eprintln!("Failed to read state! {:?}", result.err().unwrap());
                 }

@@ -1,9 +1,13 @@
+use crate::visualize::app_state::AppState;
+use crate::visualize::ui::UiState;
 use image::io::Reader as ImageReader;
 use macroquad::miniquad::conf::Icon;
 use macroquad::prelude::*;
+use serde::{Deserialize, Serialize};
 
 pub mod erode;
 pub mod heightmap;
+mod io;
 pub mod math;
 pub mod partitioning;
 pub mod visualize;
@@ -73,6 +77,12 @@ fn window_conf() -> Conf {
         }),
         ..Default::default()
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct State {
+    pub app_state: AppState,
+    pub ui_state: UiState,
 }
 
 #[macroquad::main(window_conf)]
