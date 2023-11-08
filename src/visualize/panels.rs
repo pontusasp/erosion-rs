@@ -159,12 +159,12 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
             ui.heading("Base Heightmap");
             ui.label(format!(
                 "Width x Height: {} x {}",
-                state.simulation_state().base().heightmap_base.width,
-                state.simulation_state().base().heightmap_base.height
+                state.simulation_state().base().heightmap_base.heightmap.width,
+                state.simulation_state().base().heightmap_base.heightmap.height
             ));
             ui.label(format!(
                 "Depth: {}",
-                state.simulation_state().base().heightmap_base.depth
+                state.simulation_state().base().heightmap_base.heightmap.depth
             ));
             ui.label(format!(
                 "Original Depth: {}",
@@ -172,6 +172,7 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
                     .simulation_state()
                     .base()
                     .heightmap_base
+                    .heightmap
                     .original_depth
             ));
             if let Some(height) = state
@@ -181,13 +182,14 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
             {
                 ui.label(format!("Average Height: {}", height));
             }
-            if let Some(height) = state.simulation_state().base().heightmap_base.total_height {
+            if let Some(height) = state.simulation_state().base().heightmap_base.heightmap.total_height {
                 ui.label(format!("Total Depth: {}", height));
             }
             if let Some(metadata) = state
                 .simulation_state()
                 .base()
                 .heightmap_base
+                .heightmap
                 .metadata
                 .clone()
             {
@@ -199,21 +201,21 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
                 ui.heading("Eroded Heightmap");
                 ui.label(format!(
                     "Width x Height: {} x {}",
-                    eroded.heightmap_eroded.width,
-                    state.simulation_state().base().heightmap_base.height
+                    eroded.heightmap_eroded.heightmap.width,
+                    state.simulation_state().base().heightmap_base.heightmap.height
                 ));
-                ui.label(format!("Depth: {}", eroded.heightmap_eroded.depth));
+                ui.label(format!("Depth: {}", eroded.heightmap_eroded.heightmap.depth));
                 ui.label(format!(
                     "Original Depth: {}",
-                    eroded.heightmap_eroded.original_depth
+                    eroded.heightmap_eroded.heightmap.original_depth
                 ));
-                if let Some(height) = eroded.heightmap_eroded.get_average_height() {
+                if let Some(height) = eroded.heightmap_eroded.heightmap.get_average_height() {
                     ui.label(format!("Average Height: {}", height));
                 }
-                if let Some(height) = eroded.heightmap_eroded.total_height {
+                if let Some(height) = eroded.heightmap_eroded.heightmap.total_height {
                     ui.label(format!("Total Depth: {}", height));
                 }
-                if let Some(metadata) = eroded.heightmap_eroded.metadata.clone() {
+                if let Some(metadata) = eroded.heightmap_eroded.heightmap.metadata.clone() {
                     for (k, v) in metadata.iter() {
                         ui.label(format!("{}: {}", k, v));
                     }

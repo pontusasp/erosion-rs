@@ -81,43 +81,56 @@ impl From<FractalTypeWrapper> for FractalType {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct HeightmapTexture {
     #[serde(skip)]
-    pub texture: Option<Texture2D>,
-    pub source: Rc<Heightmap>,
+    pub texture: Option<Rc<Texture2D>>,
+    pub heightmap: Rc<Heightmap>,
 }
 
 impl HeightmapTexture {
 
-    pub fn new(texture: Option<Texture2D>, source: Rc<Heightmap>) -> Self {
+    pub fn new(heightmap: Rc<Heightmap>, texture: Option<Rc<Texture2D>>) -> Self {
         Self {
+            heightmap,
             texture,
-            source,
         }
     }
 
-    pub fn get_or_generate(&self) -> Texture2D {
-        heightmap_to_texture(&self.source)
+    pub fn get_or_generate(&self) -> Rc<Texture2D> {
+        if let Some(texture) = &self.texture {
+            Rc::clone(texture)
+        } else {
+            Rc::new(heightmap_to_texture(&self.heightmap))
+        }
     }
 
-    pub fn get_and_generate_cache(&mut self) -> Texture2D {
+    pub fn get_and_generate_cache(&mut self) -> Rc<Texture2D> {
         let texture = self.get_or_generate();
-        self.texture = Some(texture);
+        self.texture = Some(Rc::clone(&texture));
         texture
+    }
+}
+
+impl From<&Rc<Heightmap>> for HeightmapTexture {
+    fn from(value: &Rc<Heightmap>) -> Self {
+        Self {
+            texture: Some(Rc::new(heightmap_to_texture(value))),
+            heightmap: Rc::clone(value),
+        }
     }
 }
 
 impl From<Heightmap> for HeightmapTexture {
     fn from(value: Heightmap) -> Self {
         Self {
-            texture: Some(heightmap_to_texture(&value)),
-            source: Rc::new(value),
+            texture: Some(Rc::new(heightmap_to_texture(&value))),
+            heightmap: Rc::new(value),
         }
     }
 }
 
-impl From<HeightmapTexture> for Texture2D {
+impl From<HeightmapTexture> for Rc<Texture2D> {
     fn from(value: HeightmapTexture) -> Self {
         if let Some(texture) = value.texture {
             texture
@@ -125,5 +138,4 @@ impl From<HeightmapTexture> for Texture2D {
             value.get_or_generate()
         }
     }
-
 }

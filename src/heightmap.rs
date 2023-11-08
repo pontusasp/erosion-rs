@@ -785,8 +785,8 @@ pub struct ProceduralHeightmapSettings {
 const DEFAULT_PROCEDURAL_HEIGHTMAP_SETTINGS: ProceduralHeightmapSettings =
     ProceduralHeightmapSettings {
         seed: 1337,
-        noise_type: NoiseType::Perlin.into(),
-        fractal_type: FractalType::FBM.into(),
+        noise_type: NoiseTypeWrapper::Perlin,
+        fractal_type: FractalTypeWrapper::FBM,
         fractal_octaves: 5,
         fractal_gain: 0.6,
         fractal_lacunarity: 2.0,
