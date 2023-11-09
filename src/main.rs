@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod erode;
 pub mod heightmap;
+#[cfg(feature = "export")]
 mod io;
 pub mod math;
 pub mod partitioning;

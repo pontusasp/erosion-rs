@@ -4,11 +4,19 @@ use crate::State;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::{fs, io};
+use image::ImageError;
+use image::imageops::FilterType;
+use crate::heightmap::io::heightmap_to_image;
+
+const STATE_FILE_EXT: &'static str = "ers";
+const ICON_FILE_EXT: &'static str = "png";
+const OUTPUT_DIRECTORY: &'static str = "saves";
 
 #[derive(Debug)]
 pub enum StateIoError {
     RWError(io::Error),
     InvalidBinary(bincode::Error),
+    IconError(ImageError),
 }
 
 impl From<io::Error> for StateIoError {
@@ -23,14 +31,24 @@ impl From<bincode::Error> for StateIoError {
     }
 }
 
-pub fn export_binary(app_state: &State, file_path: &str) -> Result<(), StateIoError> {
-    let result = bincode::serialize(app_state)?;
-    fs::write(file_path, result)?;
+impl From<ImageError> for StateIoError {
+    fn from(err: ImageError) -> Self {
+        StateIoError::IconError(err)
+    }
+}
+
+pub fn export_binary(state: &State, filename: &str) -> Result<(), StateIoError> {
+    fs::create_dir_all(OUTPUT_DIRECTORY)?;
+    let icon = heightmap_to_image(&state.app_state.simulation_state().get_heightmap());
+    let icon = image::imageops::resize(&icon, 64, 64, FilterType::Nearest);
+    icon.save(format!("{}/{}.{}", OUTPUT_DIRECTORY, filename, ICON_FILE_EXT))?;
+    let result = bincode::serialize(state)?;
+    fs::write(format!("{}/{}.{}", OUTPUT_DIRECTORY, filename, STATE_FILE_EXT), result)?;
     Ok(())
 }
 
 pub fn import_binary(file_path: &str) -> Result<State, StateIoError> {
-    let data = fs::read(file_path)?;
+    let data = fs::read(format!("{}/{}.{}", OUTPUT_DIRECTORY, file_path, STATE_FILE_EXT))?;
     let mut result: State = bincode::deserialize(&data)?;
     repair_states(&mut result.app_state);
     Ok(result)

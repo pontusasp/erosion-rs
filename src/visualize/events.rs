@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "export")]
 use std::mem;
 use std::rc::Rc;
 
@@ -9,7 +10,9 @@ use crate::heightmap::io::export_heightmaps;
 
 use crate::visualize::ui::UiState;
 use crate::visualize::wrappers::HeightmapTexture;
-use crate::{partitioning, State};
+use crate::partitioning;
+#[cfg(feature = "export")]
+use crate::State;
 
 use super::{mix_heightmap_to_texture, AppState};
 
@@ -86,7 +89,9 @@ pub enum UiEvent {
     EdgeDetect,
     BlurEdgeDetect,
     Isoline,
+    #[cfg(feature = "export")]
     ExportState,
+    #[cfg(feature = "export")]
     ReadState,
 }
 
@@ -123,7 +128,9 @@ impl UiEvent {
                 "Apply blur then canny edge detection to selected state".to_string()
             }
             UiEvent::Isoline => "Show isoline".to_string(),
+            #[cfg(feature = "export")]
             UiEvent::ExportState => "Export State".to_string(),
+            #[cfg(feature = "export")]
             UiEvent::ReadState => "Read State from Disk".to_string(),
         }
     }
@@ -207,7 +214,8 @@ pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
                 SimulationState::Base(base) => {
                     export_heightmaps(
                         vec![&base.heightmap_base.heightmap],
-                        vec!["output/heightmap"],
+                        "output",
+                        vec!["heightmap"],
                     );
                 }
                 SimulationState::Eroded((base, eroded)) => {
@@ -224,11 +232,12 @@ pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
                             &eroded.heightmap_difference.borrow()[diff_index].heightmap,
                             &eroded.heightmap_difference_normalized.borrow()[diff_index].heightmap,
                         ],
+                        "output",
                         vec![
-                            "output/heightmap",
-                            "output/heightmap_eroded",
-                            "output/heightmap_diff",
-                            "output/heightmap_diff_normalized",
+                            "heightmap",
+                            "heightmap_eroded",
+                            "heightmap_diff",
+                            "heightmap_diff_normalized",
                         ],
                     );
                 }
@@ -463,18 +472,20 @@ pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
                     .simulation_state_mut()
                     .set_active(Rc::new(HeightmapTexture::new(hm, Some(tex))));
             }
+            #[cfg(feature = "export")]
             UiEvent::ExportState => {
                 crate::io::export_binary(
                     &State {
                         app_state: app_state.clone(),
                         ui_state: ui_state.clone(),
                     },
-                    "state.bin",
+                    "state",
                 )
                 .expect("Failed to export state!");
             }
+            #[cfg(feature = "export")]
             UiEvent::ReadState => {
-                let mut result = crate::io::import_binary("state.bin");
+                let mut result = crate::io::import_binary("state");
                 if let Ok(State {
                     app_state: ref mut app_state_,
                     ui_state: ref mut ui_state_,

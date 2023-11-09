@@ -857,7 +857,7 @@ pub fn create_perlin_heightmap(settings: &ProceduralHeightmapSettings) -> Height
 #[cfg(feature = "export")]
 pub mod io {
     use crate::heightmap::*;
-    use std::fs::File;
+    use std::fs::{self, File};
     use std::io::prelude::*;
 
     #[derive(Debug)]
@@ -866,15 +866,16 @@ pub mod io {
         FileImportError,
     }
 
-    pub fn export(heightmap: &Heightmap, filename: &str) -> Result<(), HeightmapIOError> {
-        fn _export(heightmap: &Heightmap, filename: &str) -> std::io::Result<()> {
+    pub fn export(heightmap: &Heightmap, path: &str, filename: &str) -> Result<(), HeightmapIOError> {
+        fn _export(heightmap: &Heightmap, path: &str, filename: &str) -> std::io::Result<()> {
+            fs::create_dir_all(path)?;
             let data = serde_json::to_string(&heightmap).unwrap();
             let mut file = File::create(format!("{}.json", filename))?;
             file.write_all(data.as_bytes())?;
             Ok(())
         }
 
-        match _export(heightmap, filename) {
+        match _export(heightmap, path, filename) {
             Ok(_) => Ok(()),
             Err(_) => Err(HeightmapIOError::FileExportError),
         }
@@ -898,7 +899,7 @@ pub mod io {
         }
     }
 
-    pub fn heightmap_to_image(heightmap: &Heightmap, filename: &str) -> image::ImageResult<()> {
+    pub fn save_heightmap_as_image(heightmap: &Heightmap, filename: &str) -> image::ImageResult<()> {
         let buffer = heightmap.to_u8();
 
         // Save the buffer as filename on disk
@@ -911,17 +912,22 @@ pub mod io {
         )
     }
 
-    pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, filenames: Vec<&str>) {
+    pub fn heightmap_to_image(heightmap: &Heightmap) -> image::ImageBuffer<image::Luma<u8>, Vec<u8>> {
+        let buffer = heightmap.to_u8();
+        image::ImageBuffer::from_raw(heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), buffer).unwrap()
+    }
+
+    pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, path: &str, filenames: Vec<&str>) {
         println!("Exporting heightmaps...");
         for (heightmap, filename) in heightmaps.iter().zip(filenames.iter()) {
-            if let Err(e) = heightmap_to_image(heightmap, filename) {
+            io::export(heightmap, path, filename).unwrap();
+            if let Err(e) = save_heightmap_as_image(heightmap, filename) {
                 println!(
                     "Failed to save {}! Make sure the output folder exists.",
                     filename
                 );
                 println!("Given Reason: {}", e);
             }
-            io::export(heightmap, filename).unwrap();
         }
     }
 }

@@ -76,7 +76,9 @@ pub const KEYBINDS: &[UiKeybind] = &[
     UiKeybind::Pressed(UiKey::Single(KeyCode::C), UiEvent::EdgeDetect),
     UiKeybind::Pressed(UiKey::Single(KeyCode::X), UiEvent::BlurEdgeDetect),
     UiKeybind::Pressed(UiKey::Single(KeyCode::I), UiEvent::Isoline),
+    #[cfg(feature = "export")]
     UiKeybind::Pressed(UiKey::Single(KeyCode::W), UiEvent::ExportState),
+    #[cfg(feature = "export")]
     UiKeybind::Pressed(UiKey::Single(KeyCode::E), UiEvent::ReadState),
 ];
 
