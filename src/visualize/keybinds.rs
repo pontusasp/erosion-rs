@@ -41,7 +41,7 @@ pub const KEYBINDS: &[UiKeybind] = &[
     UiKeybind::Pressed(UiKey::Single(KEYCODE_NEW_HEIGHTMAP), UiEvent::NewHeightmap),
     UiKeybind::Pressed(UiKey::Single(KeyCode::R), UiEvent::Clear),
     #[cfg(feature = "export")]
-    UiKeybind::Pressed(UiKey::Single(KeyCode::S), UiEvent::Export),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::S), UiEvent::ExportHeightmap),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Enter), UiEvent::RunSimulation),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Q), UiEvent::Quit),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Escape), UiEvent::Quit),

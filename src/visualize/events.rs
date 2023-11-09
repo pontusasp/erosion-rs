@@ -69,7 +69,7 @@ pub enum UiEvent {
     ReplaceHeightmap,
     Clear,
     #[cfg(feature = "export")]
-    Export,
+    ExportHeightmap,
     RunSimulation,
     ToggleUi(UiWindow),
     Quit,
@@ -102,7 +102,7 @@ impl UiEvent {
             UiEvent::ReplaceHeightmap => "Replace heightmap".to_string(),
             UiEvent::Clear => "Clear simulations".to_string(),
             #[cfg(feature = "export")]
-            UiEvent::Export => "Export layers".to_string(),
+            UiEvent::ExportHeightmap => "Export layers".to_string(),
             UiEvent::RunSimulation => "Run simulation".to_string(),
             UiEvent::ToggleUi(window) => format!("Toggles {}", window.to_string()).to_string(),
             UiEvent::Quit => "Quit".to_string(),
@@ -210,7 +210,7 @@ pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
                 ui_state.simulation_clear = true;
             }
             #[cfg(feature = "export")]
-            UiEvent::Export => match app_state.simulation_state() {
+            UiEvent::ExportHeightmap => match app_state.simulation_state() {
                 SimulationState::Base(base) => {
                     export_heightmaps(
                         vec![&base.heightmap_base.heightmap],
