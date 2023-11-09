@@ -2,3 +2,4 @@
 output/*.png
 output/*.json
 /.idea
+saves/
