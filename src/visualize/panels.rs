@@ -12,6 +12,25 @@ pub fn ui_top_panel(egui_ctx: &egui::Context, ui_state: &mut UiState) {
     egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
         egui::menu::bar(ui, |ui| {
             ui.heading("Erosion RS");
+            ui.separator();
+            #[cfg(feature = "export")]
+            {
+                ui.menu_button("File", |ui| {
+                    ui.menu_button("Load State", |ui| {
+                        for (i, state_file) in ui_state.saves.iter().enumerate() {
+                            if ui.button(format!("{}", state_file.0)).clicked() {
+                                ui_state.ui_events.push(UiEvent::ReadState(i));
+                                ui.close_menu();
+                            }
+                        }
+                    });
+                    if ui.button("Save State").clicked() {
+                        ui_state.ui_events.push(UiEvent::ExportState);
+                        ui.close_menu();
+                    }
+                });
+                ui.separator();
+            }
             if ui
                 .button(format!(
                     "[{:?}] {} UI",

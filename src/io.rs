@@ -7,6 +7,7 @@ use std::{fs, io};
 use image::ImageError;
 use image::imageops::FilterType;
 use crate::heightmap::io::heightmap_to_image;
+use crate::visualize::ui::UiState;
 
 const STATE_FILE_EXT: &'static str = "ers";
 const ICON_FILE_EXT: &'static str = "png";
@@ -47,14 +48,19 @@ pub fn export_binary(state: &State, filename: &str) -> Result<(), StateIoError> 
     Ok(())
 }
 
-pub fn import_binary(file_path: &str) -> Result<State, StateIoError> {
-    let data = fs::read(format!("{}/{}.{}", OUTPUT_DIRECTORY, file_path, STATE_FILE_EXT))?;
+pub fn import_binary(file_name: &str) -> Result<State, StateIoError> {
+    let data = fs::read(format!("{}/{}.{}", OUTPUT_DIRECTORY, file_name, STATE_FILE_EXT))?;
     let mut result: State = bincode::deserialize(&data)?;
-    repair_states(&mut result.app_state);
+    repair_app_state(&mut result.app_state);
+    repair_ui_state(&mut result.ui_state);
     Ok(result)
 }
 
-fn repair_states(app_state: &mut AppState) {
+fn repair_ui_state(ui_state: &mut UiState) {
+    ui_state.saves = list_state_files().expect("Failed to access saved states.");
+}
+
+fn repair_app_state(app_state: &mut AppState) {
     for ref mut state in &mut app_state.simulation_states {
         let active_hm = &state.base().heightmap_active.heightmap;
         let active = HeightmapTexture::from(active_hm);
@@ -84,4 +90,43 @@ fn repair_states(app_state: &mut AppState) {
             eroded_state.heightmap_difference_normalized = Rc::new(RefCell::new(diffs));
         }
     }
+}
+
+pub type StateFile = (String, Option<String>);
+
+pub fn list_state_files() -> Result<Vec<StateFile>, StateIoError> {
+    list_state_files_custom_path(OUTPUT_DIRECTORY)
+}
+
+pub fn list_state_files_custom_path(path: &str) -> Result<Vec<StateFile>, StateIoError> {
+    let mut files = Vec::new();
+    let paths = fs::read_dir(path)?;
+
+    let extension = format!(".{}", STATE_FILE_EXT);
+    for path_result in paths {
+        if let Ok(path) = path_result {
+            let is_file = path.file_type().and_then(|file| Ok(file.is_file())).unwrap_or(false);
+            let file_name = path.file_name().into_string().expect("Can't read filename! Are there any special characters in it?");
+            let is_state_file = file_name.ends_with(&extension);
+            if is_file && is_state_file {
+                files.push(file_name.strip_suffix(&extension).expect("Failed to process file name.").to_string())
+            }
+        }
+    }
+
+    let icon_extension = format!(".{}", ICON_FILE_EXT);
+    let list = files.iter().map(|state_name| {
+        let mut state_icon_name = state_name.clone();
+        state_icon_name.push_str(&icon_extension);
+
+        let icon = if fs::metadata(&state_icon_name).is_ok() {
+            Some(state_icon_name)
+        } else {
+            None
+        };
+
+        (state_name.to_string(), icon)
+    }).collect();
+
+    Ok(list)
 }

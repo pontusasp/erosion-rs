@@ -92,7 +92,7 @@ pub enum UiEvent {
     #[cfg(feature = "export")]
     ExportState,
     #[cfg(feature = "export")]
-    ReadState,
+    ReadState(usize),
 }
 
 impl UiEvent {
@@ -131,7 +131,7 @@ impl UiEvent {
             #[cfg(feature = "export")]
             UiEvent::ExportState => "Export State".to_string(),
             #[cfg(feature = "export")]
-            UiEvent::ReadState => "Read State from Disk".to_string(),
+            UiEvent::ReadState(_) => "Read State from Disk".to_string(),
         }
     }
 }
@@ -484,8 +484,9 @@ pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
                 .expect("Failed to export state!");
             }
             #[cfg(feature = "export")]
-            UiEvent::ReadState => {
-                let mut result = crate::io::import_binary("state");
+            UiEvent::ReadState(index) => {
+                let state_file = ui_state.saves.get(*index).expect("Something went wrong when loading the file.");
+                let mut result = crate::io::import_binary(&state_file.0);
                 if let Ok(State {
                     app_state: ref mut app_state_,
                     ui_state: ref mut ui_state_,

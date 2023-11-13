@@ -8,6 +8,9 @@ use crate::heightmap::HeightmapPrecision;
 use crate::visualize::events::UiEvent;
 use crate::State;
 
+#[cfg(feature = "export")]
+use crate::io::StateFile;
+
 use super::{
     panels::{
         ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
@@ -41,6 +44,9 @@ pub struct UiState {
     pub blur_sigma: f32,
     pub canny_edge: (f32, f32),
     pub isoline: IsolineProperties,
+    #[cfg(feature = "export")]
+    #[serde(skip)]
+    pub saves: Vec<StateFile>,
 }
 
 impl UiState {

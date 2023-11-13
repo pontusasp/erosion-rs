@@ -18,6 +18,10 @@ use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
 use crate::visualize::events::{poll_ui_events, UiEvent};
 use crate::visualize::keybinds::poll_ui_keybinds;
 use crate::visualize::ui::*;
+
+#[cfg(feature = "export")]
+use crate::io::list_state_files;
+
 const SUBDIVISIONS: u32 = 3;
 const GRID_SIZE: usize = 6;
 const PRESET_HEIGHTMAP_SIZE: usize = 512;
@@ -58,6 +62,8 @@ pub async fn run() {
                 flooded_areas_higher: None,
                 blur_augmentation: (false, 1.0),
             },
+            #[cfg(feature = "export")]
+            saves: list_state_files().expect("Failed to access saved states."),
         },
     };
     let mut corrected_size = false;
