@@ -866,7 +866,11 @@ pub mod io {
         FileImportError,
     }
 
-    pub fn export(heightmap: &Heightmap, path: &str, filename: &str) -> Result<(), HeightmapIOError> {
+    pub fn export(
+        heightmap: &Heightmap,
+        path: &str,
+        filename: &str,
+    ) -> Result<(), HeightmapIOError> {
         fn _export(heightmap: &Heightmap, path: &str, filename: &str) -> std::io::Result<()> {
             fs::create_dir_all(path)?;
             let data = serde_json::to_string(&heightmap).unwrap();
@@ -899,7 +903,10 @@ pub mod io {
         }
     }
 
-    pub fn save_heightmap_as_image(heightmap: &Heightmap, filename: &str) -> image::ImageResult<()> {
+    pub fn save_heightmap_as_image(
+        heightmap: &Heightmap,
+        filename: &str,
+    ) -> image::ImageResult<()> {
         let buffer = heightmap.to_u8();
 
         // Save the buffer as filename on disk
@@ -912,9 +919,16 @@ pub mod io {
         )
     }
 
-    pub fn heightmap_to_image(heightmap: &Heightmap) -> image::ImageBuffer<image::Luma<u8>, Vec<u8>> {
+    pub fn heightmap_to_image(
+        heightmap: &Heightmap,
+    ) -> image::ImageBuffer<image::Luma<u8>, Vec<u8>> {
         let buffer = heightmap.to_u8();
-        image::ImageBuffer::from_raw(heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), buffer).unwrap()
+        image::ImageBuffer::from_raw(
+            heightmap.width.try_into().unwrap(),
+            heightmap.height.try_into().unwrap(),
+            buffer,
+        )
+        .unwrap()
     }
 
     pub fn export_heightmaps(heightmaps: Vec<&Heightmap>, path: &str, filenames: Vec<&str>) {

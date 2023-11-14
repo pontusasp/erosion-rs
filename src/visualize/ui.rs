@@ -11,10 +11,8 @@ use crate::State;
 #[cfg(feature = "export")]
 use crate::io::StateFile;
 
-use super::{
-    panels::{
-        ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
-    },
+use super::panels::{
+    ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
 };
 
 #[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -54,6 +52,10 @@ impl UiState {
         mem::swap(&mut self.ui_events_previous, &mut self.ui_events);
         self.ui_events.clear();
     }
+
+    pub fn cancel_events(&mut self, event: &UiEvent) {
+        self.ui_events.retain(|e| e != event);
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -64,11 +66,12 @@ pub struct FrameSlots {
 pub fn ui_draw(state: &mut State) -> Option<FrameSlots> {
     let ui_state = &mut state.ui_state;
     let app_state = &mut state.app_state;
+    let state_name = &mut state.state_name;
     if ui_state.show_ui_all {
         let mut central_rect = None;
         egui_macroquad::ui(|egui_ctx| {
             // Top Panel
-            ui_top_panel(egui_ctx, ui_state);
+            ui_top_panel(egui_ctx, ui_state, state_name);
 
             // Side Panel
             ui_side_panel(egui_ctx, ui_state, app_state);

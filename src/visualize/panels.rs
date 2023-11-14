@@ -8,10 +8,47 @@ use egui::Rect;
 
 use super::{widgets::*, AppState};
 
-pub fn ui_top_panel(egui_ctx: &egui::Context, ui_state: &mut UiState) {
+pub fn ui_save_as(
+    egui_ctx: &egui::Context,
+    ui_state: &mut UiState,
+    state_name: &mut Option<String>,
+) {
+    if ui_state.ui_events.contains(&UiEvent::ExportStateAs) {
+        egui::Window::new("Save As").show(egui_ctx, |ui| {
+            ui.label("Save as:");
+
+            let mut file_name = if let Some(name) = state_name {
+                name.clone()
+            } else {
+                crate::io::DEFAULT_NAME.to_string()
+            };
+            if ui.text_edit_singleline(&mut file_name).changed() {
+                *state_name = Some(file_name);
+            }
+            if ui.button("Save").clicked() {
+                ui_state.ui_events.push(UiEvent::ExportState);
+                ui_state.cancel_events(&UiEvent::ExportStateAs);
+            }
+            if ui.button("Cancel").clicked() {
+                ui_state.cancel_events(&UiEvent::ExportStateAs);
+            }
+        });
+    }
+}
+
+pub fn ui_top_panel(
+    egui_ctx: &egui::Context,
+    ui_state: &mut UiState,
+    state_name: &mut Option<String>,
+) {
     egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
         egui::menu::bar(ui, |ui| {
-            ui.heading("Erosion RS");
+            let heading = if let Some(ref string) = state_name {
+                string.as_str()
+            } else {
+                crate::io::DEFAULT_NAME
+            };
+            ui.heading(heading);
             ui.separator();
             #[cfg(feature = "export")]
             {
@@ -24,12 +61,17 @@ pub fn ui_top_panel(egui_ctx: &egui::Context, ui_state: &mut UiState) {
                             }
                         }
                     });
-                    if ui.button("Save State").clicked() {
+                    if state_name.is_some() && ui.button("Save").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportState);
+                        ui.close_menu();
+                    }
+                    if ui.button("Save as").clicked() {
+                        ui_state.ui_events.push(UiEvent::ExportStateAs);
                         ui.close_menu();
                     }
                 });
                 ui.separator();
+                ui_save_as(egui_ctx, ui_state, state_name);
             }
             if ui
                 .button(format!(

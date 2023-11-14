@@ -82,6 +82,7 @@ fn window_conf() -> Conf {
 
 #[derive(Serialize, Deserialize)]
 pub struct State {
+    pub state_name: Option<String>,
     pub app_state: AppState,
     pub ui_state: UiState,
 }

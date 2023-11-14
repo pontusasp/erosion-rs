@@ -26,10 +26,9 @@ const SUBDIVISIONS: u32 = 3;
 const GRID_SIZE: usize = 6;
 const PRESET_HEIGHTMAP_SIZE: usize = 512;
 
-pub async fn run() {
-    prevent_quit();
-
-    let mut state = State {
+pub fn generate_default_state() -> State {
+    State {
+        state_name: None,
         app_state: AppState {
             simulation_states: vec![SimulationState::get_new_base(
                 0,
@@ -65,11 +64,20 @@ pub async fn run() {
             #[cfg(feature = "export")]
             saves: list_state_files().expect("Failed to access saved states."),
         },
-    };
+    }
+}
+
+pub async fn run() {
+    prevent_quit();
+
+    let mut state = generate_default_state();
     let mut corrected_size = false;
 
     // Update heightmap data
     while state.ui_state.simulation_clear && !state.ui_state.application_quit {
+        if state.ui_state.simulation_clear {
+            state = generate_default_state();
+        }
         state.ui_state.simulation_clear = false;
 
         if state.ui_state.simulation_regenerate {
@@ -123,9 +131,10 @@ pub async fn run() {
 
             state.ui_state.frame_slots = ui_draw(&mut state);
 
+            let state_name = &mut state.state_name;
             let app_state = &mut state.app_state;
             let ui_state = &mut state.ui_state;
-            poll_ui_events(ui_state, app_state);
+            poll_ui_events(state_name, ui_state, app_state);
             poll_ui_keybinds(&mut state.ui_state);
             next_frame().await;
         }

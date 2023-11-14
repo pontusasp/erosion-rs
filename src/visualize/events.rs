@@ -8,9 +8,9 @@ use super::SimulationState;
 #[cfg(feature = "export")]
 use crate::heightmap::io::export_heightmaps;
 
+use crate::partitioning;
 use crate::visualize::ui::UiState;
 use crate::visualize::wrappers::HeightmapTexture;
-use crate::partitioning;
 #[cfg(feature = "export")]
 use crate::State;
 
@@ -93,6 +93,7 @@ pub enum UiEvent {
     ExportState,
     #[cfg(feature = "export")]
     ReadState(usize),
+    ExportStateAs,
 }
 
 impl UiEvent {
@@ -132,6 +133,8 @@ impl UiEvent {
             UiEvent::ExportState => "Export State".to_string(),
             #[cfg(feature = "export")]
             UiEvent::ReadState(_) => "Read State from Disk".to_string(),
+            #[cfg(feature = "export")]
+            UiEvent::ExportStateAs => "Export State As".to_string(),
         }
     }
 }
@@ -178,6 +181,20 @@ fn get_or_calculate_selected_diff_index(state: &AppState) -> Option<usize> {
     }
 }
 
+fn push_base(app_state: &mut AppState) {
+    println!("Regenerating heightmap");
+    app_state
+        .simulation_states
+        .push(SimulationState::get_new_base(
+            app_state.simulation_states.len(),
+            &app_state.parameters.heightmap_type,
+            &app_state.parameters.erosion_params,
+        ));
+    app_state
+        .simulation_base_indices
+        .push(app_state.simulation_states.len() - 1);
+}
+
 fn try_set_eroded_layer_active(state: &mut AppState) {
     let texture = if let Some(eroded) = state.simulation_state().eroded() {
         Some(Rc::clone(&eroded.heightmap_eroded))
@@ -190,20 +207,36 @@ fn try_set_eroded_layer_active(state: &mut AppState) {
     }
 }
 
-pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
+fn poll_ui_events_pre_check(ui_state: &mut UiState) {
+    for event in ui_state.ui_events.clone() {
+        match event {
+            UiEvent::ExportStateAs => {
+                // If we are exporting, ignore all other events
+                ui_state.ui_events.retain(|&e| e == event);
+                break;
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn poll_ui_events(
+    state_name: &mut Option<String>,
+    ui_state: &mut UiState,
+    app_state: &mut AppState,
+) {
+    poll_ui_events_pre_check(ui_state);
+
+    let mut next_frame_events = Vec::new();
     for event in ui_state.ui_events.clone().iter() {
         match event {
             UiEvent::NewHeightmap => {
-                println!("Regenerating heightmap");
-                ui_state.simulation_clear = true;
-                ui_state.simulation_regenerate = true;
+                push_base(app_state);
             }
             UiEvent::ReplaceHeightmap => {
-                println!("Regenerating heightmap");
                 app_state.simulation_states.pop();
                 app_state.simulation_base_indices.pop();
-                ui_state.simulation_clear = true;
-                ui_state.simulation_regenerate = true;
+                push_base(app_state);
             }
             UiEvent::Clear => {
                 println!("Restarting");
@@ -474,31 +507,47 @@ pub fn poll_ui_events(ui_state: &mut UiState, app_state: &mut AppState) {
             }
             #[cfg(feature = "export")]
             UiEvent::ExportState => {
+                let filename = if let Some(filename) = &state_name {
+                    filename.as_str()
+                } else {
+                    crate::io::DEFAULT_NAME
+                };
                 crate::io::export_binary(
                     &State {
+                        state_name: state_name.clone(),
                         app_state: app_state.clone(),
                         ui_state: ui_state.clone(),
                     },
-                    "state",
+                    filename,
                 )
                 .expect("Failed to export state!");
             }
             #[cfg(feature = "export")]
             UiEvent::ReadState(index) => {
-                let state_file = ui_state.saves.get(*index).expect("Something went wrong when loading the file.");
+                let state_file = ui_state
+                    .saves
+                    .get(*index)
+                    .expect("Something went wrong when loading the file.");
                 let mut result = crate::io::import_binary(&state_file.0);
                 if let Ok(State {
+                    state_name: ref mut state_name_,
                     app_state: ref mut app_state_,
                     ui_state: ref mut ui_state_,
                 }) = result
                 {
+                    mem::swap(state_name, state_name_);
                     mem::swap(app_state, app_state_);
                     mem::swap(ui_state, ui_state_);
                 } else {
                     eprintln!("Failed to read state! {:?}", result.err().unwrap());
                 }
             }
+            #[cfg(feature = "export")]
+            UiEvent::ExportStateAs => {
+                next_frame_events.push(UiEvent::ExportStateAs);
+            }
         };
     }
     ui_state.clear_events();
+    ui_state.ui_events.append(&mut next_frame_events);
 }
