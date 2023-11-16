@@ -584,6 +584,15 @@ pub fn poll_ui_events(
                 } else {
                     crate::io::DEFAULT_NAME
                 };
+                crate::io::export_json(
+                    &State {
+                        state_name: state_name.clone(),
+                        app_state: app_state.clone(),
+                        ui_state: ui_state.clone(),
+                    },
+                    filename,
+                )
+                    .expect("Failed to export state!");
                 crate::io::export_binary(
                     &State {
                         state_name: state_name.clone(),
@@ -592,7 +601,16 @@ pub fn poll_ui_events(
                     },
                     filename,
                 )
-                .expect("Failed to export state!");
+                    .expect("Failed to export state!");
+                crate::io::export_icon(
+                    &State {
+                        state_name: state_name.clone(),
+                        app_state: app_state.clone(),
+                        ui_state: ui_state.clone(),
+                    },
+                    filename,
+                )
+                .expect("Failed to export icon!");
             }
             #[cfg(feature = "export")]
             UiEvent::ReadState(index) => {
@@ -600,7 +618,7 @@ pub fn poll_ui_events(
                     .saves
                     .get(*index)
                     .expect("Something went wrong when loading the file.");
-                let mut result = crate::io::import_binary(&state_file.0);
+                let mut result = crate::io::import(&state_file.0);
                 if let Ok(State {
                     state_name: ref mut state_name_,
                     app_state: ref mut app_state_,
