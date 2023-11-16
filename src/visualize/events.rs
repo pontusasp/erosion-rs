@@ -223,6 +223,7 @@ fn poll_ui_events_pre_check(ui_state: &mut UiState) {
 }
 
 pub fn poll_ui_events(
+    #[cfg(feature = "export")]
     state_name: &mut Option<String>,
     ui_state: &mut UiState,
     app_state: &mut AppState,

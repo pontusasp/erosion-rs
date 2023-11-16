@@ -71,11 +71,38 @@ pub fn generate_default_state() -> State {
 pub async fn run() {
     prevent_quit();
 
-    let mut state = generate_default_state();
+    let mut state = {
+        let state = generate_default_state();
+        let autoload_default: Option<State> = {
+            #[cfg(feature = "export")]
+            {
+                let default = state.ui_state.saves.iter().find(|&save| save.0 == "default");
+                if let Some(state_file) = default {
+                    crate::io::import_binary(&state_file.0).ok()
+                } else {
+                    None
+                }
+            }
+            #[cfg(not(feature = "export"))]
+            {
+                None
+            }
+        };
+
+        if let Some(default) = autoload_default {
+            default
+        } else {
+            state
+        }
+    };
+
+    let mut launching = true;
+
     let mut corrected_size = false;
 
     // Update heightmap data
-    while state.ui_state.simulation_clear && !state.ui_state.application_quit {
+    while launching || state.ui_state.simulation_clear && !state.ui_state.application_quit {
+        launching = false;
         if state.ui_state.simulation_clear {
             state = generate_default_state();
         }
@@ -132,10 +159,15 @@ pub async fn run() {
 
             state.ui_state.frame_slots = ui_draw(&mut state);
 
+            #[cfg(feature = "export")]
             let state_name = &mut state.state_name;
             let app_state = &mut state.app_state;
             let ui_state = &mut state.ui_state;
-            poll_ui_events(state_name, ui_state, app_state);
+            poll_ui_events(
+                #[cfg(feature = "export")]
+                state_name,
+                ui_state,
+                app_state);
             poll_ui_keybinds(&mut state.ui_state);
             next_frame().await;
         }
