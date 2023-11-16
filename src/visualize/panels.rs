@@ -8,6 +8,7 @@ use egui::Rect;
 
 use super::{widgets::*, AppState};
 
+#[cfg(feature = "export")]
 pub fn ui_save_as(
     egui_ctx: &egui::Context,
     ui_state: &mut UiState,
@@ -46,7 +47,14 @@ pub fn ui_top_panel(
             let heading = if let Some(ref string) = state_name {
                 string.as_str()
             } else {
-                crate::io::DEFAULT_NAME
+                #[cfg(feature = "export")]
+                {
+                    crate::io::DEFAULT_NAME
+                }
+                #[cfg(not(feature = "export"))]
+                {
+                    "Erosion RS"
+                }
             };
             ui.heading(heading);
             ui.separator();

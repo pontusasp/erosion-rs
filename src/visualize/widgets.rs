@@ -175,7 +175,25 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                                 .text("Blur amount"),
                         )
                         .changed();
+                updated = updated
+                    || ui
+                        .add(
+                            egui::Slider::new(&mut props.blur_augmentation.2, 0..=10)
+                                .text("Noise Reduction Kernel"),
+                        )
+                        .changed();
+                updated = updated
+                    || ui
+                        .add(
+                            egui::Slider::new(&mut props.blur_augmentation.3, 0..=10)
+                                .text("Noise Reduction Iterations"),
+                        )
+                        .changed();
             }
+            updated = updated
+                || ui
+                    .toggle_value(&mut props.advanced_texture, "Advanced Visualization")
+                    .changed();
 
             let lower = props.flooded_areas_lower.unwrap_or(0);
             let higher = props.flooded_areas_higher.unwrap_or(0);
@@ -337,7 +355,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.num_iterations,
-                    0..=10000000,
+                    0..=10_000_000,
                 )
                 .text("Num Iterations"),
             )
@@ -473,7 +491,7 @@ fn procedural_generation_settings(
     let mut size = settings.width;
     updated = updated
         || ui
-            .add(egui::Slider::new(&mut size, 64..=1024).text("Resolution"))
+            .add(egui::Slider::new(&mut size, 2usize.pow(6)..=2usize.pow(12)).text("Resolution"))
             .changed();
     settings.width = size;
     settings.height = size;
