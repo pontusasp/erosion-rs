@@ -60,6 +60,7 @@ pub fn generate_default_state() -> State {
                 flooded_areas_lower: None,
                 flooded_areas_higher: None,
                 blur_augmentation: (false, 1.0),
+                advanced_texture: true,
             },
             #[cfg(feature = "export")]
             saves: list_state_files().expect("Failed to access saved states."),
@@ -145,6 +146,7 @@ fn draw_frame(rect: &Rect, texture: &Texture2D) {
     let side = rect.width().min(rect.height());
     let margin_left = (rect.width() - side) / 2.0;
     let margin_top = (rect.height() - side) / 2.0;
+    texture.set_filter(FilterMode::Nearest);
     draw_texture_ex(
         *texture,
         rect.min.x + margin_left,
@@ -203,6 +205,125 @@ fn mix_heightmap_to_texture(
         bytes: buffer,
         width: heightmap.width.try_into().unwrap(),
         height: heightmap.height.try_into().unwrap(),
+    };
+
+    Texture2D::from_image(&image)
+}
+
+pub enum LayerMixMethod {
+    Additive,
+    AdditiveClamp,
+    Multiply,
+    Difference,
+}
+
+
+pub mod rgba_color_channel {
+    pub type Channel = u8;
+    pub const R: Channel  = 0b0001;
+    pub const G: Channel = 0b0010;
+    pub const B: Channel = 0b0100;
+    pub const A: Channel = 0b1000;
+    pub const RGBA: Channel = R | G | B | A;
+    pub const RGA: Channel = R | G | A;
+    pub const RBA: Channel = R | B | A;
+    pub const GBA: Channel = G | B | A;
+    pub const RA: Channel = R | A;
+    pub const GA: Channel = B | A;
+    pub const BA: Channel = G | A;
+    pub const RGB: Channel = R | G | B;
+    pub const RG: Channel = R | G;
+    pub const RB: Channel = R | B;
+    pub const GB: Channel = G | B;
+}
+pub struct HeightmapLayer<'a> {
+    pub heightmap: &'a Heightmap,
+    pub channel: rgba_color_channel::Channel,
+    pub strength: f32,
+    pub layer_mix_method: LayerMixMethod,
+    pub inverted: bool,
+    pub modifies_alpha: bool,
+}
+
+pub fn layered_heightmaps_to_texture(
+    size: usize,
+    layers: &Vec<&HeightmapLayer>,
+    normalize_on_overflow: bool,
+    max_height: f32,
+) -> Texture2D {
+    let mut buffer: Vec<f32> = vec![0.0; 4 * size * size];
+    let mut highest = 0f32;
+
+    // Set alpha to full by default
+    for i in (3..buffer.len()).step_by(4) {
+        buffer[i] = max_height;
+    }
+
+    for &layer in layers.iter() {
+        highest = 0f32;
+        for i in 0..(size * size) {
+            let x = i % size;
+            let y = i / size;
+            let height = if layer.inverted {
+                max_height - layer.heightmap.data[x][y]
+            } else {
+                layer.heightmap.data[x][y]
+            };
+            let channels = [
+                (layer.channel & rgba_color_channel::R == rgba_color_channel::R, i*4 + 0, false),
+                (layer.channel & rgba_color_channel::G == rgba_color_channel::G, i*4 + 1, false),
+                (layer.channel & rgba_color_channel::B == rgba_color_channel::B, i*4 + 2, false),
+                (layer.channel & rgba_color_channel::A == rgba_color_channel::A, i*4 + 3, !layer.modifies_alpha),
+            ];
+            for channel in channels {
+                let c = &mut buffer[channel.1];
+                let c_copy = *c;
+                if channel.0 {
+                    match layer.layer_mix_method {
+                        LayerMixMethod::Additive => {
+                            *c += height;
+                        }
+                        LayerMixMethod::AdditiveClamp => {
+                            *c = max_height.min(*c + height);
+                        }
+                        LayerMixMethod::Multiply => {
+                            *c *= height / max_height;
+                        }
+                        LayerMixMethod::Difference => {
+                            *c = (*c - height).abs();
+                        }
+                    }
+                } else {
+                    match layer.layer_mix_method {
+                        LayerMixMethod::Multiply => {
+                            if !channel.2 {
+                                *c = 0.0;
+                            }
+                        }
+                        _ => ()
+                    }
+                }
+                *c = c_copy * (1f32 - layer.strength) + *c * layer.strength;
+                if normalize_on_overflow {
+                    highest = highest.max(*c);
+                } else {
+                    *c = max_height.min(*c);
+                }
+            }
+        }
+    }
+
+    let image = Image {
+        bytes: buffer.iter().map(|&float| {
+            let value = if normalize_on_overflow && highest > max_height {
+                float / (highest / max_height)
+            } else {
+                float
+            };
+            (value / max_height * 255.0).trunc() as u8
+        }).collect(),
+        width: size as u16,
+        height: size as u16,
     };
 
     Texture2D::from_image(&image)

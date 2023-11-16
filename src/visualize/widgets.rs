@@ -176,6 +176,7 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                         )
                         .changed();
             }
+            updated = updated || ui.toggle_value(&mut props.advanced_texture, "Advanced Visualization").changed();
 
             let lower = props.flooded_areas_lower.unwrap_or(0);
             let higher = props.flooded_areas_higher.unwrap_or(0);

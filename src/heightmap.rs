@@ -57,6 +57,16 @@ impl Heightmap {
         }
     }
 
+    pub fn new_empty(
+        width: usize,
+        height: usize,
+        depth: HeightmapPrecision,
+        original_depth: HeightmapPrecision,
+    ) -> Self {
+        let data = vec![vec![0.0; height]; width];
+        Self::new(data, width, height, depth, original_depth, None)
+    }
+
     pub fn from_u8(data: &Vec<u8>, width: usize, height: usize) -> Self {
         let mut data_f32 = vec![vec![0.0; height]; width];
         let data: Vec<&[u8]> = data.chunks(height).collect();
@@ -444,23 +454,31 @@ impl Heightmap {
                     continue;
                 }
                 let adj = &[
-                    (x0 != 0, (x0 - 1, y0)),
-                    (x0 != self.width - 1, (x0 + 1, y0)),
-                    (y0 != 0, (x0, y0 - 1)),
-                    (y0 != self.height - 1, (x0, y0 + 1)),
+                    (x0 != 0, (x0 as i32 - 1, y0 as i32)),
+                    (x0 != self.width - 1, (x0 as i32 + 1, y0 as i32)),
+                    (y0 != 0, (x0 as i32, y0 as i32 - 1)),
+                    (y0 != self.height - 1, (x0 as i32, y0 as i32 + 1)),
                 ];
                 for (has_edge, (x1, y1)) in *adj {
                     if has_edge
-                        && isoline.data[x1][y1] == 0.0
-                        && ((inside && self.data[x1][y1] < self.data[x0][y0])
-                            || (!inside && self.data[x0][y0] < self.data[x1][y1]))
+                        && isoline.data[x1 as usize][y1 as usize] == 0.0
+                        && ((inside && self.data[x1 as usize][y1 as usize] < self.data[x0][y0])
+                            || (!inside && self.data[x0][y0] < self.data[x1 as usize][y1 as usize]))
                     {
-                        points.push(UVector2::new(x1, y1));
+                        points.push(UVector2::new(x1 as usize, y1 as usize));
                     }
                 }
             }
         }
         points
+    }
+
+    pub fn from_points(size: usize, points: &Vec<UVector2>, fill: HeightmapPrecision) -> Self {
+        let mut heightmap = Self::new_empty(size, size, fill, fill);
+        for &UVector2{ x, y } in points {
+            heightmap.data[x][y] = fill;
+        }
+        heightmap
     }
 
     pub fn flood_empty(&self, with: HeightmapPrecision, from: &Vec<UVector2>) -> (Self, usize) {
@@ -482,14 +500,16 @@ impl Heightmap {
             while !queue.is_empty() {
                 let pixel = queue.pop_front().unwrap();
                 let adj = &[
-                    (pixel.x != 0, (pixel.x - 1, pixel.y)),
-                    (pixel.x != self.width - 1, (pixel.x + 1, pixel.y)),
-                    (pixel.y != 0, (pixel.x, pixel.y - 1)),
-                    (pixel.y != self.height - 1, (pixel.x, pixel.y + 1)),
+                    (pixel.x != 0, (pixel.x as i32 - 1, pixel.y as i32)),
+                    (pixel.x != self.width - 1, (pixel.x as i32 + 1, pixel.y as i32)),
+                    (pixel.y != 0, (pixel.x as i32, pixel.y as i32 - 1)),
+                    (pixel.y != self.height - 1, (pixel.x as i32, pixel.y as i32 + 1)),
                 ];
                 for (has_edge, (x, y)) in *adj {
                     if has_edge {
                         let data = &mut heightmap.data;
+                        let x = x as usize;
+                        let y = y as usize;
                         if data[x][y] == 0.0 {
                             data[x][y] = with;
                             queue.push_back(UVector2::new(x, y));

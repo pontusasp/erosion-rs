@@ -24,6 +24,7 @@ pub struct IsolineProperties {
     pub flooded_areas_lower: Option<usize>,
     pub flooded_areas_higher: Option<usize>,
     pub blur_augmentation: (bool, f32),
+    pub advanced_texture: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
