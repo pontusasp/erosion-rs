@@ -1,8 +1,8 @@
+use crate::heightmap::Heightmap;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "export")]
 use std::mem;
 use std::rc::Rc;
-use crate::heightmap::Heightmap;
 
 use super::SimulationState;
 #[cfg(feature = "export")]
@@ -14,7 +14,10 @@ use crate::visualize::wrappers::HeightmapTexture;
 #[cfg(feature = "export")]
 use crate::State;
 
-use super::{mix_heightmap_to_texture, AppState, layered_heightmaps_to_texture, HeightmapLayer, rgba_color_channel, LayerMixMethod};
+use super::{
+    layered_heightmaps_to_texture, mix_heightmap_to_texture, rgba_color_channel, AppState,
+    HeightmapLayer, LayerMixMethod,
+};
 
 /*
 Keybinds:
@@ -223,8 +226,7 @@ fn poll_ui_events_pre_check(ui_state: &mut UiState) {
 }
 
 pub fn poll_ui_events(
-    #[cfg(feature = "export")]
-    state_name: &mut Option<String>,
+    #[cfg(feature = "export")] state_name: &mut Option<String>,
     ui_state: &mut UiState,
     app_state: &mut AppState,
 ) {
@@ -484,7 +486,19 @@ pub fn poll_ui_events(
                         h
                     }
                 };
-                let flood = heightmap.get_flood_points(&isoline, props.flood_lower);
+                let flood = {
+                    let flood = heightmap.get_flood_points(&isoline, props.flood_lower);
+                    if props.blur_augmentation.0 {
+                        Heightmap::filter_noise_points(
+                            heightmap.width,
+                            &flood,
+                            props.blur_augmentation.2,
+                            props.blur_augmentation.3,
+                        )
+                    } else {
+                        flood
+                    }
+                };
                 let flooded = if props.should_flood {
                     let flood_amount = 1f32.min(props.height + (1.0 - props.height) / 3.0);
                     let (flooded, areas) = isoline.flood_empty(flood_amount, &flood);
@@ -508,8 +522,9 @@ pub fn poll_ui_events(
                 let hm = Rc::new(flooded.unwrap_or(isoline));
 
                 let tex = if props.advanced_texture {
-                    Rc::new(
-                        layered_heightmaps_to_texture(hm.width, &vec![
+                    Rc::new(layered_heightmaps_to_texture(
+                        hm.width,
+                        &vec![
                             &HeightmapLayer {
                                 heightmap: &heightmap,
                                 channel: rgba_color_channel::RGB,
@@ -550,8 +565,10 @@ pub fn poll_ui_events(
                                 inverted: false,
                                 modifies_alpha: false,
                             },
-                        ], true, 1.0)
-                    )
+                        ],
+                        true,
+                        1.0,
+                    ))
                 } else {
                     Rc::new(mix_heightmap_to_texture(&hm, &outside, 0, false, false))
                 };

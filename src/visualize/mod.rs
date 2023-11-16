@@ -59,7 +59,7 @@ pub fn generate_default_state() -> State {
                 should_flood: false,
                 flooded_areas_lower: None,
                 flooded_areas_higher: None,
-                blur_augmentation: (false, 1.0),
+                blur_augmentation: (false, 1.0, 5, 5),
                 advanced_texture: true,
             },
             #[cfg(feature = "export")]
@@ -76,7 +76,11 @@ pub async fn run() {
         let autoload_default: Option<State> = {
             #[cfg(feature = "export")]
             {
-                let default = state.ui_state.saves.iter().find(|&save| save.0 == "default");
+                let default = state
+                    .ui_state
+                    .saves
+                    .iter()
+                    .find(|&save| save.0 == "default");
                 if let Some(state_file) = default {
                     crate::io::import_binary(&state_file.0).ok()
                 } else {
@@ -167,7 +171,8 @@ pub async fn run() {
                 #[cfg(feature = "export")]
                 state_name,
                 ui_state,
-                app_state);
+                app_state,
+            );
             poll_ui_keybinds(&mut state.ui_state);
             next_frame().await;
         }
@@ -249,10 +254,9 @@ pub enum LayerMixMethod {
     Difference,
 }
 
-
 pub mod rgba_color_channel {
     pub type Channel = u8;
-    pub const R: Channel  = 0b0001;
+    pub const R: Channel = 0b0001;
     pub const G: Channel = 0b0010;
     pub const B: Channel = 0b0100;
     pub const A: Channel = 0b1000;
@@ -302,10 +306,26 @@ pub fn layered_heightmaps_to_texture(
                 layer.heightmap.data[x][y]
             };
             let channels = [
-                (layer.channel & rgba_color_channel::R == rgba_color_channel::R, i*4 + 0, false),
-                (layer.channel & rgba_color_channel::G == rgba_color_channel::G, i*4 + 1, false),
-                (layer.channel & rgba_color_channel::B == rgba_color_channel::B, i*4 + 2, false),
-                (layer.channel & rgba_color_channel::A == rgba_color_channel::A, i*4 + 3, !layer.modifies_alpha),
+                (
+                    layer.channel & rgba_color_channel::R == rgba_color_channel::R,
+                    i * 4 + 0,
+                    false,
+                ),
+                (
+                    layer.channel & rgba_color_channel::G == rgba_color_channel::G,
+                    i * 4 + 1,
+                    false,
+                ),
+                (
+                    layer.channel & rgba_color_channel::B == rgba_color_channel::B,
+                    i * 4 + 2,
+                    false,
+                ),
+                (
+                    layer.channel & rgba_color_channel::A == rgba_color_channel::A,
+                    i * 4 + 3,
+                    !layer.modifies_alpha,
+                ),
             ];
             for channel in channels {
                 let c = &mut buffer[channel.1];
@@ -332,7 +352,7 @@ pub fn layered_heightmaps_to_texture(
                                 *c = 0.0;
                             }
                         }
-                        _ => ()
+                        _ => (),
                     }
                 }
                 *c = c_copy * (1f32 - layer.strength) + *c * layer.strength;
@@ -346,14 +366,17 @@ pub fn layered_heightmaps_to_texture(
     }
 
     let image = Image {
-        bytes: buffer.iter().map(|&float| {
-            let value = if normalize_on_overflow && highest > max_height {
-                float / (highest / max_height)
-            } else {
-                float
-            };
-            (value / max_height * 255.0).trunc() as u8
-        }).collect(),
+        bytes: buffer
+            .iter()
+            .map(|&float| {
+                let value = if normalize_on_overflow && highest > max_height {
+                    float / (highest / max_height)
+                } else {
+                    float
+                };
+                (value / max_height * 255.0).trunc() as u8
+            })
+            .collect(),
         width: size as u16,
         height: size as u16,
     };

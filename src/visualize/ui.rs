@@ -23,7 +23,7 @@ pub struct IsolineProperties {
     pub should_flood: bool,
     pub flooded_areas_lower: Option<usize>,
     pub flooded_areas_higher: Option<usize>,
-    pub blur_augmentation: (bool, f32),
+    pub blur_augmentation: (bool, f32, usize, usize),
     pub advanced_texture: bool,
 }
 
