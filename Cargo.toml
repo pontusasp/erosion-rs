@@ -26,6 +26,6 @@ version = "0.23.0"
 optional = false
 
 [features]
-default = ["wasm"]
+default = ["wasm", "export"]
 export = []
 wasm = ["getrandom/js"]

@@ -82,7 +82,7 @@ pub async fn run() {
                     .iter()
                     .find(|&save| save.0 == "default");
                 if let Some(state_file) = default {
-                    crate::io::import_binary(&state_file.0).ok()
+                    crate::io::import(&state_file.0).ok()
                 } else {
                     None
                 }
