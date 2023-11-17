@@ -301,6 +301,8 @@ pub fn poll_ui_events(
                 let simulation_state = app_state.simulation_state().get_new_eroded(
                     app_state.simulation_states.len(),
                     &app_state.parameters.erosion_params,
+                    app_state.parameters.subdivisions,
+                    app_state.parameters.grid_size,
                 );
                 app_state.simulation_states.push(simulation_state);
                 app_state

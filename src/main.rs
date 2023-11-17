@@ -15,9 +15,18 @@ pub mod visualize;
 
 const WIDTH: u32 = 1107;
 const HEIGHT: u32 = 800;
-const SUBDIVISIONS: u32 = 3;
-const GRID_SIZE: usize = 6;
+const PRESET_SUBDIVISIONS: u32 = 3;
+const PRESET_GRID_SIZE: usize = 6;
 const PRESET_HEIGHTMAP_SIZE: usize = 512;
+const SUBDIVISIONS_RANGE_MIN: u32 = 0;
+const SUBDIVISIONS_RANGE_MAX: u32 = 7;
+const GRID_SIZE_RANGE_MIN: usize = 1;
+const GRID_SIZE_RANGE_MAX: usize = 128;
+const GAUSSIAN_BLUR_SIGMA_RANGE_MIN: f32 = 0.0;
+const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;
+const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
+const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX: u16 = 10;
+
 
 fn window_conf() -> Conf {
     let icon_small_img = ImageReader::open("assets/icon16x16.png")
