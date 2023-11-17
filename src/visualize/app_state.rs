@@ -30,6 +30,8 @@ pub struct AppParameters {
     pub erosion_params: Parameters,
     pub heightmap_type: HeightmapType,
     pub auto_apply: bool,
+    pub subdivisions: u32,
+    pub grid_size: usize,
 }
 
 impl Default for AppParameters {
@@ -38,6 +40,8 @@ impl Default for AppParameters {
             erosion_params: Parameters::default(),
             heightmap_type: HeightmapType::default(),
             auto_apply: true,
+            subdivisions: crate::PRESET_SUBDIVISIONS,
+            grid_size: crate::PRESET_GRID_SIZE,
         }
     }
 }
@@ -76,10 +80,10 @@ pub struct BaseState {
 }
 
 impl BaseState {
-    pub fn run_simulation(&self, id: usize, parameters: &Parameters) -> ErodedState {
+    pub fn run_simulation(&self, id: usize, parameters: &Parameters, subdivisions: u32, grid_size: usize) -> ErodedState {
         let original_width = self.heightmap_base.heightmap.width;
         let original_height = self.heightmap_base.heightmap.height;
-        let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(&self.heightmap_base.heightmap, parameters, &self.drop_zone);
+        let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(&self.heightmap_base.heightmap, parameters, &self.drop_zone, subdivisions, grid_size);
         let new_width = heightmap.width;
         let new_height = heightmap.height;
         let mut heightmap_diff = heightmap.subtract(&self.heightmap_base.heightmap.with_margin((original_width - new_width) / 2, (original_height - new_height) / 2).heightmap).unwrap();
@@ -133,7 +137,7 @@ impl SimulationState {
         })
     }
 
-    pub fn get_new_eroded(&self, new_id: usize, parameters: &Parameters) -> Self {
+    pub fn get_new_eroded(&self, new_id: usize, parameters: &Parameters, subdivisions: u32, grid_size: usize) -> Self {
         let (mut base, eroded) = match self {
             SimulationState::Base(base) => (base.clone(), None),
             SimulationState::Eroded((base, eroded)) => (base.clone(), Some(eroded)),
@@ -150,7 +154,7 @@ impl SimulationState {
             };
         }
 
-        let eroded = base.run_simulation(new_id, parameters);
+        let eroded = base.run_simulation(new_id, parameters, subdivisions, grid_size);
         SimulationState::Eroded((base, eroded))
     }
 

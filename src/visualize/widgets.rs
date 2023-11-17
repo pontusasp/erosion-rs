@@ -8,14 +8,9 @@ use crate::visualize::keybinds::{
     KEYCODE_NEW_HEIGHTMAP, KEYCODE_NEXT_PARTITIONING_METHOD, KEYCODE_PREVIOUS_PARTITIONING_METHOD,
 };
 use crate::visualize::ui::UiState;
-use crate::{erode::Parameters, heightmap::ProceduralHeightmapSettings, partitioning};
+use crate::{erode::Parameters, GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX, GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN, GAUSSIAN_BLUR_SIGMA_RANGE_MAX, GAUSSIAN_BLUR_SIGMA_RANGE_MIN, GRID_SIZE_RANGE_MAX, GRID_SIZE_RANGE_MIN, heightmap::ProceduralHeightmapSettings, partitioning, SUBDIVISIONS_RANGE_MAX, SUBDIVISIONS_RANGE_MIN};
 
 use super::{canvas::Canvas, AppState, SimulationState};
-
-const GAUSSIAN_BLUR_SIGMA_RANGE_MIN: f32 = 0.0;
-const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;
-const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
-const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX: u16 = 10;
 
 pub fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
     let width = 800.0;
@@ -244,10 +239,31 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                 .default_open(true)
                 .show(ui, |ui| {
                     match state.simulation_state_mut().base_mut().erosion_method {
-                        partitioning::Method::SubdivisionBlurBoundary((
-                            ref mut sigma,
-                            ref mut thickness,
-                        )) => {
+                        partitioning::Method::Default => (),
+                        partitioning::Method::Subdivision(ref mut subdivisions) |
+                        partitioning::Method::SubdivisionOverlap(ref mut subdivisions)=> {
+                            ui.add(
+                                egui::Slider::new(
+                                    subdivisions,
+                                    SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
+                                )
+                                    .text("Subdivisions"),
+                            );
+                            state.parameters.subdivisions = *subdivisions;
+                        }
+                        partitioning::Method::SubdivisionBlurBoundary((ref mut subdivisions,
+                                                                          (
+                                                                              ref mut sigma,
+                                                                              ref mut thickness,
+                                                                          ))
+                        ) => {
+                            ui.add(
+                                egui::Slider::new(
+                                    subdivisions,
+                                    SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
+                                )
+                                    .text("Subdivisions"),
+                            );
                             ui.add(
                                 egui::Slider::new(
                                     sigma,
@@ -263,8 +279,18 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                                 )
                                 .text("Gaussian Blur Boundary Thickness"),
                             );
+                            state.parameters.subdivisions = *subdivisions;
                         }
-                        _ => (),
+                        partitioning::Method::GridOverlapBlend(ref mut grid_size) => {
+                            ui.add(
+                                egui::Slider::new(
+                                    grid_size,
+                                    GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
+                                )
+                                    .text("Subdivisions"),
+                            );
+                            state.parameters.grid_size = *grid_size;
+                        }
                     };
                 });
         });
