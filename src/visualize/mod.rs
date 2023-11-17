@@ -22,10 +22,6 @@ use crate::visualize::ui::*;
 #[cfg(feature = "export")]
 use crate::io::list_state_files;
 
-const SUBDIVISIONS: u32 = 3;
-const GRID_SIZE: usize = 6;
-const PRESET_HEIGHTMAP_SIZE: usize = 512;
-
 pub fn generate_default_state() -> State {
     State {
         state_name: None,

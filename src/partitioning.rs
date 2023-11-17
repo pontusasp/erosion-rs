@@ -1,12 +1,13 @@
 use crate::erode;
 use crate::heightmap;
-use crate::heightmap::HeightmapPrecision;
+use crate::heightmap::{Heightmap, HeightmapPrecision};
 use crate::math::UVector2;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 use std::slice::Iter;
 use std::sync::{Arc, Mutex};
+use crate::erode::{DropZone, Parameters};
 
 pub const GAUSSIAN_DEFAULT_SIGMA: f32 = 2.0;
 pub const GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS: u16 = 2;
@@ -82,7 +83,79 @@ impl Method {
         ];
         EROSION_METHODS.iter()
     }
+
+
+    pub fn erode_with_margin(&self, heightmap: &Heightmap, parameters: &Parameters, drop_zone: &DropZone) -> Heightmap {
+        print!("Eroding using ");
+        let heightmap_size = heightmap.width;
+        let max_margin = Self::max_margin(heightmap_size);
+        let local_margin = self.margin_size(heightmap_size);
+        let margin = max_margin - local_margin;
+        let mut partition = heightmap.with_margin(margin, margin);
+        match self {
+            Method::Default => {
+                println!("{} method (no partitioning)", Method::Default.to_string());
+                default_erode(&mut partition.heightmap, &parameters, &drop_zone);
+            }
+            Method::Subdivision => {
+                println!("{} method", Method::Subdivision.to_string());
+                subdivision_erode(&mut partition.heightmap, &parameters, crate::SUBDIVISIONS);
+            }
+            Method::SubdivisionBlurBoundary((sigma, thickness)) => {
+                println!(
+                    "{} method",
+                    Method::SubdivisionBlurBoundary((
+                        GAUSSIAN_DEFAULT_SIGMA,
+                        GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS
+                    ))
+                        .to_string()
+                );
+                subdivision_blur_boundary_erode(
+                    &mut partition.heightmap,
+                    &parameters,
+                    crate::SUBDIVISIONS,
+                    *sigma,
+                    *thickness,
+                );
+            }
+            Method::SubdivisionOverlap => {
+                println!("{} method", Method::SubdivisionOverlap.to_string());
+                subdivision_overlap_erode(&mut partition.heightmap, &parameters, crate::SUBDIVISIONS);
+            }
+            Method::GridOverlapBlend => {
+                println!("{} method", Method::GridOverlapBlend.to_string());
+                grid_overlap_blend_erode(
+                    &mut partition.heightmap,
+                    &parameters,
+                    crate::GRID_SIZE,
+                    crate::GRID_SIZE,
+                );
+            }
+        }
+        partition.heightmap.with_margin(local_margin, local_margin).heightmap
+    }
+
+    pub fn margin_size(&self, heightmap_size: usize) -> usize {
+        let subdivision_cell_size = heightmap_size / 2_usize.pow(crate::SUBDIVISIONS);
+        let grid_cell_size = heightmap_size / crate::GRID_SIZE;
+        match self {
+            Method::Default => 0,
+            Method::Subdivision => 0,
+            Method::SubdivisionBlurBoundary(_) => 0,
+            Method::SubdivisionOverlap => subdivision_cell_size / 2,
+            Method::GridOverlapBlend => grid_cell_size / 2,
+        }
+    }
+
+    pub fn max_margin(heightmap_size: usize) -> usize {
+        let mut largest_margin = 0;
+        for &m in Self::iterator() {
+            largest_margin = largest_margin.max(m.margin_size(heightmap_size));
+        }
+        largest_margin
+    }
 }
+
 
 fn subdivide(
     heightmap: &heightmap::Heightmap,

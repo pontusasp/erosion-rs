@@ -4,11 +4,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::erode::{DropZone, Parameters};
-use crate::heightmap::{Heightmap, HeightmapType};
+use crate::heightmap::{self, Heightmap, HeightmapType};
 use crate::partitioning::Method;
 use crate::visualize::wrappers::HeightmapTexture;
-use crate::visualize::{GRID_SIZE, PRESET_HEIGHTMAP_SIZE, SUBDIVISIONS};
-use crate::{heightmap, partitioning};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppState {
@@ -79,49 +77,12 @@ pub struct BaseState {
 
 impl BaseState {
     pub fn run_simulation(&self, id: usize, parameters: &Parameters) -> ErodedState {
-        print!("Eroding using ");
-        let mut heightmap: Heightmap = (*self.heightmap_base.heightmap).clone();
-        match self.erosion_method {
-            Method::Default => {
-                println!("{} method (no partitioning)", Method::Default.to_string());
-                partitioning::default_erode(&mut heightmap, &parameters, &self.drop_zone);
-            }
-            Method::Subdivision => {
-                println!("{} method", Method::Subdivision.to_string());
-                partitioning::subdivision_erode(&mut heightmap, &parameters, SUBDIVISIONS);
-            }
-            Method::SubdivisionBlurBoundary((sigma, thickness)) => {
-                println!(
-                    "{} method",
-                    Method::SubdivisionBlurBoundary((
-                        partitioning::GAUSSIAN_DEFAULT_SIGMA,
-                        partitioning::GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS
-                    ))
-                    .to_string()
-                );
-                partitioning::subdivision_blur_boundary_erode(
-                    &mut heightmap,
-                    &parameters,
-                    SUBDIVISIONS,
-                    sigma,
-                    thickness,
-                );
-            }
-            Method::SubdivisionOverlap => {
-                println!("{} method", Method::SubdivisionOverlap.to_string());
-                partitioning::subdivision_overlap_erode(&mut heightmap, &parameters, SUBDIVISIONS);
-            }
-            Method::GridOverlapBlend => {
-                println!("{} method", Method::GridOverlapBlend.to_string());
-                partitioning::grid_overlap_blend_erode(
-                    &mut heightmap,
-                    &parameters,
-                    GRID_SIZE,
-                    GRID_SIZE,
-                );
-            }
-        }
-        let mut heightmap_diff = heightmap.subtract(&self.heightmap_base.heightmap).unwrap();
+        let original_width = self.heightmap_base.heightmap.width;
+        let original_height = self.heightmap_base.heightmap.height;
+        let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(&self.heightmap_base.heightmap, parameters, &self.drop_zone);
+        let new_width = heightmap.width;
+        let new_height = heightmap.height;
+        let mut heightmap_diff = heightmap.subtract(&self.heightmap_base.heightmap.with_margin((original_width - new_width) / 2, (original_height - new_height) / 2).heightmap).unwrap();
         let heightmap_diff_normalized = heightmap_diff.clone().normalize();
         println!("Done!");
 
@@ -159,7 +120,7 @@ impl SimulationState {
         parameters: &Parameters,
     ) -> Self {
         let mut heightmap =
-            heightmap::create_heightmap_from_preset(heightmap_type, PRESET_HEIGHTMAP_SIZE);
+            heightmap::create_heightmap_from_preset(heightmap_type, crate::PRESET_HEIGHTMAP_SIZE);
         heightmap.calculate_total_height();
         let heightmap = Rc::new(heightmap);
         SimulationState::Base(BaseState {

@@ -15,6 +15,9 @@ pub mod visualize;
 
 const WIDTH: u32 = 1107;
 const HEIGHT: u32 = 800;
+const SUBDIVISIONS: u32 = 3;
+const GRID_SIZE: usize = 6;
+const PRESET_HEIGHTMAP_SIZE: usize = 512;
 
 fn window_conf() -> Conf {
     let icon_small_img = ImageReader::open("assets/icon16x16.png")
