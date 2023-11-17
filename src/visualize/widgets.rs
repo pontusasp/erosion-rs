@@ -8,7 +8,12 @@ use crate::visualize::keybinds::{
     KEYCODE_NEW_HEIGHTMAP, KEYCODE_NEXT_PARTITIONING_METHOD, KEYCODE_PREVIOUS_PARTITIONING_METHOD,
 };
 use crate::visualize::ui::UiState;
-use crate::{erode::Parameters, GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX, GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN, GAUSSIAN_BLUR_SIGMA_RANGE_MAX, GAUSSIAN_BLUR_SIGMA_RANGE_MIN, GRID_SIZE_RANGE_MAX, GRID_SIZE_RANGE_MIN, heightmap::ProceduralHeightmapSettings, partitioning, SUBDIVISIONS_RANGE_MAX, SUBDIVISIONS_RANGE_MIN};
+use crate::{
+    erode::Parameters, heightmap::ProceduralHeightmapSettings, partitioning,
+    GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX, GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN,
+    GAUSSIAN_BLUR_SIGMA_RANGE_MAX, GAUSSIAN_BLUR_SIGMA_RANGE_MIN, GRID_SIZE_RANGE_MAX,
+    GRID_SIZE_RANGE_MIN, SUBDIVISIONS_RANGE_MAX, SUBDIVISIONS_RANGE_MIN,
+};
 
 use super::{canvas::Canvas, AppState, SimulationState};
 
@@ -238,31 +243,43 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
             egui::CollapsingHeader::new("Partitioning Parameters")
                 .default_open(true)
                 .show(ui, |ui| {
+                    {
+                        let s = state.parameters.subdivisions;
+                        let g = state.parameters.grid_size;
+                        state
+                            .simulation_state_mut()
+                            .base_mut()
+                            .erosion_method
+                            .set_subdivisions_unchecked(s);
+                        state
+                            .simulation_state_mut()
+                            .base_mut()
+                            .erosion_method
+                            .set_grid_size_unchecked(g);
+                    }
                     match state.simulation_state_mut().base_mut().erosion_method {
                         partitioning::Method::Default => (),
-                        partitioning::Method::Subdivision(ref mut subdivisions) |
-                        partitioning::Method::SubdivisionOverlap(ref mut subdivisions)=> {
+                        partitioning::Method::Subdivision(ref mut subdivisions)
+                        | partitioning::Method::SubdivisionOverlap(ref mut subdivisions) => {
                             ui.add(
                                 egui::Slider::new(
                                     subdivisions,
                                     SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
                                 )
-                                    .text("Subdivisions"),
+                                .text("Subdivisions"),
                             );
                             state.parameters.subdivisions = *subdivisions;
                         }
-                        partitioning::Method::SubdivisionBlurBoundary((ref mut subdivisions,
-                                                                          (
-                                                                              ref mut sigma,
-                                                                              ref mut thickness,
-                                                                          ))
-                        ) => {
+                        partitioning::Method::SubdivisionBlurBoundary((
+                            ref mut subdivisions,
+                            (ref mut sigma, ref mut thickness),
+                        )) => {
                             ui.add(
                                 egui::Slider::new(
                                     subdivisions,
                                     SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
                                 )
-                                    .text("Subdivisions"),
+                                .text("Subdivisions"),
                             );
                             ui.add(
                                 egui::Slider::new(
@@ -287,11 +304,26 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                                     grid_size,
                                     GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
                                 )
-                                    .text("Subdivisions"),
+                                .text("Grid Size"),
                             );
                             state.parameters.grid_size = *grid_size;
                         }
                     };
+                    ui.toggle_value(&mut state.parameters.margin, "Use Margin");
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.subdivisions,
+                            SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
+                        )
+                        .text("Margin Subdivisions"),
+                    );
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.grid_size,
+                            GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
+                        )
+                        .text("Margin Grid Size"),
+                    );
                 });
         });
 

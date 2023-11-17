@@ -303,6 +303,7 @@ pub fn poll_ui_events(
                     &app_state.parameters.erosion_params,
                     app_state.parameters.subdivisions,
                     app_state.parameters.grid_size,
+                    app_state.parameters.margin,
                 );
                 app_state.simulation_states.push(simulation_state);
                 app_state
@@ -594,7 +595,7 @@ pub fn poll_ui_events(
                     },
                     filename,
                 )
-                    .expect("Failed to export state!");
+                .expect("Failed to export state!");
                 crate::io::export_binary(
                     &State {
                         state_name: state_name.clone(),
@@ -603,7 +604,7 @@ pub fn poll_ui_events(
                     },
                     filename,
                 )
-                    .expect("Failed to export state!");
+                .expect("Failed to export state!");
                 crate::io::export_icon(
                     &State {
                         state_name: state_name.clone(),

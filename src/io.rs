@@ -167,12 +167,13 @@ pub fn list_state_files_custom_path(path: &str) -> Result<Vec<StateFile>, StateI
                 .file_name()
                 .into_string()
                 .expect("Can't read filename! Are there any special characters in it?");
-            let is_state_file = file_name.ends_with(&extension) || file_name.ends_with(&json_extension);
+            let is_state_file =
+                file_name.ends_with(&extension) || file_name.ends_with(&json_extension);
             if is_file && is_state_file {
                 files.push(
                     file_name
                         .strip_suffix(&json_extension)
-                        .or_else(|| {file_name.strip_suffix(&extension)})
+                        .or_else(|| file_name.strip_suffix(&extension))
                         .expect("Failed to process file name.")
                         .to_string(),
                 )

@@ -27,7 +27,6 @@ const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX: u16 = 10;
 
-
 fn window_conf() -> Conf {
     let icon_small_img = ImageReader::open("assets/icon16x16.png")
         .and_then(|file| Ok(file.decode()))

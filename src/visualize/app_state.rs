@@ -32,6 +32,7 @@ pub struct AppParameters {
     pub auto_apply: bool,
     pub subdivisions: u32,
     pub grid_size: usize,
+    pub margin: bool,
 }
 
 impl Default for AppParameters {
@@ -42,6 +43,7 @@ impl Default for AppParameters {
             auto_apply: true,
             subdivisions: crate::PRESET_SUBDIVISIONS,
             grid_size: crate::PRESET_GRID_SIZE,
+            margin: true,
         }
     }
 }
@@ -80,13 +82,38 @@ pub struct BaseState {
 }
 
 impl BaseState {
-    pub fn run_simulation(&self, id: usize, parameters: &Parameters, subdivisions: u32, grid_size: usize) -> ErodedState {
+    pub fn run_simulation(
+        &self,
+        id: usize,
+        parameters: &Parameters,
+        subdivisions: u32,
+        grid_size: usize,
+        margin: bool,
+    ) -> ErodedState {
         let original_width = self.heightmap_base.heightmap.width;
         let original_height = self.heightmap_base.heightmap.height;
-        let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(&self.heightmap_base.heightmap, parameters, &self.drop_zone, subdivisions, grid_size);
+        let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(
+            margin,
+            &self.heightmap_base.heightmap,
+            parameters,
+            &self.drop_zone,
+            subdivisions,
+            grid_size,
+        );
         let new_width = heightmap.width;
         let new_height = heightmap.height;
-        let mut heightmap_diff = heightmap.subtract(&self.heightmap_base.heightmap.with_margin((original_width - new_width) / 2, (original_height - new_height) / 2).heightmap).unwrap();
+        let mut heightmap_diff = heightmap
+            .subtract(
+                &self
+                    .heightmap_base
+                    .heightmap
+                    .with_margin(
+                        (original_width - new_width) / 2,
+                        (original_height - new_height) / 2,
+                    )
+                    .heightmap,
+            )
+            .unwrap();
         let heightmap_diff_normalized = heightmap_diff.clone().normalize();
         println!("Done!");
 
@@ -137,7 +164,14 @@ impl SimulationState {
         })
     }
 
-    pub fn get_new_eroded(&self, new_id: usize, parameters: &Parameters, subdivisions: u32, grid_size: usize) -> Self {
+    pub fn get_new_eroded(
+        &self,
+        new_id: usize,
+        parameters: &Parameters,
+        subdivisions: u32,
+        grid_size: usize,
+        margin: bool,
+    ) -> Self {
         let (mut base, eroded) = match self {
             SimulationState::Base(base) => (base.clone(), None),
             SimulationState::Eroded((base, eroded)) => (base.clone(), Some(eroded)),
@@ -154,7 +188,7 @@ impl SimulationState {
             };
         }
 
-        let eroded = base.run_simulation(new_id, parameters, subdivisions, grid_size);
+        let eroded = base.run_simulation(new_id, parameters, subdivisions, grid_size, margin);
         SimulationState::Eroded((base, eroded))
     }
 

@@ -88,7 +88,17 @@ impl Heightmap {
     }
 
     pub fn with_margin(&self, margin_x: usize, margin_y: usize) -> PartialHeightmap {
-        PartialHeightmap::from(self, &UVector2 { x: margin_x, y: margin_y }, &UVector2 { x: self.width - margin_x * 2, y: self.height - margin_y * 2 })
+        PartialHeightmap::from(
+            self,
+            &UVector2 {
+                x: margin_x,
+                y: margin_y,
+            },
+            &UVector2 {
+                x: self.width - margin_x * 2,
+                y: self.height - margin_y * 2,
+            },
+        )
     }
 
     pub fn blur(&self, sigma: f32) -> Option<Heightmap> {
