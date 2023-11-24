@@ -87,16 +87,17 @@ impl Heightmap {
         ImageBuffer::from_vec(width?, height?, self.to_u8())
     }
 
-    pub fn with_margin(&self, margin_x: usize, margin_y: usize) -> PartialHeightmap {
+    pub fn with_margin(&self, margin: (usize, usize, usize, usize)) -> PartialHeightmap {
+        let (margin_r, margin_t, margin_l, margin_b) = margin;
         PartialHeightmap::from(
             self,
             &UVector2 {
-                x: margin_x,
-                y: margin_y,
+                x: margin_l,
+                y: margin_t,
             },
             &UVector2 {
-                x: self.width - margin_x * 2,
-                y: self.height - margin_y * 2,
+                x: self.width - margin_r,
+                y: self.height - margin_b,
             },
         )
     }

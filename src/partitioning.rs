@@ -125,12 +125,14 @@ impl Method {
         let (local_margin, margin) = if use_margin {
             let max_margin = Self::max_margin(heightmap_size, subdivisions, grid_size);
             let local_margin = self.margin_size(heightmap_size, subdivisions, grid_size);
-            let margin = max_margin - local_margin;
+            let (mr, mt, ml, mb) = max_margin;
+            let (lr, lt, ll, lb) = local_margin;
+            let margin = (mr - lr, mt - lt, ml - ll, mb - lb);
             (local_margin, margin)
         } else {
-            (0, 0)
+            ((0,0,0,0),(0,0,0,0))
         };
-        let mut partition = heightmap.with_margin(margin, margin);
+        let mut partition = heightmap.with_margin(margin);
         match self {
             Method::Default => {
                 println!("{} method (no partitioning)", Method::Default.to_string());
@@ -179,29 +181,66 @@ impl Method {
         }
         partition
             .heightmap
-            .with_margin(local_margin, local_margin)
+            .with_margin(local_margin)
             .heightmap
     }
 
-    pub fn margin_size(&self, heightmap_size: usize, subdivisions: u32, grid_size: usize) -> usize {
+    pub fn margin_size(&self, heightmap_size: usize, subdivisions: u32, grid_size: usize) -> (usize, usize, usize, usize) {
         let subdivision_cell_size = heightmap_size / 2_usize.pow(subdivisions);
-        let grid_cell_size = heightmap_size / grid_size;
-        match self {
-            Method::Default => 0,
-            Method::Subdivision(_) => 0,
-            Method::SubdivisionBlurBoundary(_) => 0,
-            Method::SubdivisionOverlap(_) => subdivision_cell_size / 2,
-            Method::GridOverlapBlend(_) => grid_cell_size / 2,
-        }
+        let margins = match self {
+            Method::Default => (0, 0, 0, 0),
+            Method::Subdivision(_) => (0, 0, 0, 0),
+            Method::SubdivisionBlurBoundary(_) => (0, 0, 0, 0),
+            Method::SubdivisionOverlap(_) => {
+                // let m = subdivision_cell_size / 2;
+                // (m, m, m, m)
+
+                let grid_size = 2_usize.pow(subdivisions);
+                let grid_cell_size = heightmap_size / grid_size;
+                let offset0 = (grid_cell_size) / 2;
+                let offset1 = heightmap_size - (grid_cell_size) / 2;
+
+                let slices = grid_size - 1;
+                let slice_size = (offset1 - offset0) / slices;
+
+                let total_inner_size = slices * slice_size;
+
+                let margin0 = offset0;
+                let margin1 = heightmap_size - margin0 - total_inner_size;
+                (margin1, margin0, margin0, margin1)
+            },
+            Method::GridOverlapBlend(_) => {
+                let grid_cell_size = heightmap_size / grid_size;
+                let offset0 = (grid_cell_size) / 2;
+                let offset1 = heightmap_size - (grid_cell_size) / 2;
+
+                let slices = grid_size - 1;
+                let slice_size = (offset1 - offset0) / slices;
+
+                let total_inner_size = slices * slice_size;
+
+                let margin0 = offset0;
+                let margin1 = heightmap_size - margin0 - total_inner_size;
+                (margin1, margin0, margin0, margin1)
+            },
+        };
+        let (right, top, left, bottom) = margins;
+        (right, top, left, bottom)
     }
 
-    pub fn max_margin(heightmap_size: usize, subdivisions: u32, grid_size: usize) -> usize {
-        let mut largest_margin = 0;
+    pub fn max_margin(heightmap_size: usize, subdivisions: u32, grid_size: usize) -> (usize, usize, usize, usize) {
+        let mut largest_margin_r = 0;
+        let mut largest_margin_t = 0;
+        let mut largest_margin_l = 0;
+        let mut largest_margin_b = 0;
         for &m in Self::iterator() {
-            largest_margin =
-                largest_margin.max(m.margin_size(heightmap_size, subdivisions, grid_size));
+            let (r, t, l, b) = m.margin_size(heightmap_size, subdivisions, grid_size);
+            largest_margin_r = largest_margin_r.max(r);
+            largest_margin_t = largest_margin_t.max(t);
+            largest_margin_l = largest_margin_l.max(l);
+            largest_margin_b = largest_margin_b.max(b);
         }
-        largest_margin
+        (largest_margin_r, largest_margin_t, largest_margin_l, largest_margin_b)
     }
 }
 

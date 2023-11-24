@@ -90,8 +90,6 @@ impl BaseState {
         grid_size: usize,
         margin: bool,
     ) -> ErodedState {
-        let original_width = self.heightmap_base.heightmap.width;
-        let original_height = self.heightmap_base.heightmap.height;
         let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(
             margin,
             &self.heightmap_base.heightmap,
@@ -100,17 +98,17 @@ impl BaseState {
             subdivisions,
             grid_size,
         );
-        let new_width = heightmap.width;
-        let new_height = heightmap.height;
+        let new_margin = if margin {
+            Method::max_margin(self.heightmap_base.heightmap.width, subdivisions, grid_size)
+        } else {
+            (0, 0, 0, 0)
+        };
         let mut heightmap_diff = heightmap
             .subtract(
                 &self
                     .heightmap_base
                     .heightmap
-                    .with_margin(
-                        (original_width - new_width) / 2,
-                        (original_height - new_height) / 2,
-                    )
+                    .with_margin(new_margin)
                     .heightmap,
             )
             .unwrap();
