@@ -4,6 +4,7 @@ use image::io::Reader as ImageReader;
 use macroquad::miniquad::conf::Icon;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::env;
 
 pub mod erode;
 pub mod heightmap;
@@ -98,7 +99,37 @@ pub struct State {
     pub ui_state: UiState,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+enum Command {
+    Headless,
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    visualize::run().await;
+    let args: Vec<String> = env::args().collect();
+
+    let command_bindings: &[(String, Command)] = &[
+        ("--headless".to_string(), Command::Headless),
+        ("-h".to_string(), Command::Headless),
+    ];
+
+    let mut commands: Vec<Command> = args.iter().filter_map(|str| {
+        for (binding, command) in command_bindings {
+            if str == binding {
+                return Some(*command);
+            }
+        }
+        None
+    }).collect();
+
+    commands.sort();
+    commands.dedup_by(|a, b| a == b);
+
+    dbg!(&commands);
+
+    if commands.contains(&Command::Headless) {
+
+    } else {
+        visualize::run().await;
+    }
 }
