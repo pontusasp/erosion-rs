@@ -5,7 +5,9 @@ use macroquad::miniquad::conf::Icon;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::env;
+use crate::visualize::generate_default_state;
 
+pub mod engine;
 pub mod erode;
 pub mod heightmap;
 #[cfg(feature = "export")]
@@ -92,7 +94,7 @@ fn window_conf() -> Conf {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct State {
     pub state_name: Option<String>,
     pub app_state: AppState,
@@ -128,7 +130,18 @@ async fn main() {
     dbg!(&commands);
 
     if commands.contains(&Command::Headless) {
-
+        use engine::Instruction::*;
+        if let Ok(_state) = engine::launch(vec![
+            SetState(generate_default_state()),
+            PushState,
+            PushState,
+            PopSetState,
+            PopSetState,
+        ]) {
+            println!("Engine done.");
+        } else {
+            println!("Engine died.");
+        };
     } else {
         visualize::run().await;
     }
