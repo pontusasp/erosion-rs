@@ -80,7 +80,7 @@ impl From<FractalTypeWrapper> for FractalType {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HeightmapTexture {
     #[serde(skip)]
     pub texture: Option<Rc<Texture2D>>,

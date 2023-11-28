@@ -38,7 +38,7 @@ impl Default for Parameters {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DropZoneValidator {
     None,
     Circle(f32),
@@ -59,7 +59,7 @@ impl DropZoneValidator {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DropZone {
     _min: Vector2,
     _max: Vector2,

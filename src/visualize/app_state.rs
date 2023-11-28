@@ -8,7 +8,7 @@ use crate::heightmap::{self, Heightmap, HeightmapType};
 use crate::partitioning::Method;
 use crate::visualize::wrappers::HeightmapTexture;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppState {
     pub simulation_states: Vec<SimulationState>,
     pub simulation_base_indices: Vec<usize>,
@@ -25,7 +25,7 @@ impl AppState {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppParameters {
     pub erosion_params: Parameters,
     pub heightmap_type: HeightmapType,
@@ -48,7 +48,7 @@ impl Default for AppParameters {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ErodedState {
     pub id: usize,
     pub base_id: usize,
@@ -71,7 +71,7 @@ impl ErodedState {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BaseState {
     pub id: usize,
     pub erosion_method: Method,
@@ -138,7 +138,7 @@ impl BaseState {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum SimulationState {
     Base(BaseState),
     Eroded((BaseState, ErodedState)),

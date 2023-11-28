@@ -12,56 +12,14 @@ pub mod ui;
 pub mod widgets;
 pub mod wrappers;
 
-use crate::erode::Parameters;
-use crate::heightmap::{Heightmap, HeightmapType};
-use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
-use crate::visualize::events::{poll_ui_events, UiEvent};
+use crate::heightmap::Heightmap;
+use crate::visualize::app_state::{AppState, SimulationState};
+use crate::visualize::events::poll_ui_events;
 use crate::visualize::keybinds::poll_ui_keybinds;
 use crate::visualize::ui::*;
 
-#[cfg(feature = "export")]
-use crate::io::list_state_files;
-
 pub fn generate_default_state() -> State {
-    State {
-        state_name: None,
-        app_state: AppState {
-            simulation_states: vec![SimulationState::get_new_base(
-                0,
-                &HeightmapType::default(),
-                &Parameters::default(),
-            )],
-            simulation_base_indices: vec![0],
-            parameters: AppParameters::default(),
-        },
-        ui_state: UiState {
-            show_ui_all: true,
-            show_ui_keybinds: false,
-            show_ui_control_panel: true,
-            show_ui_metadata: false,
-            show_ui_metrics: false,
-            simulation_clear: true,
-            simulation_regenerate: false,
-            application_quit: false,
-            ui_events: Vec::<UiEvent>::new(),
-            ui_events_previous: Vec::<UiEvent>::new(),
-            frame_slots: None,
-            blur_sigma: 5.0,
-            canny_edge: (2.5, 50.0),
-            isoline: IsolineProperties {
-                height: 0.2,
-                error: 0.01,
-                flood_lower: false,
-                should_flood: false,
-                flooded_areas_lower: None,
-                flooded_areas_higher: None,
-                blur_augmentation: (false, 1.0, 5, 5),
-                advanced_texture: true,
-            },
-            #[cfg(feature = "export")]
-            saves: list_state_files().expect("Failed to access saved states."),
-        },
-    }
+    State::default()
 }
 
 pub async fn run() {
@@ -175,7 +133,7 @@ pub async fn run() {
     }
 }
 
-fn draw_frame(rect: &Rect, texture: &Texture2D) {
+pub fn draw_frame(rect: &Rect, texture: &Texture2D) {
     let side = rect.width().min(rect.height());
     let margin_left = (rect.width() - side) / 2.0;
     let margin_top = (rect.height() - side) / 2.0;

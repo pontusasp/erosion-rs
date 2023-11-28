@@ -736,7 +736,7 @@ impl PartialHeightmap {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum HeightmapType {
     Procedural(ProceduralHeightmapSettings),
     XGradient,
@@ -860,7 +860,7 @@ pub fn create_heightmap_from_closure(
     Heightmap::new(data, size, size, 1.0, original_depth, None)
 }
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct ProceduralHeightmapSettings {
     pub seed: u64,
     pub noise_type: NoiseTypeWrapper,
