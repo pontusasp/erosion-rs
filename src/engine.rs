@@ -1,5 +1,6 @@
 pub mod scripts;
 
+use std::fs;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::engine::scripts::{Function, Instruction, Script, tick};
@@ -12,8 +13,10 @@ pub enum EngineError {
     HasNoState,
     HasNoInstruction,
     MissingSnapshotData,
+    JsonError(serde_json::Error),
     MissingMainFunction,
     MissingFunction(String),
+    RWError(std::io::Error),
 }
 
 pub type Stack = Vec<State>;
@@ -76,6 +79,15 @@ impl Engine {
         self.snapshots.push(snapshot);
         Some(())
     }
+
+    pub fn snapshots_to_string(&self) -> Result<String, EngineError> {
+        Ok(serde_json::to_string(&self.snapshots)?)
+    }
+
+    pub fn export_snapshots(&self, filename: &str) -> Result<(), EngineError> {
+        fs::write(filename, self.snapshots_to_string()?)?;
+        Ok(())
+    }
 }
 
 pub async fn launch(mut script: Script) -> Result<Engine, EngineError> {
@@ -113,3 +125,16 @@ pub async fn turn(mut engine: Engine) -> Result<Engine, EngineError> {
     }
     Ok(engine)
 }
+
+impl From<serde_json::Error> for EngineError {
+    fn from(err: serde_json::Error) -> Self {
+        EngineError::JsonError(err)
+    }
+}
+
+impl From<std::io::Error> for EngineError {
+    fn from(err: std::io::Error) -> Self {
+        EngineError::RWError(err)
+    }
+}
+

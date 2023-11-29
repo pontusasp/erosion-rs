@@ -14,6 +14,13 @@ pub type FunctionName = String;
 pub type Script = HashMap<FunctionName, Function>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum SnapshotAction {
+    Take,
+    PrintAll,
+    SaveAll(String),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Instruction {
     NewState(HeightmapType),
     PushState,
@@ -26,7 +33,7 @@ pub enum Instruction {
     WindowAutoSize((f32, f32)),
     Handover,
     Print(String),
-    Snapshot,
+    Snapshot(SnapshotAction),
     Nop,
     Call(FunctionName),
 }
@@ -39,7 +46,7 @@ pub fn default() -> Script {
         Print("Engine Started".to_string()),
         Queue(UiEvent::SelectMethod(Method::Subdivision(3))),
         Queue(UiEvent::RunSimulation),
-        Snapshot,
+        Snapshot(SnapshotAction::Take),
         Nop,
         Render(false),
         Queue(UiEvent::SelectMethod(Method::GridOverlapBlend(8))),
@@ -182,11 +189,21 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
                 println!("{}", s);
                 Ok(())
             }
-            Instruction::Snapshot => {
-                if let Some(()) = engine.snapshot() {
+            Instruction::Snapshot(action) => match action {
+                SnapshotAction::Take => {
+                    if let Some(()) = engine.snapshot() {
+                        Ok(())
+                    } else {
+                        Err(EngineError::MissingSnapshotData)
+                    }
+                }
+                SnapshotAction::PrintAll => {
+                    println!("{:?}", engine.snapshots_to_string()?);
                     Ok(())
-                } else {
-                    Err(EngineError::MissingSnapshotData)
+                }
+                SnapshotAction::SaveAll(filename) => {
+                    engine.export_snapshots(&filename)?;
+                    Ok(())
                 }
             }
             Instruction::Nop => {
