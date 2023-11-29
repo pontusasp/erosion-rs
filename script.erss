@@ -1,7 +1,12 @@
-[
-  { "NewState": { "CenteredHillGradient": 1.0 } },
-  { "Queue": "Isoline" },
-  "Flush",
-  "Snapshot",
-  "Handover"
-]
+{
+  "snap": [
+    { "Queue": "Isoline" },
+    "Flush",
+    "Snapshot"
+  ],
+  "main": [
+    { "NewState": { "CenteredHillGradient": 1.0 } },
+    { "Call": "snap" },
+    "Handover"
+  ]
+}

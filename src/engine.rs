@@ -2,7 +2,7 @@ pub mod scripts;
 
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::engine::scripts::{Instruction, Script, tick};
+use crate::engine::scripts::{Function, Instruction, Script, tick};
 use crate::erode::Parameters;
 use crate::heightmap::HeightmapType;
 use crate::State;
@@ -12,6 +12,8 @@ pub enum EngineError {
     HasNoState,
     HasNoInstruction,
     MissingSnapshotData,
+    MissingMainFunction,
+    MissingFunction(String),
 }
 
 pub type Stack = Vec<State>;
@@ -42,6 +44,7 @@ pub type Snapshot = (Tuning, Vec<Measurement>);
 
 pub struct Engine {
     pub state: State,
+    pub main: Function,
     pub script: Script,
     pub stack: Stack,
     pub snapshots: Vec<Snapshot>,
@@ -49,7 +52,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn ready(&self) -> bool {
-        !self.script.is_empty()
+        !self.main.is_empty()
     }
 
     pub fn snapshot(&mut self) -> Option<()> {
@@ -77,10 +80,13 @@ impl Engine {
 
 pub async fn launch(mut script: Script) -> Result<Engine, EngineError> {
     prevent_quit();
-    script.reverse();
+    for (_, fun) in script.iter_mut() {
+        fun.reverse()
+    }
     let stack: Stack = Vec::new();
     let snapshots: Vec<Snapshot> = Vec::new();
-    let state = if let Some(instruction) = script.pop() {
+    let mut main = script.remove("main").ok_or(EngineError::MissingMainFunction)?;
+    let state = if let Some(instruction) = main.pop() {
         match instruction {
             Instruction::NewState(map_type) => State::new(&map_type),
             _ => return Err(EngineError::HasNoState)
@@ -91,6 +97,7 @@ pub async fn launch(mut script: Script) -> Result<Engine, EngineError> {
 
     let mut engine = Engine {
         state,
+        main,
         script,
         stack,
         snapshots,

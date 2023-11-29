@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::mem;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -8,9 +9,11 @@ use crate::partitioning::Method;
 use crate::State;
 use crate::visualize::events::{poll_ui_events, UiEvent};
 
-pub type Script = Vec<Instruction>;
+pub type Function = Vec<Instruction>;
+pub type FunctionName = String;
+pub type Script = HashMap<FunctionName, Function>;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Instruction {
     NewState(HeightmapType),
     PushState,
@@ -25,11 +28,13 @@ pub enum Instruction {
     Print(String),
     Snapshot,
     Nop,
+    Call(FunctionName),
 }
 
 pub fn default() -> Script {
     use Instruction::*;
-    vec![
+    let mut script = HashMap::new();
+    script.insert("main".to_string(), vec![
         NewState(HeightmapType::XSinWave(5f32)),
         Print("Engine Started".to_string()),
         Queue(UiEvent::SelectMethod(Method::Subdivision(3))),
@@ -45,7 +50,8 @@ pub fn default() -> Script {
         Print("Handing over".to_string()),
         Handover,
         Print("Engine done.".to_string()),
-    ]
+    ]);
+    script
 }
 
 
@@ -87,10 +93,20 @@ fn draw(state: &mut State, ui: bool) {
     };
 }
 
+pub async fn call(mut engine: Engine, function_name: &FunctionName) -> Result<Engine, EngineError> {
+    let mut function = if let Some(function) = engine.script.get(function_name) {
+        function.clone()
+    } else {
+        return Err(EngineError::MissingFunction(function_name.to_string()))
+    };
+    engine.main.append(&mut function);
+    Ok(engine)
+}
+
 pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
     let state = &mut engine.state;
     let stack = &mut engine.stack;
-    let result = if let Some(instruction) = engine.script.pop() {
+    let result = if let Some(instruction) = engine.main.pop() {
         match instruction {
             Instruction::NewState(map_type) => {
                 let mut s = State::new(&map_type);
@@ -174,6 +190,10 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
                 }
             }
             Instruction::Nop => {
+                Ok(())
+            }
+            Instruction::Call(ref function_name) => {
+                engine = call(engine, function_name).await?;
                 Ok(())
             }
         }
