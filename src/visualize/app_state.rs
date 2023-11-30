@@ -151,7 +151,7 @@ impl SimulationState {
         parameters: &Parameters,
     ) -> Self {
         let mut heightmap =
-            heightmap::create_heightmap_from_preset(heightmap_type, crate::PRESET_HEIGHTMAP_SIZE);
+            heightmap::create_heightmap_from_preset(heightmap_type);
         heightmap.calculate_total_height();
         let heightmap = Rc::new(heightmap);
         SimulationState::Base(BaseState {

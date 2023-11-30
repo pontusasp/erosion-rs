@@ -2,7 +2,7 @@ use bracket_noise::prelude::NoiseType;
 use egui::{Color32, Vec2};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::heightmap::HeightmapType;
+use crate::heightmap::{HeightmapParameters, HeightmapType};
 use crate::visualize::events::UiEvent;
 use crate::visualize::keybinds::{
     KEYCODE_NEW_HEIGHTMAP, KEYCODE_NEXT_PARTITIONING_METHOD, KEYCODE_PREVIOUS_PARTITIONING_METHOD,
@@ -468,6 +468,34 @@ pub fn layer_selection(ui: &mut egui::Ui, state: &AppState) {
     ui.separator();
 }
 
+fn heightmap_parameters(params: &mut HeightmapParameters, ui: &mut egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
+    let mut size = params.size;
+    let mut updated = ui
+        .add(egui::Slider::new(&mut size, 2usize.pow(6)..=2usize.pow(12)).text("Resolution"))
+        .changed();
+    params.size = size;
+
+    ui.add(egui::Checkbox::new(
+        &mut state.parameters.auto_apply,
+        "Auto Apply",
+    ));
+
+    if ui.button("Reset").clicked() {
+        params.reset();
+        updated = true;
+    }
+
+    let mut apply = false;
+    if !state.parameters.auto_apply {
+        apply = ui.button("Apply").clicked();
+    }
+
+    let update = (state.parameters.auto_apply && updated) || apply;
+    if update {
+        ui_state.ui_events.push(UiEvent::ReplaceHeightmap);
+    }
+}
+
 fn procedural_generation_settings(
     settings: &mut ProceduralHeightmapSettings,
     ui: &mut egui::Ui,
@@ -546,14 +574,6 @@ fn procedural_generation_settings(
         || ui
             .add(egui::Slider::new(&mut settings.frequency, 0.0..=5.0).text("Frequency"))
             .changed();
-    let mut size = settings.width;
-    updated = updated
-        || ui
-            .add(egui::Slider::new(&mut size, 2usize.pow(6)..=2usize.pow(12)).text("Resolution"))
-            .changed();
-    settings.width = size;
-    settings.height = size;
-
     ui.add(egui::Checkbox::new(
         &mut state.parameters.auto_apply,
         "Auto Apply",
@@ -594,15 +614,18 @@ pub fn heightmap_generation_settings(
                         }
                     });
 
+                let type_changed = heightmap_type != state.parameters.heightmap_type;
+
                 match heightmap_type {
-                    HeightmapType::Procedural(ref mut settings) => {
+                    HeightmapType::Procedural(ref mut params, ref mut settings) => {
+                        heightmap_parameters(params, ui, ui_state, state);
                         procedural_generation_settings(settings, ui, ui_state, state);
                     }
                     _ => (),
                 }
 
-                if heightmap_type != state.parameters.heightmap_type {
-                    state.parameters.heightmap_type = heightmap_type;
+                state.parameters.heightmap_type = heightmap_type;
+                if type_changed {
                     ui_state.ui_events.push(UiEvent::ReplaceHeightmap);
                 }
             } else {
