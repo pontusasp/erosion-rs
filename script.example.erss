@@ -1,10 +1,10 @@
 {
   "main": [
-    { "NewState": { "XSinWave": 5.0 } },
-    { "Print": "Engine Started" }, {
-      "Queue": { "SelectMethod": { "Subdivision": 3 } } },
+    { "NewState": { "XSinWave": [ { "size": 512 }, 5.0 ] } },
+    { "Print": "Engine Started" },
+    { "Queue": { "SelectMethod": { "Subdivision": 3 } } },
     { "Queue": "RunSimulation" },
-    "Snapshot",
+    { "Snapshot": "Take" },
     "Nop",
     { "Render": false },
     { "Queue": { "SelectMethod": { "GridOverlapBlend": 8 } } },

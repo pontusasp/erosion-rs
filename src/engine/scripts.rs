@@ -4,7 +4,7 @@ use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use egui::{Pos2, Rect};
 use crate::engine::{Engine, EngineError};
-use crate::heightmap::HeightmapType;
+use crate::heightmap::{HeightmapParameters, HeightmapType};
 use crate::partitioning::Method;
 use crate::State;
 use crate::visualize::events::{poll_ui_events, UiEvent};
@@ -18,6 +18,13 @@ pub enum SnapshotAction {
     Take,
     PrintAll,
     SaveAll(String),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum IsolineAction {
+    Queue,
+    SetValue(f32),
+    SetError(f32),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -36,13 +43,16 @@ pub enum Instruction {
     Snapshot(SnapshotAction),
     Nop,
     Call(FunctionName),
+    Isoline(IsolineAction),
+    Size(usize),
+    GridSize(usize),
 }
 
 pub fn default() -> Script {
     use Instruction::*;
     let mut script = HashMap::new();
     script.insert("main".to_string(), vec![
-        NewState(HeightmapType::XSinWave(5f32)),
+        NewState(HeightmapType::XSinWave(HeightmapParameters::default(), 5f32)),
         Print("Engine Started".to_string()),
         Queue(UiEvent::SelectMethod(Method::Subdivision(3))),
         Queue(UiEvent::RunSimulation),
@@ -211,6 +221,28 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
             }
             Instruction::Call(ref function_name) => {
                 engine = call(engine, function_name).await?;
+                Ok(())
+            }
+            Instruction::Isoline(action) => match action {
+                IsolineAction::Queue => {
+                    state.ui_state.ui_events.push(UiEvent::Isoline);
+                    Ok(())
+                }
+                IsolineAction::SetValue(value) => {
+                    state.ui_state.isoline.height = value;
+                    Ok(())
+                }
+                IsolineAction::SetError(error) => {
+                    state.ui_state.isoline.error = error;
+                    Ok(())
+                }
+            }
+            Instruction::Size(size) => {
+                state.app_state.parameters.heightmap_type.params_mut().size = size;
+                Ok(())
+            }
+            Instruction::GridSize(size) => {
+                state.app_state.parameters.grid_size = size;
                 Ok(())
             }
         }
