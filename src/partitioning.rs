@@ -15,9 +15,9 @@ pub const GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS: u16 = 2;
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Method {
     Default,
-    Subdivision(u32),
-    SubdivisionBlurBoundary((u32, (f32, u16))),
-    SubdivisionOverlap(u32),
+    Subdivision(usize),
+    SubdivisionBlurBoundary((usize, (f32, u16))),
+    SubdivisionOverlap(usize),
     GridOverlapBlend(usize),
 }
 
@@ -34,13 +34,13 @@ impl Method {
 
     pub fn next(self) -> Self {
         match self {
-            Method::Default => Method::Subdivision(crate::PRESET_SUBDIVISIONS),
-            Method::Subdivision(subdivisions) => Method::SubdivisionBlurBoundary((
-                subdivisions,
+            Method::Default => Method::Subdivision(crate::PRESET_GRID_SIZE),
+            Method::Subdivision(grid_size) => Method::SubdivisionBlurBoundary((
+                grid_size,
                 (GAUSSIAN_DEFAULT_SIGMA, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS),
             )),
-            Method::SubdivisionBlurBoundary((subdivisions, _)) => {
-                Method::SubdivisionOverlap(subdivisions)
+            Method::SubdivisionBlurBoundary((grid_size, _)) => {
+                Method::SubdivisionOverlap(grid_size)
             }
             Method::SubdivisionOverlap(_) => Method::GridOverlapBlend(crate::PRESET_GRID_SIZE),
             Method::GridOverlapBlend(_) => Method::Default,
@@ -50,12 +50,12 @@ impl Method {
     pub fn previous(self) -> Self {
         match self {
             Method::Subdivision(_) => Method::Default,
-            Method::SubdivisionBlurBoundary((subdivisions, _)) => Method::Subdivision(subdivisions),
-            Method::SubdivisionOverlap(subdivisions) => Method::SubdivisionBlurBoundary((
-                subdivisions,
+            Method::SubdivisionBlurBoundary((grid_size, _)) => Method::Subdivision(grid_size),
+            Method::SubdivisionOverlap(grid_size) => Method::SubdivisionBlurBoundary((
+                grid_size,
                 (GAUSSIAN_DEFAULT_SIGMA, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS),
             )),
-            Method::GridOverlapBlend(_) => Method::SubdivisionOverlap(crate::PRESET_SUBDIVISIONS),
+            Method::GridOverlapBlend(_) => Method::SubdivisionOverlap(crate::PRESET_GRID_SIZE),
             Method::Default => Method::GridOverlapBlend(crate::PRESET_GRID_SIZE),
         }
     }
@@ -75,36 +75,27 @@ impl Method {
     pub fn iterator() -> Iter<'static, Method> {
         static EROSION_METHODS: &[Method] = &[
             Method::Default,
-            Method::Subdivision(crate::PRESET_SUBDIVISIONS),
+            Method::Subdivision(crate::PRESET_GRID_SIZE),
             Method::SubdivisionBlurBoundary((
-                crate::PRESET_SUBDIVISIONS,
+                crate::PRESET_GRID_SIZE,
                 (GAUSSIAN_DEFAULT_SIGMA, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS),
             )),
-            Method::SubdivisionOverlap(crate::PRESET_SUBDIVISIONS),
+            Method::SubdivisionOverlap(crate::PRESET_GRID_SIZE),
             Method::GridOverlapBlend(crate::PRESET_GRID_SIZE),
         ];
         EROSION_METHODS.iter()
     }
 
-    pub fn set_subdivisions_unchecked(&mut self, value: u32) {
-        match self {
-            Method::Default => (),
-            Method::Subdivision(ref mut subdivisions)
-            | Method::SubdivisionOverlap(ref mut subdivisions) => {
-                *subdivisions = value;
-            }
-            Method::SubdivisionBlurBoundary((ref mut subdivisions, _)) => {
-                *subdivisions = value;
-            }
-            Method::GridOverlapBlend(_) => (),
-        };
-    }
-
     pub fn set_grid_size_unchecked(&mut self, value: usize) {
         match self {
             Method::Default => (),
-            Method::Subdivision(_) | Method::SubdivisionOverlap(_) => (),
-            Method::SubdivisionBlurBoundary(_) => (),
+            Method::Subdivision(ref mut grid_size)
+            | Method::SubdivisionOverlap(ref mut grid_size) => {
+                *grid_size = value;
+            }
+            Method::SubdivisionBlurBoundary((ref mut grid_size, _)) => {
+                *grid_size = value;
+            }
             Method::GridOverlapBlend(ref mut grid_size) => {
                 *grid_size = value;
             }
@@ -117,14 +108,13 @@ impl Method {
         heightmap: &Heightmap,
         parameters: &Parameters,
         drop_zone: &DropZone,
-        subdivisions: u32,
         grid_size: usize,
     ) -> Heightmap {
         print!("Eroding using ");
         let heightmap_size = heightmap.width;
         let (local_margin, margin) = if use_margin {
-            let max_margin = Self::max_margin(heightmap_size, subdivisions, grid_size);
-            let local_margin = self.margin_size(heightmap_size, subdivisions, grid_size);
+            let max_margin = Self::max_margin(heightmap_size, grid_size);
+            let local_margin = self.margin_size(heightmap_size, grid_size);
             let (mr, mt, ml, mb) = max_margin;
             let (lr, lt, ll, lb) = local_margin;
             let margin = (mr - lr, mt - lt, ml - ll, mb - lb);
@@ -138,15 +128,15 @@ impl Method {
                 println!("{} method (no partitioning)", Method::Default.to_string());
                 default_erode(&mut partition.heightmap, &parameters, &drop_zone);
             }
-            Method::Subdivision(subdivisions) => {
-                println!("{} method", Method::Subdivision(*subdivisions).to_string());
-                subdivision_erode(&mut partition.heightmap, &parameters, *subdivisions);
+            Method::Subdivision(grid_size) => {
+                println!("{} method", Method::Subdivision(*grid_size).to_string());
+                subdivision_erode(&mut partition.heightmap, &parameters, *grid_size);
             }
-            Method::SubdivisionBlurBoundary((subdivisions, (sigma, thickness))) => {
+            Method::SubdivisionBlurBoundary((grid_size, (sigma, thickness))) => {
                 println!(
                     "{} method",
                     Method::SubdivisionBlurBoundary((
-                        *subdivisions,
+                        *grid_size,
                         (GAUSSIAN_DEFAULT_SIGMA, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS)
                     ))
                     .to_string()
@@ -154,17 +144,17 @@ impl Method {
                 subdivision_blur_boundary_erode(
                     &mut partition.heightmap,
                     &parameters,
-                    *subdivisions,
+                    *grid_size,
                     *sigma,
                     *thickness,
                 );
             }
-            Method::SubdivisionOverlap(subdivisions) => {
+            Method::SubdivisionOverlap(grid_size) => {
                 println!(
                     "{} method",
-                    Method::SubdivisionOverlap(*subdivisions).to_string()
+                    Method::SubdivisionOverlap(*grid_size).to_string()
                 );
-                subdivision_overlap_erode(&mut partition.heightmap, &parameters, *subdivisions);
+                subdivision_overlap_erode(&mut partition.heightmap, &parameters, *grid_size);
             }
             Method::GridOverlapBlend(grid_size) => {
                 println!(
@@ -185,8 +175,7 @@ impl Method {
             .heightmap
     }
 
-    pub fn margin_size(&self, heightmap_size: usize, subdivisions: u32, grid_size: usize) -> (usize, usize, usize, usize) {
-        let subdivision_cell_size = heightmap_size / 2_usize.pow(subdivisions);
+    pub fn margin_size(&self, heightmap_size: usize, grid_size: usize) -> (usize, usize, usize, usize) {
         let margins = match self {
             Method::Default => (0, 0, 0, 0),
             Method::Subdivision(_) => (0, 0, 0, 0),
@@ -195,7 +184,6 @@ impl Method {
                 // let m = subdivision_cell_size / 2;
                 // (m, m, m, m)
 
-                let grid_size = 2_usize.pow(subdivisions);
                 let grid_cell_size = heightmap_size / grid_size;
                 let offset0 = (grid_cell_size) / 2;
                 let offset1 = heightmap_size - (grid_cell_size) / 2;
@@ -228,13 +216,13 @@ impl Method {
         (right, top, left, bottom)
     }
 
-    pub fn max_margin(heightmap_size: usize, subdivisions: u32, grid_size: usize) -> (usize, usize, usize, usize) {
+    pub fn max_margin(heightmap_size: usize, grid_size: usize) -> (usize, usize, usize, usize) {
         let mut largest_margin_r = 0;
         let mut largest_margin_t = 0;
         let mut largest_margin_l = 0;
         let mut largest_margin_b = 0;
         for &m in Self::iterator() {
-            let (r, t, l, b) = m.margin_size(heightmap_size, subdivisions, grid_size);
+            let (r, t, l, b) = m.margin_size(heightmap_size, grid_size);
             largest_margin_r = largest_margin_r.max(r);
             largest_margin_t = largest_margin_t.max(t);
             largest_margin_l = largest_margin_l.max(l);
@@ -246,9 +234,9 @@ impl Method {
 
 fn subdivide(
     heightmap: &heightmap::Heightmap,
-    subdivisions: u32,
+    grid_size: usize,
 ) -> Vec<Arc<Mutex<heightmap::PartialHeightmap>>> {
-    let slice_amount = 2_usize.pow(subdivisions);
+    let slice_amount = grid_size;
     let slices = UVector2 {
         x: slice_amount,
         y: slice_amount,
@@ -275,9 +263,9 @@ fn subdivide(
 
 fn subdivide_partition(
     partial: &heightmap::PartialHeightmap,
-    subdivisions: u32,
+    grid_size: usize,
 ) -> Vec<Arc<Mutex<heightmap::PartialHeightmap>>> {
-    let slice_amount = 2_usize.pow(subdivisions) - 1;
+    let slice_amount = grid_size - 1;
     let slices = UVector2 {
         x: slice_amount,
         y: slice_amount,
@@ -327,9 +315,9 @@ pub fn default_erode(
 pub fn subdivision_erode(
     heightmap: &mut heightmap::Heightmap,
     params: &erode::Parameters,
-    subdivisions: u32,
+    grid_size: usize,
 ) {
-    let partitions = subdivide(heightmap, subdivisions);
+    let partitions = subdivide(heightmap, grid_size);
 
     let mut params = params.clone();
     params.num_iterations /= partitions.len();
@@ -340,18 +328,18 @@ pub fn subdivision_erode(
 pub fn subdivision_blur_boundary_erode(
     heightmap: &mut heightmap::Heightmap,
     params: &erode::Parameters,
-    subdivisions: u32,
+    grid_size: usize,
     sigma: f32,
     thickness: u16,
 ) {
-    subdivision_erode(heightmap, params, subdivisions);
+    subdivision_erode(heightmap, params, grid_size);
     let blurred = heightmap.blur(sigma).unwrap();
     let size = heightmap.width;
     let mask = heightmap::create_heightmap_from_closure(
         heightmap.width,
         1.0,
         &|x, y| -> HeightmapPrecision {
-            let chunk = size as i32 / 2i32.pow(subdivisions);
+            let chunk = (size / grid_size) as i32;
             let dx = (chunk - x as i32 % chunk).abs().min(x as i32 % chunk);
             let dy = (chunk - y as i32 % chunk).abs().min(y as i32 % chunk);
             let d = dx.min(dy);
@@ -370,10 +358,10 @@ pub fn subdivision_blur_boundary_erode(
 pub fn subdivision_overlap_erode(
     heightmap: &mut heightmap::Heightmap,
     params: &erode::Parameters,
-    subdivisions: u32,
+    grid_size: usize,
 ) {
-    assert!(subdivisions > 0);
-    let partitions = subdivide(heightmap, subdivisions);
+    assert!(grid_size > 1);
+    let partitions = subdivide(heightmap, grid_size);
     let (cell_width, cell_height) = {
         let partition = partitions[0].lock().unwrap();
         (partition.heightmap.width, partition.heightmap.height)
@@ -395,7 +383,7 @@ pub fn subdivision_overlap_erode(
             y: heightmap.height - cell_height,
         },
     );
-    let nested_partitions = subdivide_partition(&partial, subdivisions);
+    let nested_partitions = subdivide_partition(&partial, grid_size);
     erode_multiple(&nested_partitions, params, heightmap);
 }
 

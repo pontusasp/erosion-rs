@@ -30,7 +30,6 @@ pub struct AppParameters {
     pub erosion_params: Parameters,
     pub heightmap_type: HeightmapType,
     pub auto_apply: bool,
-    pub subdivisions: u32,
     pub grid_size: usize,
     pub margin: bool,
 }
@@ -41,7 +40,6 @@ impl Default for AppParameters {
             erosion_params: Parameters::default(),
             heightmap_type: HeightmapType::default(),
             auto_apply: true,
-            subdivisions: crate::PRESET_SUBDIVISIONS,
             grid_size: crate::PRESET_GRID_SIZE,
             margin: true,
         }
@@ -86,7 +84,6 @@ impl BaseState {
         &self,
         id: usize,
         parameters: &Parameters,
-        subdivisions: u32,
         grid_size: usize,
         margin: bool,
     ) -> ErodedState {
@@ -95,11 +92,10 @@ impl BaseState {
             &self.heightmap_base.heightmap,
             parameters,
             &self.drop_zone,
-            subdivisions,
             grid_size,
         );
         let new_margin = if margin {
-            Method::max_margin(self.heightmap_base.heightmap.width, subdivisions, grid_size)
+            Method::max_margin(self.heightmap_base.heightmap.width, grid_size)
         } else {
             (0, 0, 0, 0)
         };
@@ -166,7 +162,6 @@ impl SimulationState {
         &self,
         new_id: usize,
         parameters: &Parameters,
-        subdivisions: u32,
         grid_size: usize,
         margin: bool,
     ) -> Self {
@@ -186,7 +181,7 @@ impl SimulationState {
             };
         }
 
-        let eroded = base.run_simulation(new_id, parameters, subdivisions, grid_size, margin);
+        let eroded = base.run_simulation(new_id, parameters, grid_size, margin);
         SimulationState::Eroded((base, eroded))
     }
 
