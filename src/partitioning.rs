@@ -180,23 +180,7 @@ impl Method {
             Method::Default => (0, 0, 0, 0),
             Method::Subdivision(_) => (0, 0, 0, 0),
             Method::SubdivisionBlurBoundary(_) => (0, 0, 0, 0),
-            Method::SubdivisionOverlap(_) => {
-                // let m = subdivision_cell_size / 2;
-                // (m, m, m, m)
-
-                let grid_cell_size = heightmap_size / grid_size;
-                let offset0 = (grid_cell_size) / 2;
-                let offset1 = heightmap_size - (grid_cell_size) / 2;
-
-                let slices = grid_size - 1;
-                let slice_size = (offset1 - offset0) / slices;
-
-                let total_inner_size = slices * slice_size;
-
-                let margin0 = offset0;
-                let margin1 = heightmap_size - margin0 - total_inner_size;
-                (margin1, margin0, margin0, margin1)
-            },
+            Method::SubdivisionOverlap(_) |
             Method::GridOverlapBlend(_) => {
                 let grid_cell_size = heightmap_size / grid_size;
                 let offset0 = (grid_cell_size) / 2;
