@@ -1,10 +1,15 @@
-use crate::visualize::app_state::AppState;
-use crate::visualize::ui::UiState;
+use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
+use crate::visualize::ui::{IsolineProperties, UiState};
 use image::io::Reader as ImageReader;
 use macroquad::miniquad::conf::Icon;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::{env, fs};
+use crate::erode::Parameters;
+use crate::heightmap::HeightmapType;
+use crate::visualize::events::UiEvent;
 
+pub mod engine;
 pub mod erode;
 pub mod heightmap;
 #[cfg(feature = "export")]
@@ -91,14 +96,120 @@ fn window_conf() -> Conf {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct State {
     pub state_name: Option<String>,
     pub app_state: AppState,
     pub ui_state: UiState,
 }
 
+impl State {
+    pub fn default() -> Self {
+        Self::new(&HeightmapType::default())
+    }
+
+    pub fn new(heightmap_type: &HeightmapType) -> Self {
+        Self {
+            state_name: None,
+            app_state: AppState {
+                simulation_states: vec![SimulationState::get_new_base(
+                    0,
+                    &heightmap_type,
+                    &Parameters::default(),
+                )],
+                simulation_base_indices: vec![0],
+                parameters: AppParameters::default(),
+            },
+            ui_state: UiState {
+                show_ui_all: true,
+                show_ui_keybinds: false,
+                show_ui_control_panel: true,
+                show_ui_metadata: false,
+                show_ui_metrics: false,
+                simulation_clear: true,
+                simulation_regenerate: false,
+                application_quit: false,
+                ui_events: Vec::<UiEvent>::new(),
+                ui_events_previous: Vec::<UiEvent>::new(),
+                frame_slots: None,
+                blur_sigma: 5.0,
+                canny_edge: (2.5, 50.0),
+                isoline: IsolineProperties {
+                    height: 0.2,
+                    error: 0.01,
+                    flood_lower: false,
+                    should_flood: true,
+                    flooded_areas_lower: None,
+                    flooded_areas_higher: None,
+                    blur_augmentation: (false, 1.0, 5, 5),
+                    advanced_texture: true,
+                },
+                #[cfg(feature = "export")]
+                saves: io::list_state_files().expect("Failed to access saved states."),
+            },
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+enum Command {
+    Engine,
+    GenerateExample,
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    visualize::run().await;
+    let args: Vec<String> = env::args().collect();
+
+    let command_bindings: &[(String, Command)] = &[
+        ("--engine".to_string(), Command::Engine),
+        ("-e".to_string(), Command::Engine),
+        ("--generate-example".to_string(), Command::GenerateExample),
+    ];
+
+    let mut commands: Vec<Command> = args.iter().filter_map(|str| {
+        for (binding, command) in command_bindings {
+            if str == binding {
+                return Some(*command);
+            }
+        }
+        None
+    }).collect();
+
+    commands.sort();
+    commands.dedup_by(|a, b| a == b);
+
+    dbg!(&commands);
+
+
+    for (_i, command) in commands.iter().enumerate() {
+        match command {
+            Command::Engine => {
+                let script = if let Some(script_raw) = fs::read_to_string("script.erss").ok() {
+                    serde_json::from_str(&script_raw).expect("Failed to parse script.")
+                } else {
+                    engine::scripts::default()
+                };
+
+                let engine_result = engine::launch(script).await;
+                if let Ok(_state) = engine_result { }
+                else if let Err(err) = engine_result {
+                    println!("Engine died. Reason: {:?}", err);
+                };
+            }
+            Command::GenerateExample => {
+                let result = serde_json::to_string(&engine::scripts::default());
+                if let Ok(example) = result {
+                    let result = fs::write("script.example.erss", example);
+                    if let Ok(()) = result {} else {
+                        panic!("Example can't be converted to json!");
+                    }
+                }
+            }
+        }
+    }
+
+    if commands.is_empty() {
+        visualize::run().await;
+    }
 }

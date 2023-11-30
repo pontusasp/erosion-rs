@@ -15,7 +15,7 @@ use super::panels::{
     ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
 };
 
-#[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct IsolineProperties {
     pub height: HeightmapPrecision,
     pub error: HeightmapPrecision,
@@ -27,7 +27,7 @@ pub struct IsolineProperties {
     pub advanced_texture: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UiState {
     pub show_ui_all: bool,
     pub show_ui_keybinds: bool,
@@ -59,7 +59,7 @@ impl UiState {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FrameSlots {
     pub canvas: Option<Rect>,
 }
