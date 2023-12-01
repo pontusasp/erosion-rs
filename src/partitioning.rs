@@ -288,6 +288,10 @@ fn subdivision_grid(heightmap: &mut Heightmap, grid_size: usize) {
             y: heightmap.height,
         },
         &UVector2 {
+            x: heightmap.width / grid_size,
+            y: heightmap.height / grid_size,
+        },
+        &UVector2 {
             x: grid_size,
             y: grid_size,
         },
@@ -317,6 +321,10 @@ fn grid_overlap_blend_grid(heightmap: &mut Heightmap, grid_size_x: usize, grid_s
             y: heightmap.height - slice_height / 2,
         },
         &UVector2 {
+            x: slice_width,
+            y: slice_height,
+        },
+        &UVector2 {
             x: grid_size_x - 1,
             y: grid_size_y - 1,
         },
@@ -327,6 +335,10 @@ fn grid_overlap_blend_grid(heightmap: &mut Heightmap, grid_size_x: usize, grid_s
         &UVector2 {
             x: heightmap.width,
             y: heightmap.height,
+        },
+        &UVector2 {
+            x: slice_width,
+            y: slice_height,
         },
         &UVector2 {
             x: grid_size_x,
@@ -496,17 +508,26 @@ fn get_grid(
     heightmap: &heightmap::Heightmap,
     rect_min: &UVector2,
     rect_max: &UVector2,
+    grid_size: &UVector2,
     grid_cells: &UVector2,
 ) -> Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>> {
     let mut grid = Vec::new();
-    let slice_width = (rect_max.x - rect_min.x) / grid_cells.x;
-    let slice_height = (rect_max.y - rect_min.y) / grid_cells.y;
+    let slice_width = grid_size.x;
+    let slice_height = grid_size.y;
+
+    let total_width = slice_width * grid_cells.x;
+    let total_height = slice_height * grid_cells.y;
+    let desired_width = rect_max.x - rect_min.x;
+    let desired_height = rect_max.y - rect_min.y;
+    let x_align = (desired_width - total_width) / 2;
+    let y_align = (desired_height - total_height) / 2;
+
     for x in 0..grid_cells.x {
         let mut row = Vec::new();
         for y in 0..grid_cells.y {
             let anchor = UVector2 {
-                x: x * slice_width + rect_min.x,
-                y: y * slice_height + rect_min.y,
+                x: x * slice_width + rect_min.x + x_align,
+                y: y * slice_height + rect_min.y + y_align,
             };
             let size = UVector2 {
                 x: slice_width,
@@ -579,6 +600,10 @@ pub fn grid_overlap_blend_erode(
             y: heightmap.height - slice_height / 2,
         },
         &UVector2 {
+            x: slice_width,
+            y: slice_height,
+        },
+        &UVector2 {
             x: grid_x_slices - 1,
             y: grid_y_slices - 1,
         },
@@ -590,6 +615,10 @@ pub fn grid_overlap_blend_erode(
         &UVector2 {
             x: heightmap.width,
             y: heightmap.height,
+        },
+        &UVector2 {
+            x: slice_width,
+            y: slice_height,
         },
         &UVector2 {
             x: grid_x_slices,
