@@ -96,8 +96,8 @@ impl Heightmap {
                 y: margin_t,
             },
             &UVector2 {
-                x: self.width - margin_r,
-                y: self.height - margin_b,
+                x: self.width - margin_l - margin_r,
+                y: self.height - margin_t - margin_b,
             },
         )
     }
