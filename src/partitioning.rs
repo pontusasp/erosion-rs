@@ -102,6 +102,54 @@ impl Method {
         };
     }
 
+    pub fn get_grid(
+        &self,
+        size: usize,
+        use_margin: bool,
+        grid_size: usize,
+    ) -> Heightmap {
+        let heightmap = Heightmap::new_empty(size, size, 1.0, 1.0);
+        let (local_margin, margin) = if use_margin {
+            let max_margin = Self::max_margin(size, grid_size);
+            let local_margin = self.margin_size(size, grid_size);
+            let (mr, mt, ml, mb) = max_margin;
+            let (lr, lt, ll, lb) = local_margin;
+            let margin = (mr - lr, mt - lt, ml - ll, mb - lb);
+            (local_margin, margin)
+        } else {
+            ((0,0,0,0),(0,0,0,0))
+        };
+        let mut partition = heightmap.with_margin(margin);
+        match self {
+            Method::Default => {
+                default_grid(&mut partition.heightmap);
+            }
+            Method::Subdivision(grid_size) => {
+                subdivision_grid(&mut partition.heightmap, *grid_size);
+            }
+            Method::SubdivisionBlurBoundary((grid_size, _)) => {
+                subdivision_blur_boundary_grid(
+                    &mut partition.heightmap,
+                    *grid_size,
+                );
+            }
+            Method::SubdivisionOverlap(grid_size) => {
+                subdivision_overlap_grid(&mut partition.heightmap, *grid_size);
+            }
+            Method::GridOverlapBlend(grid_size) => {
+                grid_overlap_blend_grid(
+                    &mut partition.heightmap,
+                    *grid_size,
+                    *grid_size,
+                );
+            }
+        }
+        partition
+            .heightmap
+            .with_margin(local_margin)
+            .heightmap
+    }
+
     pub fn erode_with_margin(
         &self,
         use_margin: bool,
@@ -214,6 +262,87 @@ impl Method {
         }
         (largest_margin_r, largest_margin_t, largest_margin_l, largest_margin_b)
     }
+}
+
+fn default_grid(heightmap: &mut Heightmap) {
+    let mut thickness = (heightmap.width / 100).max(1);
+    while heightmap.border(1.0, thickness).is_err() && thickness > 0 {
+        thickness -= 1;
+    }
+}
+
+fn paint_grid_border(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, heightmap: &mut Heightmap) {
+    (0..grid.len()).for_each(|x| {
+        (0..grid[x].len())
+            .into_par_iter()
+            .for_each(|y| {
+                let partial = Arc::clone(&grid[x][y]);
+                default_grid(&mut partial.lock().unwrap().heightmap);
+            });
+    });
+    for x in 0..grid.len() {
+        for y in 0..grid[x].len() {
+            let partial = Arc::clone(&grid[x][y]);
+            let _ = &mut partial.lock().unwrap().apply_to_additive(heightmap, 1.0);
+        }
+    }
+}
+fn subdivision_grid(heightmap: &mut Heightmap, grid_size: usize) {
+    let grid = get_grid(
+        heightmap,
+        &UVector2 { x: 0, y: 0 },
+        &UVector2 {
+            x: heightmap.width,
+            y: heightmap.height,
+        },
+        &UVector2 {
+            x: grid_size,
+            y: grid_size,
+        },
+    );
+    paint_grid_border(&grid, heightmap);
+}
+
+fn subdivision_blur_boundary_grid(heightmap: &mut Heightmap, grid_size: usize) {
+    subdivision_grid(heightmap, grid_size)
+}
+
+fn subdivision_overlap_grid(heightmap: &mut Heightmap, grid_size: usize) {
+    grid_overlap_blend_grid(heightmap, grid_size, grid_size)
+}
+
+fn grid_overlap_blend_grid(heightmap: &mut Heightmap, grid_size_x: usize, grid_size_y: usize) {
+    let slice_width = heightmap.width / grid_size_x;
+    let slice_height = heightmap.height / grid_size_y;
+    let subgrid = get_grid(
+        heightmap,
+        &UVector2 {
+            x: slice_width / 2,
+            y: slice_height / 2,
+        },
+        &UVector2 {
+            x: heightmap.width - slice_width / 2,
+            y: heightmap.height - slice_height / 2,
+        },
+        &UVector2 {
+            x: grid_size_x - 1,
+            y: grid_size_y - 1,
+        },
+    );
+    let grid = get_grid(
+        heightmap,
+        &UVector2 { x: 0, y: 0 },
+        &UVector2 {
+            x: heightmap.width,
+            y: heightmap.height,
+        },
+        &UVector2 {
+            x: grid_size_x,
+            y: grid_size_y,
+        },
+    );
+    paint_grid_border(&grid, heightmap);
+    paint_grid_border(&subgrid, heightmap);
 }
 
 fn subdivide(

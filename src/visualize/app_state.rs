@@ -6,6 +6,7 @@ use std::rc::Rc;
 use crate::erode::{DropZone, Parameters};
 use crate::heightmap::{self, Heightmap, HeightmapType};
 use crate::partitioning::Method;
+use crate::visualize::{HeightmapLayer, layered_heightmaps_to_texture, LayerMixMethod, rgba_color_channel};
 use crate::visualize::wrappers::HeightmapTexture;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -56,6 +57,7 @@ pub struct ErodedState {
     pub heightmap_difference: Rc<RefCell<Vec<Rc<HeightmapTexture>>>>,
     pub heightmap_difference_normalized: Rc<RefCell<Vec<Rc<HeightmapTexture>>>>,
     pub erosion_method: Rc<Method>,
+    pub margin_removed: bool,
 }
 
 impl ErodedState {
@@ -124,6 +126,7 @@ impl BaseState {
                 heightmap_diff_normalized.into(),
             )])),
             erosion_method: Rc::new(self.erosion_method),
+            margin_removed: margin,
         }
     }
 
@@ -251,4 +254,34 @@ impl SimulationState {
             SimulationState::Eroded((_, eroded)) => Rc::clone(&eroded.heightmap_eroded.heightmap),
         }
     }
+
+    pub fn get_active_grid_texture(&self, app_parameters: &AppParameters) -> Texture2D {
+        let grid = if let Some(state) = self.eroded() {
+            state.erosion_method.get_grid(state.heightmap_eroded.heightmap.width, !state.margin_removed && app_parameters.margin, app_parameters.grid_size)
+        } else {
+            let state = self.base();
+            state.erosion_method.get_grid(state.heightmap_base.heightmap.width, app_parameters.margin, app_parameters.grid_size)
+        };
+        let heightmap = self.get_active();
+        let grid_texture = layered_heightmaps_to_texture(grid.width, &vec![
+            &HeightmapLayer {
+                heightmap: &heightmap,
+                channel: rgba_color_channel::RGB,
+                strength: 1.0,
+                layer_mix_method: LayerMixMethod::Additive,
+                inverted: false,
+                modifies_alpha: false,
+            },
+            &HeightmapLayer {
+                heightmap: &grid,
+                channel: rgba_color_channel::RA,
+                strength: 1.0,
+                layer_mix_method: LayerMixMethod::Additive,
+                inverted: false,
+                modifies_alpha: false,
+            },
+        ], false, 1.0);
+        grid_texture
+    }
+
 }

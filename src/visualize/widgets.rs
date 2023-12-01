@@ -304,13 +304,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                         }
                     };
                     ui.toggle_value(&mut state.parameters.margin, "Use Margin");
-                    ui.add(
-                        egui::Slider::new(
-                            &mut state.parameters.grid_size,
-                            GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
-                        )
-                        .text("Margin Grid Size"),
-                    );
+                    ui.toggle_value(&mut ui_state.show_grid, "Show Grid");
                 });
         });
 

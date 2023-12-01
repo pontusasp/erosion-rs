@@ -123,6 +123,7 @@ impl State {
                 show_ui_control_panel: true,
                 show_ui_metadata: false,
                 show_ui_metrics: false,
+                show_grid: false,
                 simulation_clear: true,
                 simulation_regenerate: false,
                 application_quit: false,

@@ -450,6 +450,32 @@ impl Heightmap {
         Ok(())
     }
 
+    pub fn border(&mut self, value: HeightmapPrecision, thickness: usize) -> Result<(), HeightmapError> {
+        if thickness == 0 {
+            return Ok(());
+        }
+        if thickness > self.width || thickness > self.height {
+            return Err(HeightmapError::OutOfBounds);
+        }
+        for x in 0..thickness {
+            for y in 0..self.height {
+                let x0 = 0;
+                let x1 = self.width - thickness;
+                self.data[x0 + x][y] = value;
+                self.data[x1 + x][y] = value;
+            }
+        }
+        for x in 0..self.width {
+            for y in 0..thickness {
+                let y0 = 0;
+                let y1 = self.height - thickness;
+                self.data[x][y0 + y] = value;
+                self.data[x][y1 + y] = value;
+            }
+        }
+        Ok(())
+    }
+
     pub fn isoline(&self, height: HeightmapPrecision, error: HeightmapPrecision) -> Self {
         let func = |x: usize, y: usize| -> HeightmapPrecision {
             let h = self.data[x][y];
@@ -695,6 +721,16 @@ impl PartialHeightmap {
         for x in 0..self.heightmap.width {
             for y in 0..self.heightmap.height {
                 heightmap.data[x + self.anchor.x][y + self.anchor.y] = self.heightmap.data[x][y];
+            }
+        }
+    }
+
+    pub fn apply_to_additive(&self, heightmap: &mut Heightmap, cap: HeightmapPrecision) {
+        for x in 0..self.heightmap.width {
+            for y in 0..self.heightmap.height {
+                let mut h = heightmap.data[x + self.anchor.x][y + self.anchor.y];
+                h = (h + self.heightmap.data[x][y]).min(cap);
+                heightmap.data[x + self.anchor.x][y + self.anchor.y] = h;
             }
         }
     }

@@ -34,6 +34,7 @@ pub struct UiState {
     pub show_ui_control_panel: bool,
     pub show_ui_metadata: bool,
     pub show_ui_metrics: bool,
+    pub show_grid: bool,
     pub simulation_clear: bool,
     pub simulation_regenerate: bool,
     pub application_quit: bool,
