@@ -117,7 +117,10 @@ pub async fn run() {
             if state.ui_state.show_grid {
                 draw_frame(
                     &canvas_rect,
-                    &state.app_state.simulation_state().get_active_grid_texture(&state.app_state.parameters),
+                    &state
+                        .app_state
+                        .simulation_state()
+                        .get_active_grid_texture(&state.app_state.parameters),
                 );
             }
 

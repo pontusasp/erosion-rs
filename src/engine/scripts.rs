@@ -1,13 +1,13 @@
-use std::collections::HashMap;
-use std::mem;
-use macroquad::prelude::*;
-use serde::{Deserialize, Serialize};
-use egui::{Pos2, Rect};
 use crate::engine::{Engine, EngineError};
 use crate::heightmap::{HeightmapParameters, HeightmapType};
 use crate::partitioning::Method;
-use crate::State;
 use crate::visualize::events::{poll_ui_events, UiEvent};
+use crate::State;
+use egui::{Pos2, Rect};
+use macroquad::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::mem;
 
 pub type Function = Vec<Instruction>;
 pub type FunctionName = String;
@@ -51,31 +51,36 @@ pub enum Instruction {
 pub fn default() -> Script {
     use Instruction::*;
     let mut script = HashMap::new();
-    script.insert("main".to_string(), vec![
-        NewState(HeightmapType::XSinWave(HeightmapParameters::default(), 5f32)),
-        Print("Engine Started".to_string()),
-        Queue(UiEvent::SelectMethod(Method::Subdivision(3))),
-        Queue(UiEvent::RunSimulation),
-        Snapshot(SnapshotAction::Take),
-        Nop,
-        Render(false),
-        Queue(UiEvent::SelectMethod(Method::GridOverlapBlend(8))),
-        Queue(UiEvent::RunSimulation),
-        Render(false),
-        Flush,
-        Print("Done eroding.".to_string()),
-        Print("Handing over".to_string()),
-        Handover,
-        Print("Engine done.".to_string()),
-    ]);
+    script.insert(
+        "main".to_string(),
+        vec![
+            NewState(HeightmapType::XSinWave(
+                HeightmapParameters::default(),
+                5f32,
+            )),
+            Print("Engine Started".to_string()),
+            Queue(UiEvent::SelectMethod(Method::Subdivision(3))),
+            Queue(UiEvent::RunSimulation),
+            Snapshot(SnapshotAction::Take),
+            Nop,
+            Render(false),
+            Queue(UiEvent::SelectMethod(Method::GridOverlapBlend(8))),
+            Queue(UiEvent::RunSimulation),
+            Render(false),
+            Flush,
+            Print("Done eroding.".to_string()),
+            Print("Handing over".to_string()),
+            Handover,
+            Print("Engine done.".to_string()),
+        ],
+    );
     script
 }
 
-
-
 fn poll(state: &mut State) {
     poll_ui_events(
-        #[cfg(feature = "export")] &mut state.state_name,
+        #[cfg(feature = "export")]
+        &mut state.state_name,
         &mut state.ui_state,
         &mut state.app_state,
     );
@@ -91,7 +96,8 @@ fn draw(state: &mut State, ui: bool) {
             .and_then(|slots| slots.canvas)
     } else {
         None
-    }.unwrap_or(Rect {
+    }
+    .unwrap_or(Rect {
         min: Pos2 { x: 0.0, y: 0.0 },
         max: Pos2 {
             x: screen_width(),
@@ -114,7 +120,7 @@ pub async fn call(mut engine: Engine, function_name: &FunctionName) -> Result<En
     let mut function = if let Some(function) = engine.script.get(function_name) {
         function.clone()
     } else {
-        return Err(EngineError::MissingFunction(function_name.to_string()))
+        return Err(EngineError::MissingFunction(function_name.to_string()));
     };
     engine.main.append(&mut function);
     Ok(engine)
@@ -215,10 +221,8 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
                     engine.export_snapshots(&filename)?;
                     Ok(())
                 }
-            }
-            Instruction::Nop => {
-                Ok(())
-            }
+            },
+            Instruction::Nop => Ok(()),
             Instruction::Call(ref function_name) => {
                 engine = call(engine, function_name).await?;
                 Ok(())
@@ -236,7 +240,7 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
                     state.ui_state.isoline.error = error;
                     Ok(())
                 }
-            }
+            },
             Instruction::Size(size) => {
                 state.app_state.parameters.heightmap_type.params_mut().size = size;
                 Ok(())
@@ -247,7 +251,7 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
             }
         }
     } else {
-        return Err(EngineError::HasNoInstruction)
+        return Err(EngineError::HasNoInstruction);
     };
 
     if let Some(err) = result.err() {
@@ -256,4 +260,3 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
         Ok(engine)
     }
 }
-

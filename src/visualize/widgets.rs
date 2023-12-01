@@ -449,7 +449,12 @@ pub fn layer_selection(ui: &mut egui::Ui, state: &AppState) {
     ui.separator();
 }
 
-fn heightmap_parameters(params: &mut HeightmapParameters, ui: &mut egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
+fn heightmap_parameters(
+    params: &mut HeightmapParameters,
+    ui: &mut egui::Ui,
+    ui_state: &mut UiState,
+    state: &mut AppState,
+) {
     let mut size = params.size;
     let mut updated = ui
         .add(egui::Slider::new(&mut size, 2usize.pow(6)..=2usize.pow(12)).text("Resolution"))

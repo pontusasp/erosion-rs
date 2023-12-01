@@ -450,7 +450,11 @@ impl Heightmap {
         Ok(())
     }
 
-    pub fn border(&mut self, value: HeightmapPrecision, thickness: usize) -> Result<(), HeightmapError> {
+    pub fn border(
+        &mut self,
+        value: HeightmapPrecision,
+        thickness: usize,
+    ) -> Result<(), HeightmapError> {
         if thickness == 0 {
             return Ok(());
         }
@@ -773,11 +777,9 @@ impl PartialHeightmap {
     }
 }
 
-const DEFAULT_HEIGHTMAP_PARAMETERS: HeightmapParameters =
-    HeightmapParameters {
-        size: crate::PRESET_HEIGHTMAP_SIZE,
-    };
-
+const DEFAULT_HEIGHTMAP_PARAMETERS: HeightmapParameters = HeightmapParameters {
+    size: crate::PRESET_HEIGHTMAP_SIZE,
+};
 
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct HeightmapParameters {
@@ -839,7 +841,10 @@ impl HeightmapType {
 
 impl Default for HeightmapType {
     fn default() -> Self {
-        HeightmapType::Procedural(HeightmapParameters::default(), ProceduralHeightmapSettings::default())
+        HeightmapType::Procedural(
+            HeightmapParameters::default(),
+            ProceduralHeightmapSettings::default(),
+        )
     }
 }
 
@@ -866,10 +871,16 @@ impl HeightmapType {
 
     pub fn iterator() -> impl Iterator<Item = HeightmapType> {
         static TYPES: [HeightmapType; 7] = [
-            HeightmapType::Procedural(HeightmapParameters::static_default(), ProceduralHeightmapSettings::static_default()),
+            HeightmapType::Procedural(
+                HeightmapParameters::static_default(),
+                ProceduralHeightmapSettings::static_default(),
+            ),
             HeightmapType::XGradient(HeightmapParameters::static_default()),
             HeightmapType::XGradientRepeating(HeightmapParameters::static_default(), 8.0),
-            HeightmapType::XGradientRepeatingAlternating(HeightmapParameters::static_default(), 8.0),
+            HeightmapType::XGradientRepeatingAlternating(
+                HeightmapParameters::static_default(),
+                8.0,
+            ),
             HeightmapType::XHyperbolaGradient(HeightmapParameters::static_default()),
             HeightmapType::CenteredHillGradient(HeightmapParameters::static_default(), 0.75),
             HeightmapType::XSinWave(HeightmapParameters::static_default(), 8.0),
@@ -988,7 +999,10 @@ impl Default for ProceduralHeightmapSettings {
     }
 }
 
-pub fn create_perlin_heightmap(params: &HeightmapParameters, settings: &ProceduralHeightmapSettings) -> Heightmap {
+pub fn create_perlin_heightmap(
+    params: &HeightmapParameters,
+    settings: &ProceduralHeightmapSettings,
+) -> Heightmap {
     let mut noise = FastNoise::seeded(settings.seed);
     noise.set_noise_type(settings.noise_type.into());
     noise.set_fractal_type(settings.fractal_type.into());
@@ -1018,15 +1032,7 @@ pub fn create_perlin_heightmap(params: &HeightmapParameters, settings: &Procedur
         }
     }
 
-    Heightmap::new(
-        data,
-        params.size,
-        params.size,
-        max - min,
-        max - min,
-        None,
-    )
-    .normalize()
+    Heightmap::new(data, params.size, params.size, max - min, max - min, None).normalize()
 }
 
 #[cfg(feature = "export")]

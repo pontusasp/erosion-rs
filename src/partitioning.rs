@@ -102,12 +102,7 @@ impl Method {
         };
     }
 
-    pub fn get_grid(
-        &self,
-        size: usize,
-        use_margin: bool,
-        grid_size: usize,
-    ) -> Heightmap {
+    pub fn get_grid(&self, size: usize, use_margin: bool, grid_size: usize) -> Heightmap {
         let heightmap = Heightmap::new_empty(size, size, 1.0, 1.0);
         let (local_margin, margin) = if use_margin {
             let max_margin = Self::max_margin(size, grid_size);
@@ -117,7 +112,7 @@ impl Method {
             let margin = (mr - lr, mt - lt, ml - ll, mb - lb);
             (local_margin, margin)
         } else {
-            ((0,0,0,0),(0,0,0,0))
+            ((0, 0, 0, 0), (0, 0, 0, 0))
         };
         let mut partition = heightmap.with_margin(margin);
         match self {
@@ -128,26 +123,16 @@ impl Method {
                 subdivision_grid(&mut partition.heightmap, *grid_size);
             }
             Method::SubdivisionBlurBoundary((grid_size, _)) => {
-                subdivision_blur_boundary_grid(
-                    &mut partition.heightmap,
-                    *grid_size,
-                );
+                subdivision_blur_boundary_grid(&mut partition.heightmap, *grid_size);
             }
             Method::SubdivisionOverlap(grid_size) => {
                 subdivision_overlap_grid(&mut partition.heightmap, *grid_size);
             }
             Method::GridOverlapBlend(grid_size) => {
-                grid_overlap_blend_grid(
-                    &mut partition.heightmap,
-                    *grid_size,
-                    *grid_size,
-                );
+                grid_overlap_blend_grid(&mut partition.heightmap, *grid_size, *grid_size);
             }
         }
-        partition
-            .heightmap
-            .with_margin(local_margin)
-            .heightmap
+        partition.heightmap.with_margin(local_margin).heightmap
     }
 
     pub fn erode_with_margin(
@@ -168,7 +153,7 @@ impl Method {
             let margin = (mr - lr, mt - lt, ml - ll, mb - lb);
             (local_margin, margin)
         } else {
-            ((0,0,0,0),(0,0,0,0))
+            ((0, 0, 0, 0), (0, 0, 0, 0))
         };
         let mut partition = heightmap.with_margin(margin);
         match self {
@@ -217,19 +202,19 @@ impl Method {
                 );
             }
         }
-        partition
-            .heightmap
-            .with_margin(local_margin)
-            .heightmap
+        partition.heightmap.with_margin(local_margin).heightmap
     }
 
-    pub fn margin_size(&self, heightmap_size: usize, grid_size: usize) -> (usize, usize, usize, usize) {
+    pub fn margin_size(
+        &self,
+        heightmap_size: usize,
+        grid_size: usize,
+    ) -> (usize, usize, usize, usize) {
         let margins = match self {
             Method::Default => (0, 0, 0, 0),
             Method::Subdivision(_) => (0, 0, 0, 0),
             Method::SubdivisionBlurBoundary(_) => (0, 0, 0, 0),
-            Method::SubdivisionOverlap(_) |
-            Method::GridOverlapBlend(_) => {
+            Method::SubdivisionOverlap(_) | Method::GridOverlapBlend(_) => {
                 let grid_cell_size = heightmap_size / grid_size;
                 let offset0 = (grid_cell_size) / 2;
                 let offset1 = heightmap_size - (grid_cell_size) / 2;
@@ -242,7 +227,7 @@ impl Method {
                 let margin0 = offset0;
                 let margin1 = heightmap_size - margin0 - total_inner_size;
                 (margin1, margin0, margin0, margin1)
-            },
+            }
         };
         let (right, top, left, bottom) = margins;
         (right, top, left, bottom)
@@ -260,7 +245,12 @@ impl Method {
             largest_margin_l = largest_margin_l.max(l);
             largest_margin_b = largest_margin_b.max(b);
         }
-        (largest_margin_r, largest_margin_t, largest_margin_l, largest_margin_b)
+        (
+            largest_margin_r,
+            largest_margin_t,
+            largest_margin_l,
+            largest_margin_b,
+        )
     }
 }
 
@@ -271,14 +261,15 @@ fn default_grid(heightmap: &mut Heightmap) {
     }
 }
 
-fn paint_grid_border(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, heightmap: &mut Heightmap) {
+fn paint_grid_border(
+    grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>,
+    heightmap: &mut Heightmap,
+) {
     (0..grid.len()).for_each(|x| {
-        (0..grid[x].len())
-            .into_par_iter()
-            .for_each(|y| {
-                let partial = Arc::clone(&grid[x][y]);
-                default_grid(&mut partial.lock().unwrap().heightmap);
-            });
+        (0..grid[x].len()).into_par_iter().for_each(|y| {
+            let partial = Arc::clone(&grid[x][y]);
+            default_grid(&mut partial.lock().unwrap().heightmap);
+        });
     });
     for x in 0..grid.len() {
         for y in 0..grid[x].len() {
@@ -287,6 +278,7 @@ fn paint_grid_border(grid: &Vec<Vec<Arc<Mutex<heightmap::PartialHeightmap>>>>, h
         }
     }
 }
+
 fn subdivision_grid(heightmap: &mut Heightmap, grid_size: usize) {
     let grid = get_grid(
         heightmap,
