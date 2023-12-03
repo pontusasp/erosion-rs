@@ -212,21 +212,25 @@ impl Method {
     ) -> (usize, usize, usize, usize) {
         let margins = match self {
             Method::Default => (0, 0, 0, 0),
-            Method::Subdivision(_) => (0, 0, 0, 0),
-            Method::SubdivisionBlurBoundary(_) => (0, 0, 0, 0),
-            Method::SubdivisionOverlap(_) | Method::GridOverlapBlend(_) => {
+            Method::Subdivision(_) |
+            Method::SubdivisionBlurBoundary(_) => {
                 let grid_cell_size = heightmap_size / grid_size;
-                let offset0 = (grid_cell_size) / 2;
-                let offset1 = heightmap_size - (grid_cell_size) / 2;
+                let rect_min = grid_cell_size / 2;
+                let rect_max = heightmap_size - grid_cell_size / 2;
 
-                let slices = grid_size - 1;
-                let slice_size = (offset1 - offset0) / slices;
+                let total_size = grid_cell_size * (grid_size - 1);
+                let desired_size = rect_max - rect_min;
+                let align = (desired_size - total_size) / 2;
 
-                let total_inner_size = slices * slice_size;
+                (align, align, align, align)
+            }
+            Method::SubdivisionOverlap(_) | Method::GridOverlapBlend(_) => {
+                let grid_size = grid_size + 1;
+                let grid_cell_size = heightmap_size / grid_size;
+                let total_size = grid_cell_size * (grid_size - 1);
+                let align = (heightmap_size - total_size) / 2;
 
-                let margin0 = offset0;
-                let margin1 = heightmap_size - margin0 - total_inner_size;
-                (margin1, margin0, margin0, margin1)
+                (align, align, align, align)
             }
         };
         let (right, top, left, bottom) = margins;
@@ -308,6 +312,9 @@ fn subdivision_overlap_grid(heightmap: &mut Heightmap, grid_size: usize) {
 }
 
 fn grid_overlap_blend_grid(heightmap: &mut Heightmap, grid_size_x: usize, grid_size_y: usize) {
+    let grid_size_x = grid_size_x + 1;
+    let grid_size_y = grid_size_y + 1;
+
     let slice_width = heightmap.width / grid_size_x;
     let slice_height = heightmap.height / grid_size_y;
     let subgrid = get_grid(
@@ -477,6 +484,7 @@ pub fn subdivision_overlap_erode(
     params: &erode::Parameters,
     grid_size: usize,
 ) {
+    let grid_size = grid_size + 1;
     assert!(grid_size > 1);
     let partitions = subdivide(heightmap, grid_size);
     let (cell_width, cell_height) = {
@@ -587,6 +595,9 @@ pub fn grid_overlap_blend_erode(
     grid_x_slices: usize,
     grid_y_slices: usize,
 ) {
+    let grid_x_slices = grid_x_slices + 1;
+    let grid_y_slices = grid_y_slices + 1;
+
     let slice_width = heightmap.width / grid_x_slices;
     let slice_height = heightmap.height / grid_y_slices;
     let offset_grid = get_grid(
