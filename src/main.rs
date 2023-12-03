@@ -1,13 +1,13 @@
+use crate::erode::Parameters;
+use crate::heightmap::HeightmapType;
 use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
+use crate::visualize::events::UiEvent;
 use crate::visualize::ui::{IsolineProperties, UiState};
 use image::io::Reader as ImageReader;
 use macroquad::miniquad::conf::Icon;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
-use crate::erode::Parameters;
-use crate::heightmap::HeightmapType;
-use crate::visualize::events::UiEvent;
 
 pub mod engine;
 pub mod erode;
@@ -20,11 +20,8 @@ pub mod visualize;
 
 const WIDTH: u32 = 1107;
 const HEIGHT: u32 = 800;
-const PRESET_SUBDIVISIONS: u32 = 3;
 const PRESET_GRID_SIZE: usize = 6;
 const PRESET_HEIGHTMAP_SIZE: usize = 512;
-const SUBDIVISIONS_RANGE_MIN: u32 = 0;
-const SUBDIVISIONS_RANGE_MAX: u32 = 7;
 const GRID_SIZE_RANGE_MIN: usize = 2;
 const GRID_SIZE_RANGE_MAX: usize = 128;
 const GAUSSIAN_BLUR_SIGMA_RANGE_MIN: f32 = 0.0;
@@ -126,6 +123,7 @@ impl State {
                 show_ui_control_panel: true,
                 show_ui_metadata: false,
                 show_ui_metrics: false,
+                show_grid: false,
                 simulation_clear: true,
                 simulation_regenerate: false,
                 application_quit: false,
@@ -167,20 +165,22 @@ async fn main() {
         ("--generate-example".to_string(), Command::GenerateExample),
     ];
 
-    let mut commands: Vec<Command> = args.iter().filter_map(|str| {
-        for (binding, command) in command_bindings {
-            if str == binding {
-                return Some(*command);
+    let mut commands: Vec<Command> = args
+        .iter()
+        .filter_map(|str| {
+            for (binding, command) in command_bindings {
+                if str == binding {
+                    return Some(*command);
+                }
             }
-        }
-        None
-    }).collect();
+            None
+        })
+        .collect();
 
     commands.sort();
     commands.dedup_by(|a, b| a == b);
 
     dbg!(&commands);
-
 
     for (_i, command) in commands.iter().enumerate() {
         match command {
@@ -192,8 +192,8 @@ async fn main() {
                 };
 
                 let engine_result = engine::launch(script).await;
-                if let Ok(_state) = engine_result { }
-                else if let Err(err) = engine_result {
+                if let Ok(_state) = engine_result {
+                } else if let Err(err) = engine_result {
                     println!("Engine died. Reason: {:?}", err);
                 };
             }
@@ -201,7 +201,8 @@ async fn main() {
                 let result = serde_json::to_string(&engine::scripts::default());
                 if let Ok(example) = result {
                     let result = fs::write("script.example.erss", example);
-                    if let Ok(()) = result {} else {
+                    if let Ok(()) = result {
+                    } else {
                         panic!("Example can't be converted to json!");
                     }
                 }

@@ -7,6 +7,9 @@ use crate::erode::{DropZone, Parameters};
 use crate::heightmap::{self, Heightmap, HeightmapType};
 use crate::partitioning::Method;
 use crate::visualize::wrappers::HeightmapTexture;
+use crate::visualize::{
+    layered_heightmaps_to_texture, rgba_color_channel, HeightmapLayer, LayerMixMethod,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppState {
@@ -30,7 +33,6 @@ pub struct AppParameters {
     pub erosion_params: Parameters,
     pub heightmap_type: HeightmapType,
     pub auto_apply: bool,
-    pub subdivisions: u32,
     pub grid_size: usize,
     pub margin: bool,
 }
@@ -41,7 +43,6 @@ impl Default for AppParameters {
             erosion_params: Parameters::default(),
             heightmap_type: HeightmapType::default(),
             auto_apply: true,
-            subdivisions: crate::PRESET_SUBDIVISIONS,
             grid_size: crate::PRESET_GRID_SIZE,
             margin: true,
         }
@@ -58,6 +59,7 @@ pub struct ErodedState {
     pub heightmap_difference: Rc<RefCell<Vec<Rc<HeightmapTexture>>>>,
     pub heightmap_difference_normalized: Rc<RefCell<Vec<Rc<HeightmapTexture>>>>,
     pub erosion_method: Rc<Method>,
+    pub margin_removed: bool,
 }
 
 impl ErodedState {
@@ -86,31 +88,27 @@ impl BaseState {
         &self,
         id: usize,
         parameters: &Parameters,
-        subdivisions: u32,
         grid_size: usize,
         margin: bool,
     ) -> ErodedState {
-        let original_width = self.heightmap_base.heightmap.width;
-        let original_height = self.heightmap_base.heightmap.height;
         let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(
             margin,
             &self.heightmap_base.heightmap,
             parameters,
             &self.drop_zone,
-            subdivisions,
             grid_size,
         );
-        let new_width = heightmap.width;
-        let new_height = heightmap.height;
+        let new_margin = if margin {
+            Method::max_margin(self.heightmap_base.heightmap.width, grid_size)
+        } else {
+            (0, 0, 0, 0)
+        };
         let mut heightmap_diff = heightmap
             .subtract(
                 &self
                     .heightmap_base
                     .heightmap
-                    .with_margin(
-                        (original_width - new_width) / 2,
-                        (original_height - new_height) / 2,
-                    )
+                    .with_margin(new_margin)
                     .heightmap,
             )
             .unwrap();
@@ -130,6 +128,7 @@ impl BaseState {
                 heightmap_diff_normalized.into(),
             )])),
             erosion_method: Rc::new(self.erosion_method),
+            margin_removed: margin,
         }
     }
 
@@ -150,8 +149,7 @@ impl SimulationState {
         heightmap_type: &HeightmapType,
         parameters: &Parameters,
     ) -> Self {
-        let mut heightmap =
-            heightmap::create_heightmap_from_preset(heightmap_type);
+        let mut heightmap = heightmap::create_heightmap_from_preset(heightmap_type);
         heightmap.calculate_total_height();
         let heightmap = Rc::new(heightmap);
         SimulationState::Base(BaseState {
@@ -168,7 +166,6 @@ impl SimulationState {
         &self,
         new_id: usize,
         parameters: &Parameters,
-        subdivisions: u32,
         grid_size: usize,
         margin: bool,
     ) -> Self {
@@ -188,7 +185,7 @@ impl SimulationState {
             };
         }
 
-        let eroded = base.run_simulation(new_id, parameters, subdivisions, grid_size, margin);
+        let eroded = base.run_simulation(new_id, parameters, grid_size, margin);
         SimulationState::Eroded((base, eroded))
     }
 
@@ -257,5 +254,47 @@ impl SimulationState {
             SimulationState::Base(base) => Rc::clone(&base.heightmap_base.heightmap),
             SimulationState::Eroded((_, eroded)) => Rc::clone(&eroded.heightmap_eroded.heightmap),
         }
+    }
+
+    pub fn get_active_grid_texture(&self, app_parameters: &AppParameters) -> Texture2D {
+        let grid = if let Some(state) = self.eroded() {
+            state.erosion_method.get_grid(
+                state.heightmap_eroded.heightmap.width,
+                !state.margin_removed && app_parameters.margin,
+                app_parameters.grid_size,
+            )
+        } else {
+            let state = self.base();
+            state.erosion_method.get_grid(
+                state.heightmap_base.heightmap.width,
+                app_parameters.margin,
+                app_parameters.grid_size,
+            )
+        };
+        let heightmap = self.get_active();
+        let grid_texture = layered_heightmaps_to_texture(
+            grid.width,
+            &vec![
+                &HeightmapLayer {
+                    heightmap: &heightmap,
+                    channel: rgba_color_channel::RGB,
+                    strength: 1.0,
+                    layer_mix_method: LayerMixMethod::Additive,
+                    inverted: false,
+                    modifies_alpha: false,
+                },
+                &HeightmapLayer {
+                    heightmap: &grid,
+                    channel: rgba_color_channel::RA,
+                    strength: 1.0,
+                    layer_mix_method: LayerMixMethod::Additive,
+                    inverted: false,
+                    modifies_alpha: false,
+                },
+            ],
+            false,
+            1.0,
+        );
+        grid_texture
     }
 }

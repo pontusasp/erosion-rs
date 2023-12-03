@@ -1,12 +1,12 @@
 pub mod scripts;
 
-use std::fs;
-use macroquad::prelude::*;
-use serde::{Deserialize, Serialize};
-use crate::engine::scripts::{Function, Instruction, Script, tick};
+use crate::engine::scripts::{tick, Function, Instruction, Script};
 use crate::erode::Parameters;
 use crate::heightmap::HeightmapType;
 use crate::State;
+use macroquad::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::fs;
 
 #[derive(Debug)]
 pub enum EngineError {
@@ -62,7 +62,12 @@ impl Engine {
         let tuning = Tuning {
             parameters: self.state.app_state.parameters.erosion_params,
             map_type: self.state.app_state.parameters.heightmap_type,
-            flatness: self.state.app_state.simulation_state().get_heightmap().get_average_height()?,
+            flatness: self
+                .state
+                .app_state
+                .simulation_state()
+                .get_heightmap()
+                .get_average_height()?,
             grid_size: self.state.app_state.parameters.grid_size,
             isoline_value: self.state.ui_state.isoline.height,
             isoline_error: self.state.ui_state.isoline.error,
@@ -97,14 +102,16 @@ pub async fn launch(mut script: Script) -> Result<Engine, EngineError> {
     }
     let stack: Stack = Vec::new();
     let snapshots: Vec<Snapshot> = Vec::new();
-    let mut main = script.remove("main").ok_or(EngineError::MissingMainFunction)?;
+    let mut main = script
+        .remove("main")
+        .ok_or(EngineError::MissingMainFunction)?;
     let state = if let Some(instruction) = main.pop() {
         match instruction {
             Instruction::NewState(map_type) => State::new(&map_type),
-            _ => return Err(EngineError::HasNoState)
+            _ => return Err(EngineError::HasNoState),
         }
     } else {
-        return Err(EngineError::HasNoState)
+        return Err(EngineError::HasNoState);
     };
 
     let mut engine = Engine {
@@ -137,4 +144,3 @@ impl From<std::io::Error> for EngineError {
         EngineError::RWError(err)
     }
 }
-

@@ -114,6 +114,15 @@ pub async fn run() {
                 &canvas_rect,
                 &state.app_state.simulation_state().get_active_texture(),
             );
+            if state.ui_state.show_grid {
+                draw_frame(
+                    &canvas_rect,
+                    &state
+                        .app_state
+                        .simulation_state()
+                        .get_active_grid_texture(&state.app_state.parameters),
+                );
+            }
 
             state.ui_state.frame_slots = ui_draw(&mut state);
 

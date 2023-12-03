@@ -12,7 +12,7 @@ use crate::{
     erode::Parameters, heightmap::ProceduralHeightmapSettings, partitioning,
     GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX, GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN,
     GAUSSIAN_BLUR_SIGMA_RANGE_MAX, GAUSSIAN_BLUR_SIGMA_RANGE_MIN, GRID_SIZE_RANGE_MAX,
-    GRID_SIZE_RANGE_MIN, SUBDIVISIONS_RANGE_MAX, SUBDIVISIONS_RANGE_MIN,
+    GRID_SIZE_RANGE_MIN,
 };
 
 use super::{canvas::Canvas, AppState, SimulationState};
@@ -244,13 +244,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                 .default_open(true)
                 .show(ui, |ui| {
                     {
-                        let s = state.parameters.subdivisions;
                         let g = state.parameters.grid_size;
-                        state
-                            .simulation_state_mut()
-                            .base_mut()
-                            .erosion_method
-                            .set_subdivisions_unchecked(s);
                         state
                             .simulation_state_mut()
                             .base_mut()
@@ -259,27 +253,27 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                     }
                     match state.simulation_state_mut().base_mut().erosion_method {
                         partitioning::Method::Default => (),
-                        partitioning::Method::Subdivision(ref mut subdivisions)
-                        | partitioning::Method::SubdivisionOverlap(ref mut subdivisions) => {
+                        partitioning::Method::Subdivision(ref mut grid_size)
+                        | partitioning::Method::SubdivisionOverlap(ref mut grid_size) => {
                             ui.add(
                                 egui::Slider::new(
-                                    subdivisions,
-                                    SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
+                                    grid_size,
+                                    GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
                                 )
-                                .text("Subdivisions"),
+                                .text("Grid Size"),
                             );
-                            state.parameters.subdivisions = *subdivisions;
+                            state.parameters.grid_size = *grid_size;
                         }
                         partitioning::Method::SubdivisionBlurBoundary((
-                            ref mut subdivisions,
+                            ref mut grid_size,
                             (ref mut sigma, ref mut thickness),
                         )) => {
                             ui.add(
                                 egui::Slider::new(
-                                    subdivisions,
-                                    SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
+                                    grid_size,
+                                    GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
                                 )
-                                .text("Subdivisions"),
+                                .text("Grid Size"),
                             );
                             ui.add(
                                 egui::Slider::new(
@@ -296,7 +290,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                                 )
                                 .text("Gaussian Blur Boundary Thickness"),
                             );
-                            state.parameters.subdivisions = *subdivisions;
+                            state.parameters.grid_size = *grid_size;
                         }
                         partitioning::Method::GridOverlapBlend(ref mut grid_size) => {
                             ui.add(
@@ -310,20 +304,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                         }
                     };
                     ui.toggle_value(&mut state.parameters.margin, "Use Margin");
-                    ui.add(
-                        egui::Slider::new(
-                            &mut state.parameters.subdivisions,
-                            SUBDIVISIONS_RANGE_MIN..=SUBDIVISIONS_RANGE_MAX,
-                        )
-                        .text("Margin Subdivisions"),
-                    );
-                    ui.add(
-                        egui::Slider::new(
-                            &mut state.parameters.grid_size,
-                            GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
-                        )
-                        .text("Margin Grid Size"),
-                    );
+                    ui.toggle_value(&mut ui_state.show_grid, "Show Grid");
                 });
         });
 
@@ -468,7 +449,12 @@ pub fn layer_selection(ui: &mut egui::Ui, state: &AppState) {
     ui.separator();
 }
 
-fn heightmap_parameters(params: &mut HeightmapParameters, ui: &mut egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
+fn heightmap_parameters(
+    params: &mut HeightmapParameters,
+    ui: &mut egui::Ui,
+    ui_state: &mut UiState,
+    state: &mut AppState,
+) {
     let mut size = params.size;
     let mut updated = ui
         .add(egui::Slider::new(&mut size, 2usize.pow(6)..=2usize.pow(12)).text("Resolution"))

@@ -87,16 +87,17 @@ impl Heightmap {
         ImageBuffer::from_vec(width?, height?, self.to_u8())
     }
 
-    pub fn with_margin(&self, margin_x: usize, margin_y: usize) -> PartialHeightmap {
+    pub fn with_margin(&self, margin: (usize, usize, usize, usize)) -> PartialHeightmap {
+        let (margin_r, margin_t, margin_l, margin_b) = margin;
         PartialHeightmap::from(
             self,
             &UVector2 {
-                x: margin_x,
-                y: margin_y,
+                x: margin_l,
+                y: margin_t,
             },
             &UVector2 {
-                x: self.width - margin_x * 2,
-                y: self.height - margin_y * 2,
+                x: self.width - margin_l - margin_r,
+                y: self.height - margin_t - margin_b,
             },
         )
     }
@@ -449,6 +450,36 @@ impl Heightmap {
         Ok(())
     }
 
+    pub fn border(
+        &mut self,
+        value: HeightmapPrecision,
+        thickness: usize,
+    ) -> Result<(), HeightmapError> {
+        if thickness == 0 {
+            return Ok(());
+        }
+        if thickness > self.width || thickness > self.height {
+            return Err(HeightmapError::OutOfBounds);
+        }
+        for x in 0..thickness {
+            for y in 0..self.height {
+                let x0 = 0;
+                let x1 = self.width - thickness;
+                self.data[x0 + x][y] = value;
+                self.data[x1 + x][y] = value;
+            }
+        }
+        for x in 0..self.width {
+            for y in 0..thickness {
+                let y0 = 0;
+                let y1 = self.height - thickness;
+                self.data[x][y0 + y] = value;
+                self.data[x][y1 + y] = value;
+            }
+        }
+        Ok(())
+    }
+
     pub fn isoline(&self, height: HeightmapPrecision, error: HeightmapPrecision) -> Self {
         let func = |x: usize, y: usize| -> HeightmapPrecision {
             let h = self.data[x][y];
@@ -698,6 +729,16 @@ impl PartialHeightmap {
         }
     }
 
+    pub fn apply_to_additive(&self, heightmap: &mut Heightmap, cap: HeightmapPrecision) {
+        for x in 0..self.heightmap.width {
+            for y in 0..self.heightmap.height {
+                let mut h = heightmap.data[x + self.anchor.x][y + self.anchor.y];
+                h = (h + self.heightmap.data[x][y]).min(cap);
+                heightmap.data[x + self.anchor.x][y + self.anchor.y] = h;
+            }
+        }
+    }
+
     pub fn blend_apply_to(&self, other: &mut PartialHeightmap) {
         let rect_min = UVector2::new(
             self.anchor.x.max(other.anchor.x),
@@ -736,11 +777,9 @@ impl PartialHeightmap {
     }
 }
 
-const DEFAULT_HEIGHTMAP_PARAMETERS: HeightmapParameters =
-    HeightmapParameters {
-        size: crate::PRESET_HEIGHTMAP_SIZE,
-    };
-
+const DEFAULT_HEIGHTMAP_PARAMETERS: HeightmapParameters = HeightmapParameters {
+    size: crate::PRESET_HEIGHTMAP_SIZE,
+};
 
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct HeightmapParameters {
@@ -802,7 +841,10 @@ impl HeightmapType {
 
 impl Default for HeightmapType {
     fn default() -> Self {
-        HeightmapType::Procedural(HeightmapParameters::default(), ProceduralHeightmapSettings::default())
+        HeightmapType::Procedural(
+            HeightmapParameters::default(),
+            ProceduralHeightmapSettings::default(),
+        )
     }
 }
 
@@ -829,10 +871,16 @@ impl HeightmapType {
 
     pub fn iterator() -> impl Iterator<Item = HeightmapType> {
         static TYPES: [HeightmapType; 7] = [
-            HeightmapType::Procedural(HeightmapParameters::static_default(), ProceduralHeightmapSettings::static_default()),
+            HeightmapType::Procedural(
+                HeightmapParameters::static_default(),
+                ProceduralHeightmapSettings::static_default(),
+            ),
             HeightmapType::XGradient(HeightmapParameters::static_default()),
             HeightmapType::XGradientRepeating(HeightmapParameters::static_default(), 8.0),
-            HeightmapType::XGradientRepeatingAlternating(HeightmapParameters::static_default(), 8.0),
+            HeightmapType::XGradientRepeatingAlternating(
+                HeightmapParameters::static_default(),
+                8.0,
+            ),
             HeightmapType::XHyperbolaGradient(HeightmapParameters::static_default()),
             HeightmapType::CenteredHillGradient(HeightmapParameters::static_default(), 0.75),
             HeightmapType::XSinWave(HeightmapParameters::static_default(), 8.0),
@@ -951,7 +999,10 @@ impl Default for ProceduralHeightmapSettings {
     }
 }
 
-pub fn create_perlin_heightmap(params: &HeightmapParameters, settings: &ProceduralHeightmapSettings) -> Heightmap {
+pub fn create_perlin_heightmap(
+    params: &HeightmapParameters,
+    settings: &ProceduralHeightmapSettings,
+) -> Heightmap {
     let mut noise = FastNoise::seeded(settings.seed);
     noise.set_noise_type(settings.noise_type.into());
     noise.set_fractal_type(settings.fractal_type.into());
@@ -981,15 +1032,7 @@ pub fn create_perlin_heightmap(params: &HeightmapParameters, settings: &Procedur
         }
     }
 
-    Heightmap::new(
-        data,
-        params.size,
-        params.size,
-        max - min,
-        max - min,
-        None,
-    )
-    .normalize()
+    Heightmap::new(data, params.size, params.size, max - min, max - min, None).normalize()
 }
 
 #[cfg(feature = "export")]
