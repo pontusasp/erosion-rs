@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::mem;
 use std::rc::Rc;
 
-use super::SimulationState;
 #[cfg(feature = "export")]
 use crate::heightmap::io::export_heightmaps;
 use crate::math::UVector2;
@@ -16,8 +15,8 @@ use crate::visualize::wrappers::HeightmapTexture;
 use crate::State;
 
 use super::{
-    layered_heightmaps_to_texture, mix_heightmap_to_texture, rgba_color_channel, AppState,
-    HeightmapLayer, LayerMixMethod,
+    layered_heightmaps_to_image, mix_heightmap_to_image, rgba_color_channel, AppState,
+    HeightmapLayer, LayerMixMethod, SimulationState
 };
 
 /*
@@ -99,6 +98,8 @@ pub enum UiEvent {
     ReadState(usize),
     #[cfg(feature = "export")]
     ExportStateAs,
+    #[cfg(feature = "export")]
+    ExportActiveHeightmap,
 }
 
 impl UiEvent {
@@ -140,6 +141,8 @@ impl UiEvent {
             UiEvent::ReadState(_) => "Read State from Disk".to_string(),
             #[cfg(feature = "export")]
             UiEvent::ExportStateAs => "Export State As".to_string(),
+            #[cfg(feature = "export")]
+            UiEvent::ExportActiveHeightmap => "Export Visible Image".to_string(),
         }
     }
 }
@@ -443,7 +446,7 @@ pub fn poll_ui_events(
                 let og = app_state.simulation_state().get_heightmap();
                 if let Some(heightmap) = og.canny_edge(low, high) {
                     let texture =
-                        Rc::new(mix_heightmap_to_texture(&og, &heightmap, 0, true, false));
+                        Rc::new(mix_heightmap_to_image(&og, &heightmap, 0, true, false));
                     let heightmap_texture =
                         Rc::new(HeightmapTexture::new(Rc::new(heightmap), Some(texture)));
                     app_state
@@ -461,7 +464,7 @@ pub fn poll_ui_events(
                     .and_then(|blurred| blurred.canny_edge(low, high))
                 {
                     let texture =
-                        Rc::new(mix_heightmap_to_texture(&og, &heightmap, 0, true, false));
+                        Rc::new(mix_heightmap_to_image(&og, &heightmap, 0, true, false));
                     let heightmap_texture =
                         Rc::new(HeightmapTexture::new(Rc::new(heightmap), Some(texture)));
                     app_state
@@ -551,6 +554,16 @@ pub fn poll_ui_events(
             #[cfg(feature = "export")]
             UiEvent::ExportStateAs => {
                 next_frame_events.push(UiEvent::ExportStateAs);
+            }
+            #[cfg(feature = "export")]
+            UiEvent::ExportActiveHeightmap => {
+                let suffix = ui_state.screenshots;
+                let name = state_name.as_ref().and_then(|s| Some(s.as_str())).unwrap_or(crate::io::DEFAULT_NAME);
+                if let Some(_) = app_state.simulation_state().get_active_heightmap_texture().export(&format!("{}-heightmap-{}", &name, suffix)) {
+                    ui_state.screenshots += 1;
+                } else {
+                    eprintln!("Failed to export active heightmap!");
+                }
             }
         };
     }
@@ -645,8 +658,8 @@ fn get_isoline_heightmap_texture(
     flood_line_blurred: &Heightmap,
     ui_state: &UiState,
 ) -> HeightmapTexture {
-    let tex = if ui_state.isoline.advanced_texture {
-        Rc::new(layered_heightmaps_to_texture(
+    let image = if ui_state.isoline.advanced_texture {
+        Rc::new(layered_heightmaps_to_image(
             flooded.width,
             &vec![
                 &HeightmapLayer {
@@ -694,7 +707,7 @@ fn get_isoline_heightmap_texture(
             1.0,
         ))
     } else {
-        Rc::new(mix_heightmap_to_texture(&flooded, &outside, 0, false, false))
+        Rc::new(mix_heightmap_to_image(&flooded, &outside, 0, false, false))
     };
-    HeightmapTexture::new(flooded, Some(tex))
+    HeightmapTexture::new(flooded, Some(image))
 }

@@ -69,12 +69,16 @@ pub fn ui_top_panel(
                             }
                         }
                     });
-                    if state_name.is_some() && ui.button("Save").clicked() {
+                    if state_name.is_some() && ui.button("Save State").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportState);
                         ui.close_menu();
                     }
-                    if ui.button("Save as").clicked() {
+                    if ui.button("Save State as").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportStateAs);
+                        ui.close_menu();
+                    }
+                    if ui.button("Export Screenshot").clicked() {
+                        ui_state.ui_events.push(UiEvent::ExportActiveHeightmap);
                         ui.close_menu();
                     }
                 });

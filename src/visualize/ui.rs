@@ -47,6 +47,7 @@ pub struct UiState {
     #[cfg(feature = "export")]
     #[serde(skip)]
     pub saves: Vec<StateFile>,
+    pub screenshots: usize,
 }
 
 impl UiState {
