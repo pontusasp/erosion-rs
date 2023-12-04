@@ -195,19 +195,34 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                     .toggle_value(&mut props.advanced_texture, "Advanced Visualization")
                     .changed();
 
-            let lower = props.flooded_areas_lower.unwrap_or(0);
-            let higher = props.flooded_areas_higher.unwrap_or(0);
-            let percentage = if higher > 0 {
-                lower as f32 / (lower + higher) as f32 * 100.0
+            let (lower_flooded, lower_unflooded) = props.flooded_areas_lower.unwrap_or((0, 0));
+            let (higher_flooded, higher_unflooded) = props.flooded_areas_higher.unwrap_or((0, 0));
+            let (flooded, unflooded) = if props.flood_lower {
+                (lower_flooded, lower_unflooded)
+            } else {
+                (higher_flooded, higher_unflooded)
+            };
+            let percentage = if (flooded + unflooded) > 0 {
+                flooded as f32 / (flooded + unflooded) as f32 * 100.0
             } else {
                 0.0
             };
             ui.label(format!(
                 "Flooded {} / {} areas ({}%)",
-                lower,
-                lower + higher,
+                flooded,
+                flooded + unflooded,
                 percentage
             ));
+            if props.flooded_areas_lower.is_some() {
+                ui.label(format!("Lower flooded, unflooded, total: {}, {}, {}", lower_flooded, lower_unflooded, lower_flooded + lower_unflooded));
+            } else {
+                ui.label("Lower: None");
+            }
+            if props.flooded_areas_higher.is_some() {
+                ui.label(format!("Higher flooded, unflooded, total: {}, {}, {}", higher_flooded, higher_unflooded, higher_flooded + higher_unflooded));
+            } else {
+                ui.label("Higher: None");
+            }
 
             if updated {
                 ui_state.isoline = props;

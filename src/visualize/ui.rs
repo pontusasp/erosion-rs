@@ -21,8 +21,8 @@ pub struct IsolineProperties {
     pub error: HeightmapPrecision,
     pub flood_lower: bool,
     pub should_flood: bool,
-    pub flooded_areas_lower: Option<usize>,
-    pub flooded_areas_higher: Option<usize>,
+    pub flooded_areas_lower: Option<(usize, usize)>,
+    pub flooded_areas_higher: Option<(usize, usize)>,
     pub blur_augmentation: (bool, f32, usize, usize),
     pub advanced_texture: bool,
 }
