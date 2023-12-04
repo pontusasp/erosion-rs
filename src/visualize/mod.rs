@@ -159,7 +159,7 @@ pub fn draw_frame(rect: &Rect, texture: &Texture2D) {
     );
 }
 
-fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
+fn heightmap_to_image_rgb(heightmap: &heightmap::Heightmap) -> Image {
     let buffer = heightmap.to_u8_rgba();
 
     let image = Image {
@@ -168,16 +168,21 @@ fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
         height: heightmap.height.try_into().unwrap(),
     };
 
+    image
+}
+
+fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
+    let image = heightmap_to_image_rgb(heightmap);
     Texture2D::from_image(&image)
 }
 
-fn mix_heightmap_to_texture(
+fn mix_heightmap_to_image(
     heightmap: &Heightmap,
     overlay: &Heightmap,
     channel: u8,
     invert: bool,
     round: bool,
-) -> Texture2D {
+) -> Image {
     let overlay = overlay.to_u8();
     let mut buffer = heightmap.to_u8_rgba();
 
@@ -207,7 +212,7 @@ fn mix_heightmap_to_texture(
         height: heightmap.height.try_into().unwrap(),
     };
 
-    Texture2D::from_image(&image)
+    image
 }
 
 pub enum LayerMixMethod {
@@ -250,6 +255,16 @@ pub fn layered_heightmaps_to_texture(
     normalize_on_overflow: bool,
     max_height: f32,
 ) -> Texture2D {
+    let image = layered_heightmaps_to_image(size, layers, normalize_on_overflow, max_height);
+    Texture2D::from_image(&image)
+}
+
+pub fn layered_heightmaps_to_image(
+    size: usize,
+    layers: &Vec<&HeightmapLayer>,
+    normalize_on_overflow: bool,
+    max_height: f32,
+) -> Image {
     let mut buffer: Vec<f32> = vec![0.0; 4 * size * size];
     let mut highest = 0f32;
 
@@ -344,5 +359,5 @@ pub fn layered_heightmaps_to_texture(
         height: size as u16,
     };
 
-    Texture2D::from_image(&image)
+    image
 }

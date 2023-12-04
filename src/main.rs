@@ -144,6 +144,7 @@ impl State {
                 },
                 #[cfg(feature = "export")]
                 saves: io::list_state_files().expect("Failed to access saved states."),
+                screenshots: 0,
             },
         }
     }

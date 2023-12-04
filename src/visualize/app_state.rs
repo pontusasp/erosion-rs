@@ -1,4 +1,4 @@
-use macroquad::texture::Texture2D;
+use macroquad::texture::{Image, Texture2D};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -238,8 +238,8 @@ impl SimulationState {
         self.base_mut().set_active(heightmap_texture);
     }
 
-    pub fn set_active_separate(&mut self, heightmap: Rc<Heightmap>, texture: Rc<Texture2D>) {
-        self.set_active(Rc::new(HeightmapTexture::new(heightmap, Some(texture))))
+    pub fn set_active_separate(&mut self, heightmap: Rc<Heightmap>, image: Rc<Image>) {
+        self.set_active(Rc::new(HeightmapTexture::new(heightmap, Some(image))))
     }
 
     pub fn id(&self) -> usize {
