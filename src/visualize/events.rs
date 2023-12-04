@@ -7,9 +7,10 @@ use std::rc::Rc;
 use super::SimulationState;
 #[cfg(feature = "export")]
 use crate::heightmap::io::export_heightmaps;
+use crate::math::UVector2;
 
 use crate::partitioning;
-use crate::visualize::ui::UiState;
+use crate::visualize::ui::{IsolineProperties, UiState};
 use crate::visualize::wrappers::HeightmapTexture;
 #[cfg(feature = "export")]
 use crate::State;
@@ -471,113 +472,26 @@ pub fn poll_ui_events(
                 }
             }
             UiEvent::Isoline => {
-                let props = ui_state.isoline;
-                let heightmap = app_state.simulation_state().get_heightmap();
-                let outside = (*heightmap).clone().boolean(
-                    props.height + props.error * if props.flood_lower { 1.0 } else { -1.0 },
-                    true,
-                    props.flood_lower,
+                let (
+                    flooded,
+                    heightmap,
+                    outside,
+                    flood_line,
+                    flood_line_blurred
+                ) = compute_isoline(app_state, ui_state);
+
+                let heightmap_texture = get_isoline_heightmap_texture(
+                    flooded,
+                    &heightmap,
+                    &outside,
+                    &flood_line,
+                    &flood_line_blurred,
+                    &ui_state,
                 );
-                let isoline = {
-                    let h = heightmap.isoline(props.height, props.error);
-                    if props.blur_augmentation.0 {
-                        h.blur(props.blur_augmentation.1)
-                            .and_then(|b| Some(b.boolean(0.0, false, false)))
-                            .unwrap_or(h)
-                    } else {
-                        h
-                    }
-                };
-                let flood = {
-                    let flood = heightmap.get_flood_points(&isoline, props.flood_lower);
-                    if props.blur_augmentation.0 {
-                        Heightmap::filter_noise_points(
-                            heightmap.width,
-                            &flood,
-                            props.blur_augmentation.2,
-                            props.blur_augmentation.3,
-                        )
-                    } else {
-                        flood
-                    }
-                };
-                let flooded = if props.should_flood {
-                    let flood_amount = 1f32.min(props.height + (1.0 - props.height) / 3.0);
-                    let (flooded, areas) = isoline.flood_empty(flood_amount, &flood);
-                    let flood_inverse = heightmap.get_flood_points(&flooded, !props.flood_lower);
-                    if props.flood_lower {
-                        ui_state.isoline.flooded_areas_lower = Some(areas);
-                        ui_state.isoline.flooded_areas_higher =
-                            Some(flooded.flood_empty(flood_amount, &flood_inverse).1);
-                    } else {
-                        ui_state.isoline.flooded_areas_lower =
-                            Some(flooded.flood_empty(flood_amount, &flood_inverse).1);
-                        ui_state.isoline.flooded_areas_higher = Some(areas);
-                    }
-                    Some(flooded)
-                } else {
-                    None
-                };
-                let flood_line = Heightmap::from_points(heightmap.width, &flood, 1.0);
-                let flood_line_blurred = flood_line.blur(1.0).unwrap().boolean(0.0, false, false);
-
-                let hm = Rc::new(flooded.unwrap_or(isoline));
-
-                let tex = if props.advanced_texture {
-                    Rc::new(layered_heightmaps_to_texture(
-                        hm.width,
-                        &vec![
-                            &HeightmapLayer {
-                                heightmap: &heightmap,
-                                channel: rgba_color_channel::RGB,
-                                strength: 1.0,
-                                layer_mix_method: LayerMixMethod::Additive,
-                                inverted: false,
-                                modifies_alpha: false,
-                            },
-                            &HeightmapLayer {
-                                heightmap: &hm,
-                                channel: rgba_color_channel::RGB,
-                                strength: 0.5,
-                                layer_mix_method: LayerMixMethod::Multiply,
-                                inverted: false,
-                                modifies_alpha: false,
-                            },
-                            &HeightmapLayer {
-                                heightmap: &outside,
-                                channel: rgba_color_channel::R,
-                                strength: 0.3,
-                                layer_mix_method: LayerMixMethod::Multiply,
-                                inverted: false,
-                                modifies_alpha: false,
-                            },
-                            &HeightmapLayer {
-                                heightmap: &flood_line_blurred,
-                                channel: rgba_color_channel::B,
-                                strength: 0.3,
-                                layer_mix_method: LayerMixMethod::AdditiveClamp,
-                                inverted: false,
-                                modifies_alpha: false,
-                            },
-                            &HeightmapLayer {
-                                heightmap: &flood_line,
-                                channel: rgba_color_channel::B,
-                                strength: 1.0,
-                                layer_mix_method: LayerMixMethod::AdditiveClamp,
-                                inverted: false,
-                                modifies_alpha: false,
-                            },
-                        ],
-                        true,
-                        1.0,
-                    ))
-                } else {
-                    Rc::new(mix_heightmap_to_texture(&hm, &outside, 0, false, false))
-                };
 
                 app_state
                     .simulation_state_mut()
-                    .set_active(Rc::new(HeightmapTexture::new(hm, Some(tex))));
+                    .set_active(Rc::new(heightmap_texture));
             }
             #[cfg(feature = "export")]
             UiEvent::ExportState => {
@@ -642,4 +556,145 @@ pub fn poll_ui_events(
     }
     ui_state.clear_events();
     ui_state.ui_events.append(&mut next_frame_events);
+}
+
+fn compute_isoline(app_state: &mut AppState, ui_state: &mut UiState) -> (
+    Rc<Heightmap>, Rc<Heightmap>, Heightmap, Heightmap, Heightmap,
+) {
+    let props = ui_state.isoline;
+    let heightmap = app_state.simulation_state().get_heightmap();
+    let outside = (*heightmap).clone().boolean(
+        props.height + props.error * if props.flood_lower { 1.0 } else { -1.0 },
+        true,
+        props.flood_lower,
+    );
+    let isoline = {
+        let h = heightmap.isoline(props.height, props.error);
+        if props.blur_augmentation.0 {
+            h.blur(props.blur_augmentation.1)
+                .and_then(|b| Some(b.boolean(0.0, false, false)))
+                .unwrap_or(h)
+        } else {
+            h
+        }
+    };
+
+    let (flood_lower, flood_upper) = get_flood_points(&heightmap, &isoline, &props);
+    let (flood, flood_inverse) = if props.flood_lower {
+        (&flood_lower, &flood_upper)
+    } else {
+        (&flood_upper, &flood_lower)
+    };
+    let flooded = if props.should_flood {
+        get_flooded(ui_state, &isoline, flood, flood_inverse)
+    } else {
+        Rc::new(isoline)
+    };
+    let flood_line = Heightmap::from_points(heightmap.width, &flood, 1.0);
+    let flood_line_blurred = flood_line.blur(1.0).unwrap().boolean(0.0, false, false);
+
+    (flooded, heightmap, outside, flood_line, flood_line_blurred)
+}
+
+fn get_flood_points(heightmap: &Heightmap, isoline: &Heightmap, props: &IsolineProperties) -> (Vec<UVector2>, Vec<UVector2>) {
+    let flood_lower = heightmap.get_flood_points(&isoline, true);
+    let flood_upper = heightmap.get_flood_points(&isoline, false);
+    if props.blur_augmentation.0 {
+        (
+            Heightmap::filter_noise_points(
+                heightmap.width,
+                &flood_lower,
+                props.blur_augmentation.2,
+                props.blur_augmentation.3,
+            ),
+            Heightmap::filter_noise_points(
+                heightmap.width,
+                &flood_upper,
+                props.blur_augmentation.2,
+                props.blur_augmentation.3,
+            ),
+        )
+    } else {
+        (flood_lower, flood_upper)
+    }
+}
+
+fn get_flooded(ui_state: &mut UiState, isoline: &Heightmap, flood: &Vec<UVector2>, flood_inverse: &Vec<UVector2>) -> Rc<Heightmap> {
+    let flood_amount = 1f32.min(ui_state.isoline.height + (1.0 - ui_state.isoline.height) / 3.0);
+    let (flooded, areas) = isoline.flood_empty(flood_amount, &flood);
+    let (_inv_flood, unflooded_areas) = flooded.flood_empty(flood_amount, &flood_inverse);
+    let (_lower, _higher) = if ui_state.isoline.flood_lower {
+        let l = Some((areas, unflooded_areas));
+        let h = None;
+        ui_state.isoline.flooded_areas_lower = l;
+        (l, h)
+    } else {
+        let l = None;
+        let h = Some((areas, unflooded_areas));
+        ui_state.isoline.flooded_areas_higher = h;
+        (l, h)
+    };
+    Rc::new(flooded)
+}
+
+fn get_isoline_heightmap_texture(
+    flooded: Rc<Heightmap>,
+    heightmap: &Heightmap,
+    outside: &Heightmap,
+    flood_line: &Heightmap,
+    flood_line_blurred: &Heightmap,
+    ui_state: &UiState,
+) -> HeightmapTexture {
+    let tex = if ui_state.isoline.advanced_texture {
+        Rc::new(layered_heightmaps_to_texture(
+            flooded.width,
+            &vec![
+                &HeightmapLayer {
+                    heightmap: &heightmap,
+                    channel: rgba_color_channel::RGB,
+                    strength: 1.0,
+                    layer_mix_method: LayerMixMethod::Additive,
+                    inverted: false,
+                    modifies_alpha: false,
+                },
+                &HeightmapLayer {
+                    heightmap: &flooded,
+                    channel: rgba_color_channel::RGB,
+                    strength: 0.5,
+                    layer_mix_method: LayerMixMethod::Multiply,
+                    inverted: false,
+                    modifies_alpha: false,
+                },
+                &HeightmapLayer {
+                    heightmap: &outside,
+                    channel: rgba_color_channel::R,
+                    strength: 0.3,
+                    layer_mix_method: LayerMixMethod::Multiply,
+                    inverted: false,
+                    modifies_alpha: false,
+                },
+                &HeightmapLayer {
+                    heightmap: &flood_line_blurred,
+                    channel: rgba_color_channel::B,
+                    strength: 0.3,
+                    layer_mix_method: LayerMixMethod::AdditiveClamp,
+                    inverted: false,
+                    modifies_alpha: false,
+                },
+                &HeightmapLayer {
+                    heightmap: &flood_line,
+                    channel: rgba_color_channel::B,
+                    strength: 1.0,
+                    layer_mix_method: LayerMixMethod::AdditiveClamp,
+                    inverted: false,
+                    modifies_alpha: false,
+                },
+            ],
+            true,
+            1.0,
+        ))
+    } else {
+        Rc::new(mix_heightmap_to_texture(&flooded, &outside, 0, false, false))
+    };
+    HeightmapTexture::new(flooded, Some(tex))
 }
