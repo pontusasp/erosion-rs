@@ -1011,7 +1011,7 @@ pub fn create_perlin_heightmap(
     noise.set_fractal_lacunarity(settings.fractal_lacunarity);
     noise.set_frequency(settings.frequency);
 
-    let denominator = 100.0;
+    let denominator = params.size as f32 / 5.0;
 
     let mut data: HeightmapData = Vec::new();
 

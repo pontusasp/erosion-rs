@@ -17,7 +17,7 @@ pub type Script = HashMap<FunctionName, Function>;
 pub enum SnapshotAction {
     Take,
     PrintAll,
-    SaveAll(String),
+    SaveAndClear(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -46,6 +46,7 @@ pub enum Instruction {
     Isoline(IsolineAction),
     Size(usize),
     GridSize(usize),
+    SetName(String),
 }
 
 pub fn default() -> Script {
@@ -217,8 +218,9 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
                     println!("{:?}", engine.snapshots_to_string()?);
                     Ok(())
                 }
-                SnapshotAction::SaveAll(filename) => {
+                SnapshotAction::SaveAndClear(filename) => {
                     engine.export_snapshots(&filename)?;
+                    engine.snapshots.clear();
                     Ok(())
                 }
             },
@@ -247,6 +249,10 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
             }
             Instruction::GridSize(size) => {
                 state.app_state.parameters.grid_size = size;
+                Ok(())
+            }
+            Instruction::SetName(name) => {
+                state.state_name = Some(name);
                 Ok(())
             }
         }

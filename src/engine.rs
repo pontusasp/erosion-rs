@@ -74,12 +74,10 @@ impl Engine {
         };
         let (l_flooded, l_unflooded) = self.state.ui_state.isoline.flooded_areas_lower?;
         let (h_flooded, h_unflooded) = self.state.ui_state.isoline.flooded_areas_higher?;
-        let flooded_areas = if self.state.ui_state.isoline.flood_lower {
-            Measurement::LowAreas(l_flooded, l_unflooded)
-        } else {
-            Measurement::HighAreas(h_flooded, h_unflooded)
-        };
-        let measurements = vec![flooded_areas];
+        let measurements = vec![
+            Measurement::LowAreas(l_flooded, l_unflooded),
+            Measurement::HighAreas(h_flooded, h_unflooded),
+        ];
         let snapshot: Snapshot = (tuning, measurements);
         self.snapshots.push(snapshot);
         Some(())

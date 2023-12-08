@@ -9,6 +9,7 @@ use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
 
+pub mod generate_tests;
 pub mod engine;
 pub mod erode;
 pub mod heightmap;
@@ -115,7 +116,10 @@ impl State {
                     &Parameters::default(),
                 )],
                 simulation_base_indices: vec![0],
-                parameters: AppParameters::default(),
+                parameters: AppParameters {
+                    heightmap_type: *heightmap_type,
+                    ..Default::default()
+                },
             },
             ui_state: UiState {
                 show_ui_all: true,
@@ -154,6 +158,7 @@ impl State {
 enum Command {
     Engine,
     GenerateExample,
+    GenerateScript,
 }
 
 #[macroquad::main(window_conf)]
@@ -164,6 +169,7 @@ async fn main() {
         ("--engine".to_string(), Command::Engine),
         ("-e".to_string(), Command::Engine),
         ("--generate-example".to_string(), Command::GenerateExample),
+        ("--generate-script".to_string(), Command::GenerateScript),
     ];
 
     let mut commands: Vec<Command> = args
@@ -205,6 +211,16 @@ async fn main() {
                     if let Ok(()) = result {
                     } else {
                         panic!("Example can't be converted to json!");
+                    }
+                }
+            }
+            Command::GenerateScript => {
+                let result = serde_json::to_string(&generate_tests::generate());
+                if let Ok(example) = result {
+                    let result = fs::write("script.erss", example);
+                    if let Ok(()) = result {
+                    } else {
+                        panic!("Failed to serialize script!");
                     }
                 }
             }

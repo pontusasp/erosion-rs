@@ -475,6 +475,10 @@ pub fn poll_ui_events(
                 }
             }
             UiEvent::Isoline => {
+                let flood_lower = ui_state.isoline.flood_lower;
+                ui_state.isoline.flood_lower = !flood_lower;
+                let _ = compute_isoline(app_state, ui_state);
+                ui_state.isoline.flood_lower = flood_lower;
                 let (
                     flooded,
                     heightmap,
