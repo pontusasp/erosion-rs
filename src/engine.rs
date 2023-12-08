@@ -7,6 +7,7 @@ use crate::State;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use crate::partitioning::Method;
 
 #[derive(Debug)]
 pub enum EngineError {
@@ -23,6 +24,7 @@ pub type Stack = Vec<State>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Tuning {
+    pub method: Option<Method>,
     pub parameters: Parameters,
     pub map_type: HeightmapType,
     pub flatness: f32,
@@ -60,6 +62,7 @@ impl Engine {
 
     pub fn snapshot(&mut self) -> Option<()> {
         let tuning = Tuning {
+            method: self.state.app_state.simulation_state().eroded().and_then(|e| Some(*e.erosion_method.clone())),
             parameters: self.state.app_state.parameters.erosion_params,
             map_type: self.state.app_state.parameters.heightmap_type,
             flatness: self
