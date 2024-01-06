@@ -1,5 +1,7 @@
 /target
 output/*.png
 output/*.json
+output/engine/
+output/pngs/
 /.idea
 saves/

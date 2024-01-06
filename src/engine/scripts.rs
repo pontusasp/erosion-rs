@@ -8,6 +8,8 @@ use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::mem;
+use crate::erode::Parameters;
+use crate::visualize::ui::UiState;
 
 pub type Function = Vec<Instruction>;
 pub type FunctionName = String;
@@ -47,6 +49,8 @@ pub enum Instruction {
     Size(usize),
     GridSize(usize),
     SetName(String),
+    SetErosionParameters(Parameters),
+    SetAdvancedView(bool),
 }
 
 pub fn default() -> Script {
@@ -71,7 +75,7 @@ pub fn default() -> Script {
             Flush,
             Print("Done eroding.".to_string()),
             Print("Handing over".to_string()),
-            Handover,
+            // Handover,
             Print("Engine done.".to_string()),
         ],
     );
@@ -117,7 +121,7 @@ fn draw(state: &mut State, ui: bool) {
     };
 }
 
-pub async fn call(mut engine: Engine, function_name: &FunctionName) -> Result<Engine, EngineError> {
+pub fn call(mut engine: Engine, function_name: &FunctionName) -> Result<Engine, EngineError> {
     let mut function = if let Some(function) = engine.script.get(function_name) {
         function.clone()
     } else {
@@ -226,7 +230,7 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
             },
             Instruction::Nop => Ok(()),
             Instruction::Call(ref function_name) => {
-                engine = call(engine, function_name).await?;
+                engine = call(engine, function_name)?;
                 Ok(())
             }
             Instruction::Isoline(action) => match action {
@@ -253,6 +257,14 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
             }
             Instruction::SetName(name) => {
                 state.state_name = Some(name);
+                Ok(())
+            }
+            Instruction::SetErosionParameters(params) => {
+                state.app_state.parameters.erosion_params = params;
+                Ok(())
+            }
+            Instruction::SetAdvancedView(mode) => {
+                state.ui_state.isoline.advanced_texture = mode;
                 Ok(())
             }
         }

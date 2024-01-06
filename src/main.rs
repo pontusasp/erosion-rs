@@ -8,6 +8,7 @@ use macroquad::miniquad::conf::Icon;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
+use crate::generate_tests::generate_all_permutations;
 
 pub mod generate_tests;
 pub mod engine;
@@ -31,65 +32,63 @@ const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX: u16 = 10;
 
 fn window_conf() -> Conf {
-    let icon_small_img = ImageReader::open("assets/icon16x16.png")
-        .and_then(|file| Ok(file.decode()))
-        .ok()
-        .unwrap()
-        .unwrap();
-    let icon_medium_img = ImageReader::open("assets/icon32x32.png")
-        .and_then(|file| Ok(file.decode()))
-        .ok()
-        .unwrap()
-        .unwrap();
-    let icon_large_img = ImageReader::open("assets/icon64x64.png")
-        .and_then(|file| Ok(file.decode()))
-        .ok()
-        .unwrap()
-        .unwrap();
+    fn icons() -> Option<Icon> {
+        let icon_small_img = ImageReader::open("assets/icon16x16.png")
+            .and_then(|file| Ok(file.decode()))
+            .ok()?.ok()?;
+        let icon_medium_img = ImageReader::open("assets/icon32x32.png")
+            .and_then(|file| Ok(file.decode()))
+            .ok()?.ok()?;
+        let icon_large_img = ImageReader::open("assets/icon64x64.png")
+            .and_then(|file| Ok(file.decode()))
+            .ok()?.ok()?;
 
-    let icon_small_bytes = icon_small_img.as_bytes();
-    let icon_medium_bytes = icon_medium_img.as_bytes();
-    let icon_large_bytes = icon_large_img.as_bytes();
+        let icon_small_bytes = icon_small_img.as_bytes();
+        let icon_medium_bytes = icon_medium_img.as_bytes();
+        let icon_large_bytes = icon_large_img.as_bytes();
 
-    let small_len = icon_small_bytes.len();
-    let medium_len = icon_small_bytes.len();
-    let large_len = icon_small_bytes.len();
+        let small_len = icon_small_bytes.len();
+        let medium_len = icon_small_bytes.len();
+        let large_len = icon_small_bytes.len();
 
-    let icon_small: [u8; 16 * 16 * 4] = icon_small_bytes.try_into().expect(
-        format!(
-            "16x16 icon given incorrect size: {} instead of {}",
-            small_len,
-            16 * 16 * 4
-        )
-        .as_str(),
-    );
-    let icon_medium: [u8; 32 * 32 * 4] = icon_medium_bytes.try_into().expect(
-        format!(
-            "32x32 icon given incorrect size: {} instead of {}",
-            medium_len,
-            32 * 32 * 4
-        )
-        .as_str(),
-    );
-    let icon_large: [u8; 64 * 64 * 4] = icon_large_bytes.try_into().expect(
-        format!(
-            "64x64 icon given incorrect size: {} instead of {}",
-            large_len,
-            64 * 64 * 4
-        )
-        .as_str(),
-    );
+        let icon_small: [u8; 16 * 16 * 4] = icon_small_bytes.try_into().expect(
+            format!(
+                "16x16 icon given incorrect size: {} instead of {}",
+                small_len,
+                16 * 16 * 4
+            )
+                .as_str(),
+        );
+        let icon_medium: [u8; 32 * 32 * 4] = icon_medium_bytes.try_into().expect(
+            format!(
+                "32x32 icon given incorrect size: {} instead of {}",
+                medium_len,
+                32 * 32 * 4
+            )
+                .as_str(),
+        );
+        let icon_large: [u8; 64 * 64 * 4] = icon_large_bytes.try_into().expect(
+            format!(
+                "64x64 icon given incorrect size: {} instead of {}",
+                large_len,
+                64 * 64 * 4
+            )
+                .as_str(),
+        );
+
+        Some(Icon {
+            small: icon_small,
+            medium: icon_medium,
+            big: icon_large,
+        })
+    }
 
     Conf {
         window_title: "Erosion RS".to_owned(),
         window_width: WIDTH.try_into().unwrap(),
         window_height: HEIGHT.try_into().unwrap(),
         window_resizable: true,
-        icon: Some(Icon {
-            small: icon_small,
-            medium: icon_medium,
-            big: icon_large,
-        }),
+        icon: icons(),
         ..Default::default()
     }
 }
@@ -147,7 +146,7 @@ impl State {
                     advanced_texture: true,
                 },
                 #[cfg(feature = "export")]
-                saves: io::list_state_files().expect("Failed to access saved states."),
+                saves: io::list_state_files().ok().or_else(|| Some(Vec::new())).expect("Failed to access saved states."),
                 screenshots: 0,
             },
         }
@@ -192,11 +191,12 @@ async fn main() {
     for (_i, command) in commands.iter().enumerate() {
         match command {
             Command::Engine => {
-                let script = if let Some(script_raw) = fs::read_to_string("script.erss").ok() {
-                    serde_json::from_str(&script_raw).expect("Failed to parse script.")
-                } else {
-                    engine::scripts::default()
-                };
+                // let script = if let Some(script_raw) = fs::read_to_string("script.erss").ok() {
+                //     serde_json::from_str(&script_raw).expect("Failed to parse script.")
+                // } else {
+                //     engine::scripts::default()
+                // };
+                let script = generate_all_permutations();
 
                 let engine_result = engine::launch(script).await;
                 if let Ok(_state) = engine_result {
@@ -215,7 +215,7 @@ async fn main() {
                 }
             }
             Command::GenerateScript => {
-                let result = serde_json::to_string(&generate_tests::generate());
+                let result = serde_json::to_string(&generate_tests::generate_test());
                 if let Ok(example) = result {
                     let result = fs::write("script.erss", example);
                     if let Ok(()) = result {

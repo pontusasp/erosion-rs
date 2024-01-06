@@ -1,17 +1,134 @@
 use std::default::Default;
-use crate::engine::scripts::{Function, FunctionName, IsolineAction, Script, SnapshotAction};
+use crate::engine::scripts::{default, Function, FunctionName, IsolineAction, Script, SnapshotAction};
 use crate::heightmap::{HeightmapParameters, HeightmapType, ProceduralHeightmapSettings};
 use crate::engine::scripts::Instruction;
-use crate::partitioning::Method;
+use crate::erode::Parameters;
+use crate::partitioning::{GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS, GAUSSIAN_DEFAULT_SIGMA, Method};
 use crate::visualize::events::UiEvent;
-use crate::visualize::wrappers::NoiseTypeWrapper;
+use crate::visualize::wrappers::{FractalTypeWrapper, NoiseTypeWrapper};
 
 pub struct Test {
     script: Script,
     uid: u64,
 }
 
-pub fn generate() -> Script {
+fn methods(grid_sizes: &Vec<usize>) -> Vec<Method> {
+    let mut methods = vec![];
+    for size in grid_sizes {
+        methods.push(Method::Subdivision(*size));
+        methods.push(Method::SubdivisionBlurBoundary((*size, (GAUSSIAN_DEFAULT_SIGMA, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS))));
+        methods.push(Method::GridOverlapBlend(*size));
+    }
+    methods.push(Method::Default);
+    methods
+}
+
+fn generate_heightmap_types(resolutions: &Vec<usize>) -> Vec<HeightmapType> {
+    let mut types = Vec::new();
+    for seed in 1000..1010 {
+        // let seed;
+        let noise_type = NoiseTypeWrapper::PerlinFractal;
+        let fractal_type = FractalTypeWrapper::FBM;
+        // let fractal_octaves;
+        // let fractal_gain;
+        // let fractal_lacunarity;
+        // let frequency;
+            for fractal_octaves in 7..8 {
+                for fractal_gain in (3..5i8).map(|n| f32::from(n) / 10.0) {
+                    for fractal_lacunarity in (2..3i8).map(|n| f32::from(n)) {
+                        for frequency in (2..30i8).step_by(5).map(|n| f32::from(n) / 10.0).rev() {
+                            for res in resolutions.iter() {
+                            let params = HeightmapParameters { size: *res };
+                            types.push(HeightmapType::Procedural(params, ProceduralHeightmapSettings {
+                                seed,
+                                noise_type,
+                                fractal_type,
+                                fractal_octaves,
+                                fractal_gain,
+                                fractal_lacunarity,
+                                frequency,
+                            }))
+                        }
+                    }
+                }
+            }
+        }
+    }
+    types
+}
+
+pub fn find_last_iteration() -> usize {
+    let mut paths = std::fs::read_dir("./").unwrap().filter_map(|path| {
+        let path = path.unwrap();
+        if path.path().is_dir() {
+            None
+        } else {
+            let p = path.path().display().to_string();
+            Some(p.split("-").nth(2)?.strip_prefix("i")?.parse().ok()?)
+        }
+    }).collect::<Vec<usize>>();
+    paths.sort();
+    *paths.last().unwrap()
+}
+
+pub fn generate_all_permutations() -> Script {
+    let skip = find_last_iteration();
+    let mut test = Test::new(HeightmapType::default());
+
+    let grid_sizes = vec![128, 64, 32, 16, 8, 4];
+    let methods = methods(&grid_sizes);
+    // let resolutions: Vec<usize> = vec![128, 256, 512, 1024].into_iter().rev().collect();
+    let resolutions: Vec<usize> = vec![128, 256, 512, 1024];
+    let map_types = generate_heightmap_types(&resolutions);
+
+    let total_iterations = map_types.len() * methods.len() * 100;
+
+    for (i, map) in map_types.into_iter().enumerate().skip(skip) {
+        test = test.run(Instruction::NewState(map)).run(Instruction::SetAdvancedView(false));
+        for (j, method) in methods.iter().enumerate() {
+            let iterations = (i * methods.len() + j) * 100;
+            test = test
+                .run(Instruction::Queue(UiEvent::ReplaceHeightmap))
+                // .run(Instruction::Queue(UiEvent::ExportActiveHeightmap))
+                .run(Instruction::Queue(UiEvent::SelectMethod(*method)))
+                .run(Instruction::Flush)
+                .run(Instruction::SetErosionParameters(Parameters {
+                    num_iterations: 200 * map.params().size,
+                    ..Default::default()
+                }))
+                .run(Instruction::Queue(UiEvent::RunSimulation))
+                // .run(Instruction::Handover) // works with this line wtf
+                .run(Instruction::Render(true)) // works with this line wtf
+                // .run(Instruction::Render(false)) // but not with this
+                .run(Instruction::Flush)
+                // .run(Instruction::Queue(UiEvent::ExportActiveHeightmap))
+                .run(Instruction::Print(format!("{} / {}  --> {}%", iterations, total_iterations, 100.0 * iterations as f32 / total_iterations as f32)));
+            println!("{} / {}  --> {}% {}", iterations, total_iterations, 100.0 * iterations as f32 / total_iterations as f32, map.params().size);
+
+            for value in (0..10).map(|n: i8| f32::from(n) / 10.0) {
+                test = test.run(Instruction::Isoline(IsolineAction::SetValue(value)));
+                for error in (0..10).map(|n: i8| f32::from(n) / 10.0) {
+                    test = test.run(Instruction::Isoline(IsolineAction::SetError(error)))
+                        .run(Instruction::Isoline(IsolineAction::Queue))
+                        // .run(Instruction::Queue(UiEvent::ExportActiveHeightmap))
+                        .run(Instruction::SetName(format!("iteration-{iterations}-i-{i}-value-{value}-error-{error}")))
+                        .run(Instruction::Flush)
+                        .run(Instruction::Snapshot(SnapshotAction::Take))
+                        // .run(Instruction::Handover)
+                        .run(Instruction::Render(true));
+                }
+            }
+
+
+            test = test.run(Instruction::Print(format!("saving: iteration-{iterations}-i{i}-j{j} method-{}", method.to_string())))
+                .save(&format!("iteration-{iterations}-i{i}-j{j} method-{}", method.to_string()));
+        }
+    }
+
+    test.run(Instruction::Handover).script
+}
+
+pub fn generate_test() -> Script {
     let min_size = 256;
     let max_size = 1024;
     let step_size = (max_size - min_size) / 4;
@@ -134,7 +251,7 @@ impl Test {
             Instruction::Queue(UiEvent::ExportActiveHeightmap),
             Instruction::Flush,
             Instruction::Snapshot(SnapshotAction::Take),
-            Instruction::Render(false),
+            // Instruction::Render(false),
         ]
     }
 
