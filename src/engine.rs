@@ -33,14 +33,12 @@ pub struct Tuning {
     pub isoline_error: f32,
 }
 
-type TimeStart = f32;
-type TimeEnd = f32;
 type Flooded = usize;
 type Unflooded = usize;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Measurement {
-    Time(Option<TimeStart>, Option<TimeEnd>),
+    Time(f32), // Seconds
     LowAreas(Flooded, Unflooded),
     HighAreas(Flooded, Unflooded),
     IsoError(Flooded),
@@ -83,11 +81,14 @@ impl Engine {
         };
         let (l_flooded, l_unflooded) = self.state.ui_state.isoline.flooded_areas_lower?;
         let (h_flooded, h_unflooded) = self.state.ui_state.isoline.flooded_areas_higher?;
-        let measurements = vec![
+        let mut measurements = vec![
             Measurement::LowAreas(l_flooded, l_unflooded),
             Measurement::HighAreas(h_flooded, h_unflooded),
             Measurement::IsoError(self.state.ui_state.isoline.flooded_errors?),
         ];
+        if let Some(eroded) = self.state.app_state.simulation_state().eroded() {
+            measurements.push(Measurement::Time(eroded.simulation_time.as_secs_f32()));
+        }
         let snapshot: Snapshot = (tuning, measurements);
         self.snapshots.push(snapshot);
         Some(())

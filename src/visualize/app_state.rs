@@ -2,6 +2,7 @@ use macroquad::texture::{Image, Texture2D};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::erode::{DropZone, Parameters};
 use crate::heightmap::{self, Heightmap, HeightmapType};
@@ -60,6 +61,7 @@ pub struct ErodedState {
     pub heightmap_difference_normalized: Rc<RefCell<Vec<Rc<HeightmapTexture>>>>,
     pub erosion_method: Rc<Method>,
     pub margin_removed: bool,
+    pub simulation_time: Duration,
 }
 
 impl ErodedState {
@@ -91,6 +93,7 @@ impl BaseState {
         grid_size: usize,
         margin: bool,
     ) -> ErodedState {
+        let time = std::time::Instant::now();
         let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(
             margin,
             &self.heightmap_base.heightmap,
@@ -98,6 +101,8 @@ impl BaseState {
             &self.drop_zone,
             grid_size,
         );
+        let elapsed = time.elapsed();
+        heightmap.metadata_add("simulation_time", format!("{}", elapsed.as_secs_f32()));
         let new_margin = if margin {
             Method::max_margin(self.heightmap_base.heightmap.width, grid_size)
         } else {
@@ -129,6 +134,7 @@ impl BaseState {
             )])),
             erosion_method: Rc::new(self.erosion_method),
             margin_removed: margin,
+            simulation_time: elapsed,
         }
     }
 
