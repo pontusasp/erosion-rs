@@ -1,6 +1,6 @@
 use crate::engine::scripts::Instruction;
 use crate::engine::scripts::{
-    default, Function, FunctionName, IsolineAction, Script, SnapshotAction,
+    Function, FunctionName, IsolineAction, Script, SnapshotAction,
 };
 use crate::erode::Parameters;
 use crate::heightmap::{HeightmapParameters, HeightmapType, ProceduralHeightmapSettings};
@@ -237,7 +237,7 @@ impl Test {
     ) -> Self {
         self.push()
             .name(&format!("grid_overlap_{}", uid))
-            .generate_resolutions(min_size, max_size, step_by, |size| {
+            .generate_resolutions(min_size, max_size, step_by, |_size| {
                 vec![
                     Test::function_erode(Method::GridOverlapBlend(6)),
                     Test::function_collect_data(),
