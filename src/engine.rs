@@ -43,6 +43,7 @@ pub enum Measurement {
     Time(Option<TimeStart>, Option<TimeEnd>),
     LowAreas(Flooded, Unflooded),
     HighAreas(Flooded, Unflooded),
+    IsoError(Flooded),
 }
 
 pub type Snapshot = (Tuning, Vec<Measurement>);
@@ -85,6 +86,7 @@ impl Engine {
         let measurements = vec![
             Measurement::LowAreas(l_flooded, l_unflooded),
             Measurement::HighAreas(h_flooded, h_unflooded),
+            Measurement::IsoError(self.state.ui_state.isoline.flooded_errors?),
         ];
         let snapshot: Snapshot = (tuning, measurements);
         self.snapshots.push(snapshot);

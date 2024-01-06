@@ -234,6 +234,16 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                 ui.label("Higher: None");
             }
 
+            if let Some(errors) = props.flooded_errors {
+                ui.label(format!(
+                    "Errors: {}, {}%",
+                    errors,
+                    errors as f32 / (flooded as f32 + unflooded as f32) * 100.0
+                ));
+            } else {
+                ui.label("Errors: None");
+            }
+
             if updated {
                 ui_state.isoline = props;
                 ui_state.ui_events.push(UiEvent::Isoline);
