@@ -212,8 +212,7 @@ impl Method {
     ) -> (usize, usize, usize, usize) {
         let margins = match self {
             Method::Default => (0, 0, 0, 0),
-            Method::Subdivision(_) |
-            Method::SubdivisionBlurBoundary(_) => {
+            Method::Subdivision(_) | Method::SubdivisionBlurBoundary(_) => {
                 let grid_cell_size = heightmap_size / grid_size;
                 let rect_min = grid_cell_size / 2;
                 let rect_max = heightmap_size - grid_cell_size / 2;

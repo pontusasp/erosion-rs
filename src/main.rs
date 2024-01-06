@@ -1,4 +1,5 @@
 use crate::erode::Parameters;
+use crate::generate_tests::generate_all_permutations;
 use crate::heightmap::HeightmapType;
 use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
 use crate::visualize::events::UiEvent;
@@ -8,11 +9,10 @@ use macroquad::miniquad::conf::Icon;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
-use crate::generate_tests::generate_all_permutations;
 
-pub mod generate_tests;
 pub mod engine;
 pub mod erode;
+pub mod generate_tests;
 pub mod heightmap;
 #[cfg(feature = "export")]
 mod io;
@@ -35,13 +35,16 @@ fn window_conf() -> Conf {
     fn icons() -> Option<Icon> {
         let icon_small_img = ImageReader::open("assets/icon16x16.png")
             .and_then(|file| Ok(file.decode()))
-            .ok()?.ok()?;
+            .ok()?
+            .ok()?;
         let icon_medium_img = ImageReader::open("assets/icon32x32.png")
             .and_then(|file| Ok(file.decode()))
-            .ok()?.ok()?;
+            .ok()?
+            .ok()?;
         let icon_large_img = ImageReader::open("assets/icon64x64.png")
             .and_then(|file| Ok(file.decode()))
-            .ok()?.ok()?;
+            .ok()?
+            .ok()?;
 
         let icon_small_bytes = icon_small_img.as_bytes();
         let icon_medium_bytes = icon_medium_img.as_bytes();
@@ -57,7 +60,7 @@ fn window_conf() -> Conf {
                 small_len,
                 16 * 16 * 4
             )
-                .as_str(),
+            .as_str(),
         );
         let icon_medium: [u8; 32 * 32 * 4] = icon_medium_bytes.try_into().expect(
             format!(
@@ -65,7 +68,7 @@ fn window_conf() -> Conf {
                 medium_len,
                 32 * 32 * 4
             )
-                .as_str(),
+            .as_str(),
         );
         let icon_large: [u8; 64 * 64 * 4] = icon_large_bytes.try_into().expect(
             format!(
@@ -73,7 +76,7 @@ fn window_conf() -> Conf {
                 large_len,
                 64 * 64 * 4
             )
-                .as_str(),
+            .as_str(),
         );
 
         Some(Icon {
@@ -146,7 +149,10 @@ impl State {
                     advanced_texture: true,
                 },
                 #[cfg(feature = "export")]
-                saves: io::list_state_files().ok().or_else(|| Some(Vec::new())).expect("Failed to access saved states."),
+                saves: io::list_state_files()
+                    .ok()
+                    .or_else(|| Some(Vec::new()))
+                    .expect("Failed to access saved states."),
                 screenshots: 0,
             },
         }

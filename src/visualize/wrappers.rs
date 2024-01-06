@@ -1,10 +1,10 @@
+use crate::heightmap::io::save_heightmap_as_image;
 use crate::heightmap::Heightmap;
 use crate::visualize::{heightmap_to_image_rgb, heightmap_to_texture};
 use bracket_noise::prelude::{FractalType, NoiseType};
 use macroquad::texture::{Image, Texture2D};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
-use crate::heightmap::io::{save_heightmap_as_image};
 
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum NoiseTypeWrapper {
@@ -92,8 +92,14 @@ pub struct HeightmapTexture {
 
 impl HeightmapTexture {
     pub fn new(heightmap: Rc<Heightmap>, image: Option<Rc<Image>>) -> Self {
-        let texture = image.as_ref().and_then(|img| Some(Rc::new(Texture2D::from_image(&img))));
-        Self { image, heightmap, texture }
+        let texture = image
+            .as_ref()
+            .and_then(|img| Some(Rc::new(Texture2D::from_image(&img))));
+        Self {
+            image,
+            heightmap,
+            texture,
+        }
     }
 
     pub fn get_or_generate(&self) -> Rc<Texture2D> {

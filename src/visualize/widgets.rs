@@ -214,12 +214,22 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                 percentage
             ));
             if props.flooded_areas_lower.is_some() {
-                ui.label(format!("Lower flooded, unflooded, total: {}, {}, {}", lower_flooded, lower_unflooded, lower_flooded + lower_unflooded));
+                ui.label(format!(
+                    "Lower flooded, unflooded, total: {}, {}, {}",
+                    lower_flooded,
+                    lower_unflooded,
+                    lower_flooded + lower_unflooded
+                ));
             } else {
                 ui.label("Lower: None");
             }
             if props.flooded_areas_higher.is_some() {
-                ui.label(format!("Higher flooded, unflooded, total: {}, {}, {}", higher_flooded, higher_unflooded, higher_flooded + higher_unflooded));
+                ui.label(format!(
+                    "Higher flooded, unflooded, total: {}, {}, {}",
+                    higher_flooded,
+                    higher_unflooded,
+                    higher_flooded + higher_unflooded
+                ));
             } else {
                 ui.label("Higher: None");
             }

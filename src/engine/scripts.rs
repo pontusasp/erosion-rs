@@ -1,15 +1,15 @@
 use crate::engine::{Engine, EngineError};
+use crate::erode::Parameters;
 use crate::heightmap::{HeightmapParameters, HeightmapType};
 use crate::partitioning::Method;
 use crate::visualize::events::{poll_ui_events, UiEvent};
+use crate::visualize::ui::UiState;
 use crate::State;
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::mem;
-use crate::erode::Parameters;
-use crate::visualize::ui::UiState;
 
 pub type Function = Vec<Instruction>;
 pub type FunctionName = String;

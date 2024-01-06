@@ -16,7 +16,7 @@ use crate::State;
 
 use super::{
     layered_heightmaps_to_image, mix_heightmap_to_image, rgba_color_channel, AppState,
-    HeightmapLayer, LayerMixMethod, SimulationState
+    HeightmapLayer, LayerMixMethod, SimulationState,
 };
 
 /*
@@ -445,8 +445,7 @@ pub fn poll_ui_events(
                 let (low, high) = ui_state.canny_edge;
                 let og = app_state.simulation_state().get_heightmap();
                 if let Some(heightmap) = og.canny_edge(low, high) {
-                    let texture =
-                        Rc::new(mix_heightmap_to_image(&og, &heightmap, 0, true, false));
+                    let texture = Rc::new(mix_heightmap_to_image(&og, &heightmap, 0, true, false));
                     let heightmap_texture =
                         Rc::new(HeightmapTexture::new(Rc::new(heightmap), Some(texture)));
                     app_state
@@ -463,8 +462,7 @@ pub fn poll_ui_events(
                     .blur(ui_state.blur_sigma)
                     .and_then(|blurred| blurred.canny_edge(low, high))
                 {
-                    let texture =
-                        Rc::new(mix_heightmap_to_image(&og, &heightmap, 0, true, false));
+                    let texture = Rc::new(mix_heightmap_to_image(&og, &heightmap, 0, true, false));
                     let heightmap_texture =
                         Rc::new(HeightmapTexture::new(Rc::new(heightmap), Some(texture)));
                     app_state
@@ -479,13 +477,8 @@ pub fn poll_ui_events(
                 ui_state.isoline.flood_lower = !flood_lower;
                 let _ = compute_isoline(app_state, ui_state);
                 ui_state.isoline.flood_lower = flood_lower;
-                let (
-                    flooded,
-                    heightmap,
-                    outside,
-                    flood_line,
-                    flood_line_blurred
-                ) = compute_isoline(app_state, ui_state);
+                let (flooded, heightmap, outside, flood_line, flood_line_blurred) =
+                    compute_isoline(app_state, ui_state);
 
                 let heightmap_texture = get_isoline_heightmap_texture(
                     flooded,
@@ -562,8 +555,15 @@ pub fn poll_ui_events(
             #[cfg(feature = "export")]
             UiEvent::ExportActiveHeightmap => {
                 let suffix = ui_state.screenshots;
-                let name = state_name.as_ref().and_then(|s| Some(s.as_str())).unwrap_or(crate::io::DEFAULT_NAME);
-                if let Some(_) = app_state.simulation_state().get_active_heightmap_texture().export(&format!("{}-heightmap-{}", &name, suffix)) {
+                let name = state_name
+                    .as_ref()
+                    .and_then(|s| Some(s.as_str()))
+                    .unwrap_or(crate::io::DEFAULT_NAME);
+                if let Some(_) = app_state
+                    .simulation_state()
+                    .get_active_heightmap_texture()
+                    .export(&format!("{}-heightmap-{}", &name, suffix))
+                {
                     ui_state.screenshots += 1;
                 } else {
                     eprintln!("Failed to export active heightmap!");
@@ -575,8 +575,15 @@ pub fn poll_ui_events(
     ui_state.ui_events.append(&mut next_frame_events);
 }
 
-fn compute_isoline(app_state: &mut AppState, ui_state: &mut UiState) -> (
-    Rc<Heightmap>, Rc<Heightmap>, Heightmap, Heightmap, Heightmap,
+fn compute_isoline(
+    app_state: &mut AppState,
+    ui_state: &mut UiState,
+) -> (
+    Rc<Heightmap>,
+    Rc<Heightmap>,
+    Heightmap,
+    Heightmap,
+    Heightmap,
 ) {
     let props = ui_state.isoline;
     let heightmap = app_state.simulation_state().get_heightmap();
@@ -613,7 +620,11 @@ fn compute_isoline(app_state: &mut AppState, ui_state: &mut UiState) -> (
     (flooded, heightmap, outside, flood_line, flood_line_blurred)
 }
 
-fn get_flood_points(heightmap: &Heightmap, isoline: &Heightmap, props: &IsolineProperties) -> (Vec<UVector2>, Vec<UVector2>) {
+fn get_flood_points(
+    heightmap: &Heightmap,
+    isoline: &Heightmap,
+    props: &IsolineProperties,
+) -> (Vec<UVector2>, Vec<UVector2>) {
     let flood_lower = heightmap.get_flood_points(&isoline, true);
     let flood_upper = heightmap.get_flood_points(&isoline, false);
     if props.blur_augmentation.0 {
@@ -636,7 +647,12 @@ fn get_flood_points(heightmap: &Heightmap, isoline: &Heightmap, props: &IsolineP
     }
 }
 
-fn get_flooded(ui_state: &mut UiState, isoline: &Heightmap, flood: &Vec<UVector2>, flood_inverse: &Vec<UVector2>) -> Rc<Heightmap> {
+fn get_flooded(
+    ui_state: &mut UiState,
+    isoline: &Heightmap,
+    flood: &Vec<UVector2>,
+    flood_inverse: &Vec<UVector2>,
+) -> Rc<Heightmap> {
     let flood_amount = 1f32.min(ui_state.isoline.height + (1.0 - ui_state.isoline.height) / 3.0);
     let (flooded, areas) = isoline.flood_empty(flood_amount, &flood);
     let (_inv_flood, unflooded_areas) = flooded.flood_empty(flood_amount, &flood_inverse);

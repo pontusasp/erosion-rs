@@ -3,11 +3,11 @@ pub mod scripts;
 use crate::engine::scripts::{tick, Function, Instruction, Script};
 use crate::erode::Parameters;
 use crate::heightmap::HeightmapType;
+use crate::partitioning::Method;
 use crate::State;
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use crate::partitioning::Method;
 
 #[derive(Debug)]
 pub enum EngineError {
@@ -62,7 +62,12 @@ impl Engine {
 
     pub fn snapshot(&mut self) -> Option<()> {
         let tuning = Tuning {
-            method: self.state.app_state.simulation_state().eroded().and_then(|e| Some(*e.erosion_method.clone())),
+            method: self
+                .state
+                .app_state
+                .simulation_state()
+                .eroded()
+                .and_then(|e| Some(*e.erosion_method.clone())),
             parameters: self.state.app_state.parameters.erosion_params,
             map_type: self.state.app_state.parameters.heightmap_type,
             flatness: self
