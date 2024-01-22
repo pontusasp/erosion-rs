@@ -3,7 +3,6 @@ use crate::erode::Parameters;
 use crate::heightmap::{HeightmapParameters, HeightmapType};
 use crate::partitioning::Method;
 use crate::visualize::events::{poll_ui_events, UiEvent};
-use crate::visualize::ui::UiState;
 use crate::State;
 use egui::{Pos2, Rect};
 use macroquad::prelude::*;

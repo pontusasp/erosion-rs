@@ -1,4 +1,4 @@
-use crate::heightmap::Heightmap;
+use crate::heightmap::{Heightmap, create_heightmap_from_closure};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "export")]
 use std::mem;
@@ -610,7 +610,25 @@ fn compute_isoline(
         (&flood_upper, &flood_lower)
     };
     let flooded = if props.should_flood {
-        get_flooded(ui_state, &isoline, flood, flood_inverse)
+        let flooded = get_flooded(ui_state, &isoline, flood, flood_inverse);
+
+        let mut points = Vec::new();
+        let errors = unsafe {
+            let pts = &mut points as *mut Vec<UVector2>;
+            create_heightmap_from_closure(flooded.width, 1.0, &|x, y| {
+                let error = flooded.data[x][y] * (1. - outside.data[x][y]) > 0.0;
+                if error {
+                    (*pts).push(UVector2::new(x, y));
+                    0.0
+                } else {
+                    0.1
+                }
+            })
+        };
+
+        let (_error_map, error_areas) = errors.flood_empty(1.0, &points);
+        ui_state.isoline.flooded_errors = Some(error_areas);
+        flooded
     } else {
         Rc::new(isoline)
     };

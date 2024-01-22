@@ -147,6 +147,7 @@ impl State {
                     flooded_areas_higher: None,
                     blur_augmentation: (false, 1.0, 5, 5),
                     advanced_texture: true,
+                    flooded_errors: None,
                 },
                 #[cfg(feature = "export")]
                 saves: io::list_state_files()
