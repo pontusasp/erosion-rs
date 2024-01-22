@@ -79,14 +79,14 @@ pub fn find_last_iteration() -> usize {
         })
         .collect::<Vec<usize>>();
     paths.sort();
-    *paths.last().unwrap()
+    *paths.last().unwrap_or(&0)
 }
 
 pub fn generate_all_permutations() -> Script {
     let skip = find_last_iteration();
     let mut test = Test::new(HeightmapType::default());
 
-    let grid_sizes = vec![128, 64, 32, 16, 8, 4];
+    let grid_sizes = vec![32, 16, 8, 4];
     let methods = methods(&grid_sizes);
     // let resolutions: Vec<usize> = vec![128, 256, 512, 1024].into_iter().rev().collect();
     let resolutions: Vec<usize> = vec![128, 256, 512, 1024];
@@ -109,6 +109,7 @@ pub fn generate_all_permutations() -> Script {
                     num_iterations: 200 * map.params().size,
                     ..Default::default()
                 }))
+                // .run(Instruction::Handover)
                 .run(Instruction::Queue(UiEvent::RunSimulation))
                 // .run(Instruction::Handover) // works with this line wtf
                 .run(Instruction::Render(true)) // works with this line wtf
@@ -131,7 +132,7 @@ pub fn generate_all_permutations() -> Script {
 
             for value in (0..10).map(|n: i8| f32::from(n) / 10.0) {
                 test = test.run(Instruction::Isoline(IsolineAction::SetValue(value)));
-                for error in (0..10).map(|n: i8| f32::from(n) / 10.0) {
+                for error in (0..40).step_by(4).map(|n: i8| f32::from(n) / 1000.0) {
                     test = test
                         .run(Instruction::Isoline(IsolineAction::SetError(error)))
                         .run(Instruction::Isoline(IsolineAction::Queue))

@@ -251,7 +251,12 @@ pub async fn tick(mut engine: Engine) -> Result<Engine, EngineError> {
                 Ok(())
             }
             Instruction::GridSize(size) => {
-                state.app_state.parameters.grid_size = size;
+                state
+                    .app_state
+                    .simulation_state_mut()
+                    .base_mut()
+                    .erosion_method
+                    .set_grid_size_unchecked(size);
                 Ok(())
             }
             Instruction::SetName(name) => {

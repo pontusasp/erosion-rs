@@ -28,7 +28,6 @@ pub struct Tuning {
     pub parameters: Parameters,
     pub map_type: HeightmapType,
     pub flatness: f32,
-    pub grid_size: usize,
     pub isoline_value: f32,
     pub isoline_error: f32,
 }
@@ -75,7 +74,6 @@ impl Engine {
                 .simulation_state()
                 .get_heightmap()
                 .get_average_height()?,
-            grid_size: self.state.app_state.parameters.grid_size,
             isoline_value: self.state.ui_state.isoline.height,
             isoline_error: self.state.ui_state.isoline.error,
         };

@@ -256,7 +256,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
     egui::CollapsingHeader::new("Erosion Method Selection")
         .default_open(true)
         .show(ui, |ui| {
-            for &method in partitioning::Method::iterator() {
+            for &method in partitioning::Method::list(state.simulation_state().base().erosion_method.get_grid_size()).iter() {
                 if method.matches(&state.simulation_state().base().erosion_method) {
                     ui.label(format!("-> {}", method.to_string()));
                 } else {
@@ -278,14 +278,6 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
             egui::CollapsingHeader::new("Partitioning Parameters")
                 .default_open(true)
                 .show(ui, |ui| {
-                    {
-                        let g = state.parameters.grid_size;
-                        state
-                            .simulation_state_mut()
-                            .base_mut()
-                            .erosion_method
-                            .set_grid_size_unchecked(g);
-                    }
                     match state.simulation_state_mut().base_mut().erosion_method {
                         partitioning::Method::Default => (),
                         partitioning::Method::Subdivision(ref mut grid_size)
@@ -297,7 +289,6 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                                 )
                                 .text("Grid Size"),
                             );
-                            state.parameters.grid_size = *grid_size;
                         }
                         partitioning::Method::SubdivisionBlurBoundary((
                             ref mut grid_size,
@@ -325,7 +316,6 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                                 )
                                 .text("Gaussian Blur Boundary Thickness"),
                             );
-                            state.parameters.grid_size = *grid_size;
                         }
                         partitioning::Method::GridOverlapBlend(ref mut grid_size) => {
                             ui.add(
@@ -335,7 +325,6 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                                 )
                                 .text("Grid Size"),
                             );
-                            state.parameters.grid_size = *grid_size;
                         }
                     };
                     ui.toggle_value(&mut state.parameters.margin, "Use Margin");

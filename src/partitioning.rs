@@ -6,7 +6,6 @@ use crate::math::UVector2;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::slice::Iter;
 use std::sync::{Arc, Mutex};
 
 pub const GAUSSIAN_DEFAULT_SIGMA: f32 = 2.0;
@@ -29,6 +28,16 @@ impl Method {
             Method::SubdivisionBlurBoundary(_) => String::from("SubdivisionBlurBoundary"),
             Method::SubdivisionOverlap(_) => String::from("SubdivisionOverlap"),
             Method::GridOverlapBlend(_) => String::from("GridOverlapBlend"),
+        }
+    }
+
+    pub fn get_grid_size(&self) -> usize {
+        match self {
+            Method::Default => 1,
+            Method::Subdivision(size) |
+            Method::SubdivisionBlurBoundary((size, _)) |
+            Method::SubdivisionOverlap(size) |
+            Method::GridOverlapBlend(size) => *size,
         }
     }
 
@@ -72,18 +81,18 @@ impl Method {
         }
     }
 
-    pub fn iterator() -> Iter<'static, Method> {
-        static EROSION_METHODS: &[Method] = &[
+    pub fn list(grid_size: usize) -> [Method; 5] {
+        let erosion_methods: [Method; 5] = [
             Method::Default,
-            Method::Subdivision(crate::PRESET_GRID_SIZE),
+            Method::Subdivision(grid_size),
             Method::SubdivisionBlurBoundary((
-                crate::PRESET_GRID_SIZE,
+                grid_size,
                 (GAUSSIAN_DEFAULT_SIGMA, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS),
             )),
-            Method::SubdivisionOverlap(crate::PRESET_GRID_SIZE),
-            Method::GridOverlapBlend(crate::PRESET_GRID_SIZE),
+            Method::SubdivisionOverlap(grid_size),
+            Method::GridOverlapBlend(grid_size),
         ];
-        EROSION_METHODS.iter()
+        erosion_methods
     }
 
     pub fn set_grid_size_unchecked(&mut self, value: usize) {
@@ -102,11 +111,12 @@ impl Method {
         };
     }
 
-    pub fn get_grid(&self, size: usize, use_margin: bool, grid_size: usize) -> Heightmap {
+    pub fn get_grid(&self, size: usize, use_margin: bool) -> Heightmap {
+        let grid_size = self.get_grid_size();
         let heightmap = Heightmap::new_empty(size, size, 1.0, 1.0);
         let (local_margin, margin) = if use_margin {
             let max_margin = Self::max_margin(size, grid_size);
-            let local_margin = self.margin_size(size, grid_size);
+            let local_margin = self.margin_size(size);
             let (mr, mt, ml, mb) = max_margin;
             let (lr, lt, ll, lb) = local_margin;
             let margin = (mr - lr, mt - lt, ml - ll, mb - lb);
@@ -141,13 +151,13 @@ impl Method {
         heightmap: &Heightmap,
         parameters: &Parameters,
         drop_zone: &DropZone,
-        grid_size: usize,
     ) -> Heightmap {
         print!("Eroding using ");
+        let grid_size = self.get_grid_size();
         let heightmap_size = heightmap.width;
         let (local_margin, margin) = if use_margin {
             let max_margin = Self::max_margin(heightmap_size, grid_size);
-            let local_margin = self.margin_size(heightmap_size, grid_size);
+            let local_margin = self.margin_size(heightmap_size);
             let (mr, mt, ml, mb) = max_margin;
             let (lr, lt, ll, lb) = local_margin;
             let margin = (mr - lr, mt - lt, ml - ll, mb - lb);
@@ -208,8 +218,8 @@ impl Method {
     pub fn margin_size(
         &self,
         heightmap_size: usize,
-        grid_size: usize,
     ) -> (usize, usize, usize, usize) {
+        let grid_size = self.get_grid_size();
         let margins = match self {
             Method::Default => (0, 0, 0, 0),
             Method::Subdivision(_) | Method::SubdivisionBlurBoundary(_) => {
@@ -241,8 +251,8 @@ impl Method {
         let mut largest_margin_t = 0;
         let mut largest_margin_l = 0;
         let mut largest_margin_b = 0;
-        for &m in Self::iterator() {
-            let (r, t, l, b) = m.margin_size(heightmap_size, grid_size);
+        for &m in Self::list(grid_size).iter() {
+            let (r, t, l, b) = m.margin_size(heightmap_size);
             largest_margin_r = largest_margin_r.max(r);
             largest_margin_t = largest_margin_t.max(t);
             largest_margin_l = largest_margin_l.max(l);
