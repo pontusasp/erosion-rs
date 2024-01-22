@@ -423,7 +423,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.num_iterations,
-                    0..=10_000_000,
+                    0..=20_000_000,
                 )
                 .text("Num Iterations"),
             )
