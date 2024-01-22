@@ -1,5 +1,5 @@
 use bracket_noise::prelude::NoiseType;
-use egui::{Color32, Vec2};
+use egui::{Color32, Pos2, Rect, Vec2};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::heightmap::{HeightmapParameters, HeightmapType};
@@ -19,7 +19,7 @@ use super::{canvas::Canvas, AppState, SimulationState};
 
 pub fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
     let width = 800.0;
-    let height = 500.0;
+    let height = 800.0;
     let mut canvas = Canvas::new(
         Vec2::new(width, height),
         egui::Stroke::new(1.0, Color32::WHITE),
@@ -50,11 +50,16 @@ pub fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
         heights
     };
 
+    canvas.stroke.color = Color32::WHITE;
+    canvas.draw_rectangle(ui, Rect::from_two_pos(Pos2::ZERO, canvas.size.to_pos2()), Color32::WHITE);
+
     canvas.stroke.color = Color32::BLUE;
+    canvas.stroke.width = 2.0;
     draw_polyline(ui, &heights_along_y, &canvas, width, height, max_height);
     canvas.draw_line(ui, Vec2::new(10.0, 10.0), Vec2::new(30.0, 10.0));
 
     canvas.stroke.color = Color32::RED;
+    canvas.stroke.width = 2.0;
     draw_polyline(ui, &heights_along_x, &canvas, width, height, max_height);
     canvas.draw_line(ui, Vec2::new(10.0, 10.0), Vec2::new(10.0, 30.0));
 }
