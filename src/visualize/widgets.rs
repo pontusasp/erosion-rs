@@ -286,7 +286,8 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                     match state.simulation_state_mut().base_mut().erosion_method {
                         partitioning::Method::Default => (),
                         partitioning::Method::Subdivision(ref mut grid_size)
-                        | partitioning::Method::SubdivisionOverlap(ref mut grid_size) => {
+                        // | partitioning::Method::SubdivisionOverlap(ref mut grid_size)
+                            => {
                             ui.add(
                                 egui::Slider::new(
                                     grid_size,

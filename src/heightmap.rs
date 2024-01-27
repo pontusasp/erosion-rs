@@ -772,6 +772,7 @@ impl PartialHeightmap {
                 let height = h2 * factor + h1 * (1.0 - factor);
 
                 other.heightmap.data[ox][oy] = height;
+                // other.heightmap.data[ox][oy] = height / 4.0 * 3.0 + factor / 4.0; // blends in mask
             }
         }
     }
