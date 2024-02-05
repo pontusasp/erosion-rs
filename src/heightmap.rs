@@ -751,28 +751,30 @@ impl PartialHeightmap {
 
         for x in 0..(rect_max.x - rect_min.x) {
             for y in 0..(rect_max.y - rect_min.y) {
-                let sx = x + rect_min.x - self.anchor.x;
-                let sy = y + rect_min.y - self.anchor.y;
-                let ox = x + rect_min.x - other.anchor.x;
-                let oy = y + rect_min.y - other.anchor.y;
+                let blue_x = x + rect_min.x - other.anchor.x;
+                let blue_y = y + rect_min.y - other.anchor.y;
+                let black_x = x + rect_min.x - self.anchor.x;
+                let black_y = y + rect_min.y - self.anchor.y;
+                let w = other.heightmap.width as f32;
+                let h = other.heightmap.height as f32;
 
-                let h1 = self.heightmap.data[sx][sy];
-                let h2 = other.heightmap.data[ox][oy];
-                let min = -1.0;
-                let max = 1.0;
-                let lerp_x = min
-                    + (max - min)
-                        * (ox as HeightmapPrecision / other.heightmap.width as HeightmapPrecision);
-                let factor_x = lerp_x.abs();
-                let lerp_y = min
-                    + (max - min)
-                        * (oy as HeightmapPrecision / other.heightmap.height as HeightmapPrecision);
-                let factor_y = lerp_y.abs();
-                let factor = (1.0 - factor_x * factor_y).powf(6.5);
-                let height = h2 * factor + h1 * (1.0 - factor);
+                let black_sample = self.heightmap.data[black_x][black_y];
+                let blue_sample = other.heightmap.data[blue_x][blue_y];
 
-                other.heightmap.data[ox][oy] = height;
-                // other.heightmap.data[ox][oy] = height / 4.0 * 3.0 + factor / 4.0; // blends in mask
+                let mask_x = (blue_x as f32 / w * 2.0 - 1.0).abs().powf(1.5);
+                let mask_y = (blue_y as f32 / h * 2.0 - 1.0).abs().powf(1.5);
+                let mask = (mask_x + mask_y) / 2.0;
+
+                let height = mask * black_sample + (1.0 - mask) * blue_sample;
+
+                // let blue = 0f32.max((mask - 0.5) * 2.0);
+                // let black = 0f32.min((mask - 0.5) * 2.0).abs();
+
+                // let height = black + blue;
+
+
+                other.heightmap.data[blue_x][blue_y] = height;
+                // other.heightmap.data[blue_x][blue_y] = height / 4.0 * 3.0 + factor / 4.0; // blends in mask
             }
         }
     }
