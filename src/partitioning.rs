@@ -48,9 +48,7 @@ impl Method {
                 grid_size,
                 (GAUSSIAN_DEFAULT_SIGMA, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS),
             )),
-            Method::SubdivisionBlurBoundary((grid_size, _)) => {
-                Method::GridOverlapBlend(grid_size)
-            }
+            Method::SubdivisionBlurBoundary((grid_size, _)) => Method::GridOverlapBlend(grid_size),
             // Method::SubdivisionOverlap(_) => Method::GridOverlapBlend(crate::PRESET_GRID_SIZE),
             Method::GridOverlapBlend(_) => Method::Default,
         }
@@ -219,10 +217,7 @@ impl Method {
         partition.heightmap.with_margin(local_margin).heightmap
     }
 
-    pub fn margin_size(
-        &self,
-        heightmap_size: usize,
-    ) -> (usize, usize, usize, usize) {
+    pub fn margin_size(&self, heightmap_size: usize) -> (usize, usize, usize, usize) {
         let grid_size = self.get_grid_size();
         let margins = match self {
             Method::Default => (0, 0, 0, 0),

@@ -84,12 +84,7 @@ pub struct BaseState {
 }
 
 impl BaseState {
-    pub fn run_simulation(
-        &self,
-        id: usize,
-        parameters: &Parameters,
-        margin: bool,
-    ) -> ErodedState {
+    pub fn run_simulation(&self, id: usize, parameters: &Parameters, margin: bool) -> ErodedState {
         let time = std::time::Instant::now();
         let mut heightmap: Heightmap = self.erosion_method.erode_with_margin(
             margin,
@@ -100,7 +95,10 @@ impl BaseState {
         let elapsed = time.elapsed();
         heightmap.metadata_add("simulation_time", format!("{}", elapsed.as_secs_f32()));
         let new_margin = if margin {
-            Method::max_margin(self.heightmap_base.heightmap.width, self.erosion_method.get_grid_size())
+            Method::max_margin(
+                self.heightmap_base.heightmap.width,
+                self.erosion_method.get_grid_size(),
+            )
         } else {
             (0, 0, 0, 0)
         };
@@ -164,12 +162,7 @@ impl SimulationState {
         })
     }
 
-    pub fn get_new_eroded(
-        &self,
-        new_id: usize,
-        parameters: &Parameters,
-        margin: bool,
-    ) -> Self {
+    pub fn get_new_eroded(&self, new_id: usize, parameters: &Parameters, margin: bool) -> Self {
         let (mut base, eroded) = match self {
             SimulationState::Base(base) => (base.clone(), None),
             SimulationState::Eroded((base, eroded)) => (base.clone(), Some(eroded)),
@@ -265,10 +258,9 @@ impl SimulationState {
             )
         } else {
             let state = self.base();
-            state.erosion_method.get_grid(
-                state.heightmap_base.heightmap.width,
-                app_parameters.margin,
-            )
+            state
+                .erosion_method
+                .get_grid(state.heightmap_base.heightmap.width, app_parameters.margin)
         };
         let heightmap = self.get_active();
         let grid_texture = layered_heightmaps_to_texture(

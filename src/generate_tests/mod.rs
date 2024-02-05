@@ -1,7 +1,5 @@
 use crate::engine::scripts::Instruction;
-use crate::engine::scripts::{
-    Function, FunctionName, IsolineAction, Script, SnapshotAction,
-};
+use crate::engine::scripts::{Function, FunctionName, IsolineAction, Script, SnapshotAction};
 use crate::erode::Parameters;
 use crate::heightmap::{HeightmapParameters, HeightmapType, ProceduralHeightmapSettings};
 use crate::partitioning::{Method, GAUSSIAN_DEFAULT_BOUNDARY_THICKNESS, GAUSSIAN_DEFAULT_SIGMA};

@@ -1,4 +1,4 @@
-use crate::heightmap::{Heightmap, create_heightmap_from_closure};
+use crate::heightmap::{create_heightmap_from_closure, Heightmap};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "export")]
 use std::mem;

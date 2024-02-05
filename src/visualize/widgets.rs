@@ -51,7 +51,11 @@ pub fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
     };
 
     canvas.stroke.color = Color32::WHITE;
-    canvas.draw_rectangle(ui, Rect::from_two_pos(Pos2::ZERO, canvas.size.to_pos2()), Color32::WHITE);
+    canvas.draw_rectangle(
+        ui,
+        Rect::from_two_pos(Pos2::ZERO, canvas.size.to_pos2()),
+        Color32::WHITE,
+    );
 
     canvas.stroke.color = Color32::BLUE;
     canvas.stroke.width = 2.0;
@@ -261,7 +265,15 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
     egui::CollapsingHeader::new("Erosion Method Selection")
         .default_open(true)
         .show(ui, |ui| {
-            for &method in partitioning::Method::list(state.simulation_state().base().erosion_method.get_grid_size()).iter() {
+            for &method in partitioning::Method::list(
+                state
+                    .simulation_state()
+                    .base()
+                    .erosion_method
+                    .get_grid_size(),
+            )
+            .iter()
+            {
                 if method.matches(&state.simulation_state().base().erosion_method) {
                     ui.label(format!("-> {}", method.to_string()));
                 } else {
