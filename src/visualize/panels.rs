@@ -183,7 +183,29 @@ pub fn ui_side_panel(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &m
         ui_state.show_ui_control_panel,
         |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                // Erosion Method Selection
+                egui::CollapsingHeader::new("Controls")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        // Erosion Method Selection
+                        if ui.button("Run Simulation").clicked() {
+                            ui_state.ui_events.push(UiEvent::RunSimulation);
+                        }
+                        if ui.button("Clear Simulations").clicked() {
+                            ui_state.ui_events.push(UiEvent::Clear);
+                        }
+                        if ui.button("Show base layer").clicked() {
+                            ui_state.ui_events.push(UiEvent::ShowBaseLayer);
+                        }
+                        if ui.button("Show eroded layer").clicked() {
+                            ui_state.ui_events.push(UiEvent::ShowErodedLayer);
+                        }
+                        if ui.button("Show difference").clicked() {
+                            ui_state.ui_events.push(UiEvent::ShowDifference);
+                        }
+                        if ui.button("Show difference normalized").clicked() {
+                            ui_state.ui_events.push(UiEvent::ShowDifferenceNormalized);
+                        }
+                });
                 erosion_method_selection(ui, ui_state, state);
                 erosion_parameter_selection(ui, state);
                 layer_selection(ui, state);
