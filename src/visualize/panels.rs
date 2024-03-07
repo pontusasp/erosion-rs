@@ -81,6 +81,20 @@ pub fn ui_top_panel(
                         ui_state.ui_events.push(UiEvent::ExportActiveHeightmap);
                         ui.close_menu();
                     }
+                    if ui.button(
+                        if ui_state.show_ui_presentation_mode {
+                            "Exit Presentation Mode"
+                        } else {
+                            "Enter Presentation Mode"
+                        },
+                    ).clicked() {
+                        ui_state.show_ui_presentation_mode = !ui_state.show_ui_presentation_mode;
+                        ui.close_menu();
+                    }
+                    if ui.button("Quit").clicked() {
+                        ui_state.ui_events.push(UiEvent::Quit);
+                        ui.close_menu();
+                    }
                 });
                 ui.separator();
                 ui_save_as(egui_ctx, ui_state, state_name);

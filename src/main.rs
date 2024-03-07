@@ -129,6 +129,7 @@ impl State {
                 show_ui_control_panel: true,
                 show_ui_metadata: false,
                 show_ui_metrics: false,
+                show_ui_presentation_mode: true,
                 show_grid: false,
                 simulation_clear: true,
                 simulation_regenerate: false,
