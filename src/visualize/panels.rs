@@ -330,12 +330,7 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
                 ui.label(format!(
                     "Width x Height: {} x {}",
                     eroded.heightmap_eroded.heightmap.width,
-                    state
-                        .simulation_state()
-                        .base()
-                        .heightmap_base
-                        .heightmap
-                        .height
+                    eroded.heightmap_eroded.heightmap.height,
                 ));
                 ui.label(format!(
                     "Depth: {}",
