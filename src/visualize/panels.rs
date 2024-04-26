@@ -81,13 +81,14 @@ pub fn ui_top_panel(
                         ui_state.ui_events.push(UiEvent::ExportActiveHeightmap);
                         ui.close_menu();
                     }
-                    if ui.button(
-                        if ui_state.show_ui_presentation_mode {
+                    if ui
+                        .button(if ui_state.show_ui_presentation_mode {
                             "Exit Presentation Mode"
                         } else {
                             "Enter Presentation Mode"
-                        },
-                    ).clicked() {
+                        })
+                        .clicked()
+                    {
                         ui_state.show_ui_presentation_mode = !ui_state.show_ui_presentation_mode;
                         ui.close_menu();
                     }
@@ -205,7 +206,7 @@ pub fn ui_side_panel(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &m
                         if ui.button("Show difference normalized").clicked() {
                             ui_state.ui_events.push(UiEvent::ShowDifferenceNormalized);
                         }
-                });
+                    });
                 erosion_method_selection(ui, ui_state, state);
                 erosion_parameter_selection(ui, state);
                 layer_selection(ui, state);
