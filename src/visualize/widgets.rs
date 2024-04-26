@@ -298,7 +298,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                 .default_open(true)
                 .show(ui, |ui| {
                     match state.simulation_state_mut().base_mut().erosion_method {
-                        partitioning::Method::Default => (),
+                        partitioning::Method::Default => (), // TODO: Fix default always using default grid size, this breaks margin calculations
                         partitioning::Method::Subdivision(ref mut grid_size)
                         // | partitioning::Method::SubdivisionOverlap(ref mut grid_size)
                             => {
