@@ -89,41 +89,43 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
     egui::CollapsingHeader::new("Post Processing")
         .default_open(true)
         .show(ui, |ui| {
-            ui.add(
-                egui::Slider::new(
-                    &mut ui_state.blur_sigma,
-                    GAUSSIAN_BLUR_SIGMA_RANGE_MIN..=GAUSSIAN_BLUR_SIGMA_RANGE_MAX,
-                )
-                .text("Gaussian Blur Sigma"),
-            );
-            if ui.button("Blur").clicked() {
-                ui_state.ui_events.push(UiEvent::Blur);
-            }
-            let (mut canny_low, mut canny_high) = ui_state.canny_edge;
-            let mut updated = false;
-            updated = updated
-                || ui
-                    .add(
-                        egui::Slider::new(&mut canny_low, 0.0001..=canny_high)
-                            .text("Lower Threshold"),
+            if !ui_state.show_ui_presentation_mode {
+                ui.add(
+                    egui::Slider::new(
+                        &mut ui_state.blur_sigma,
+                        GAUSSIAN_BLUR_SIGMA_RANGE_MIN..=GAUSSIAN_BLUR_SIGMA_RANGE_MAX,
                     )
-                    .changed();
-            updated = updated
-                || ui
-                    .add(
-                        egui::Slider::new(&mut canny_high, canny_low..=120.0)
-                            .text("Upper Threshold"),
-                    )
-                    .changed();
-            ui_state.canny_edge = (canny_low, canny_high);
-            if ui.button("Edge Detect").clicked() || updated {
-                ui_state.ui_events.push(UiEvent::EdgeDetect);
-            }
-            if ui.button("Blur + Edge Detect").clicked() {
-                ui_state.ui_events.push(UiEvent::BlurEdgeDetect);
-            }
+                    .text("Gaussian Blur Sigma"),
+                );
+                if ui.button("Blur").clicked() {
+                    ui_state.ui_events.push(UiEvent::Blur);
+                }
+                let (mut canny_low, mut canny_high) = ui_state.canny_edge;
+                let mut updated = false;
+                updated = updated
+                    || ui
+                        .add(
+                            egui::Slider::new(&mut canny_low, 0.0001..=canny_high)
+                                .text("Lower Threshold"),
+                        )
+                        .changed();
+                updated = updated
+                    || ui
+                        .add(
+                            egui::Slider::new(&mut canny_high, canny_low..=120.0)
+                                .text("Upper Threshold"),
+                        )
+                        .changed();
+                ui_state.canny_edge = (canny_low, canny_high);
+                if ui.button("Edge Detect").clicked() || updated {
+                    ui_state.ui_events.push(UiEvent::EdgeDetect);
+                }
+                if ui.button("Blur + Edge Detect").clicked() {
+                    ui_state.ui_events.push(UiEvent::BlurEdgeDetect);
+                }
 
-            ui.separator();
+                ui.separator();
+            }
 
             let mut props = ui_state.isoline;
             let mut updated = false;
@@ -296,7 +298,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                 .default_open(true)
                 .show(ui, |ui| {
                     match state.simulation_state_mut().base_mut().erosion_method {
-                        partitioning::Method::Default => (),
+                        partitioning::Method::Default => (), // TODO: Fix default always using default grid size, this breaks margin calculations
                         partitioning::Method::Subdivision(ref mut grid_size)
                         // | partitioning::Method::SubdivisionOverlap(ref mut grid_size)
                             => {
@@ -345,8 +347,10 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                             );
                         }
                     };
-                    ui.toggle_value(&mut state.parameters.margin, "Use Margin");
-                    ui.toggle_value(&mut ui_state.show_grid, "Show Grid");
+                    if !ui_state.show_ui_presentation_mode {
+                        ui.toggle_value(&mut state.parameters.margin, "Use Margin");
+                        ui.toggle_value(&mut ui_state.show_grid, "Show Grid");
+                    }
                 });
         });
 
@@ -357,82 +361,92 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
     egui::CollapsingHeader::new("Erosion Parameters")
         .default_open(true)
         .show(ui, |ui| {
-            ui.add(
-                egui::Slider::new(&mut state.parameters.erosion_params.erosion_radius, 0..=5)
-                    .text("Erosion Radius"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(&mut state.parameters.erosion_params.inertia, 0.0..=5.5)
-                    .text("Inertia"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.sediment_capacity_factor,
-                    0.0..=5.5,
-                )
-                .text("Sediment Capacity Factor"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.min_sediment_capacity,
-                    0.0..=5.5,
-                )
-                .text("Min Sediment Capacity"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(&mut state.parameters.erosion_params.erode_speed, 0.0..=5.5)
-                    .text("Erode Speed"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.deposit_speed,
-                    0.0..=5.5,
-                )
-                .text("Deposit Speed"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.evaporate_speed,
-                    0.0..=5.5,
-                )
-                .text("Evaporate Speed"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(&mut state.parameters.erosion_params.gravity, 0.0..=5.5)
-                    .text("Gravity"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.max_droplet_lifetime,
-                    0..=5,
-                )
-                .text("Max Droplet Lifetime"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.initial_water_volume,
-                    0.0..=5.5,
-                )
-                .text("Initial Water Volume"),
-            )
-            .changed();
-            ui.add(
-                egui::Slider::new(
-                    &mut state.parameters.erosion_params.initial_speed,
-                    0.0..=5.5,
-                )
-                .text("Initial Speed"),
-            )
-            .changed();
+            egui::CollapsingHeader::new("Advanced")
+                .default_open(false)
+                .show(ui, |ui| {
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.erosion_radius,
+                            0..=5,
+                        )
+                        .text("Erosion Radius"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(&mut state.parameters.erosion_params.inertia, 0.0..=5.5)
+                            .text("Inertia"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.sediment_capacity_factor,
+                            0.0..=5.5,
+                        )
+                        .text("Sediment Capacity Factor"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.min_sediment_capacity,
+                            0.0..=5.5,
+                        )
+                        .text("Min Sediment Capacity"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.erode_speed,
+                            0.0..=5.5,
+                        )
+                        .text("Erode Speed"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.deposit_speed,
+                            0.0..=5.5,
+                        )
+                        .text("Deposit Speed"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.evaporate_speed,
+                            0.0..=5.5,
+                        )
+                        .text("Evaporate Speed"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(&mut state.parameters.erosion_params.gravity, 0.0..=5.5)
+                            .text("Gravity"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.max_droplet_lifetime,
+                            0..=5,
+                        )
+                        .text("Max Droplet Lifetime"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.initial_water_volume,
+                            0.0..=5.5,
+                        )
+                        .text("Initial Water Volume"),
+                    )
+                    .changed();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut state.parameters.erosion_params.initial_speed,
+                            0.0..=5.5,
+                        )
+                        .text("Initial Speed"),
+                    )
+                    .changed();
+                });
             ui.add(
                 egui::Slider::new(
                     &mut state.parameters.erosion_params.num_iterations,

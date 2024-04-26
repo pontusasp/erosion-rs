@@ -25,7 +25,7 @@ const HEIGHT: u32 = 800;
 const PRESET_GRID_SIZE: usize = 6;
 const PRESET_HEIGHTMAP_SIZE: usize = 512;
 const GRID_SIZE_RANGE_MIN: usize = 2;
-const GRID_SIZE_RANGE_MAX: usize = 128;
+const GRID_SIZE_RANGE_MAX: usize = 32;
 const GAUSSIAN_BLUR_SIGMA_RANGE_MIN: f32 = 0.0;
 const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
@@ -129,6 +129,7 @@ impl State {
                 show_ui_control_panel: true,
                 show_ui_metadata: false,
                 show_ui_metrics: false,
+                show_ui_presentation_mode: true,
                 show_grid: false,
                 simulation_clear: true,
                 simulation_regenerate: false,
