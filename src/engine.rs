@@ -5,7 +5,6 @@ use crate::erode::Parameters;
 use crate::heightmap::HeightmapType;
 use crate::partitioning::Method;
 use crate::State;
-use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 

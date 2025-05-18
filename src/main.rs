@@ -4,9 +4,6 @@ use crate::heightmap::HeightmapType;
 use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
 use crate::visualize::events::UiEvent;
 use crate::visualize::ui::{IsolineProperties, UiState};
-use image::io::Reader as ImageReader;
-use macroquad::miniquad::conf::Icon;
-use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{env, fs};
 
@@ -31,6 +28,8 @@ const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX: u16 = 10;
 
+/*
+use image::io::Reader as ImageReader;
 fn window_conf() -> Conf {
     fn icons() -> Option<Icon> {
         let icon_small_img = ImageReader::open("assets/icon16x16.png")
@@ -95,6 +94,7 @@ fn window_conf() -> Conf {
         ..Default::default()
     }
 }
+*/
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct State {
@@ -168,7 +168,6 @@ enum Command {
     GenerateScript,
 }
 
-#[macroquad::main(window_conf)]
 async fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -236,6 +235,6 @@ async fn main() {
     }
 
     if commands.is_empty() {
-        visualize::run().await;
+        visualize::run();
     }
 }

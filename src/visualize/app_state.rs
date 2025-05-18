@@ -1,4 +1,3 @@
-use macroquad::texture::{Image, Texture2D};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -1,11 +1,10 @@
+use bevy::prelude::*;
 use crate::engine::{Engine, EngineError};
 use crate::erode::Parameters;
 use crate::heightmap::{HeightmapParameters, HeightmapType};
 use crate::partitioning::Method;
 use crate::visualize::events::{poll_ui_events, UiEvent};
 use crate::State;
-use egui::{Pos2, Rect};
-use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::mem;
@@ -90,6 +89,7 @@ fn poll(state: &mut State) {
     );
 }
 
+/*
 fn draw(state: &mut State, ui: bool) {
     clear_background(BLACK);
     let canvas_rect = if ui {
@@ -119,6 +119,7 @@ fn draw(state: &mut State, ui: bool) {
         None
     };
 }
+*/
 
 pub fn call(mut engine: Engine, function_name: &FunctionName) -> Result<Engine, EngineError> {
     let mut function = if let Some(function) = engine.script.get(function_name) {

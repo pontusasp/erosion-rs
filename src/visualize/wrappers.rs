@@ -2,7 +2,7 @@ use crate::heightmap::io::save_heightmap_as_image;
 use crate::heightmap::Heightmap;
 use crate::visualize::{heightmap_to_image_rgb, heightmap_to_texture};
 use bracket_noise::prelude::{FractalType, NoiseType};
-use macroquad::texture::{Image, Texture2D};
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 

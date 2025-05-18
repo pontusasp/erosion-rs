@@ -1,7 +1,5 @@
+use bevy::prelude::*;
 use std::collections::HashSet;
-
-use macroquad::prelude::*;
-
 use crate::visualize::events::{UiEvent, UiWindow};
 use crate::visualize::ui::UiState;
 
@@ -39,16 +37,16 @@ pub const KEYBINDS: &[UiKeybind] = &[
         UiEvent::ToggleUi(UiWindow::Keybinds),
     ),
     UiKeybind::Pressed(UiKey::Single(KEYCODE_NEW_HEIGHTMAP), UiEvent::NewHeightmap),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::R), UiEvent::Clear),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyR), UiEvent::Clear),
     #[cfg(feature = "export")]
-    UiKeybind::Pressed(UiKey::Single(KeyCode::S), UiEvent::ExportHeightmap),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyS), UiEvent::ExportHeightmap),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Tab), UiEvent::RunSimulation),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::Q), UiEvent::Quit),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyQ), UiEvent::Quit),
     UiKeybind::Pressed(UiKey::Single(KeyCode::Escape), UiEvent::Quit),
     UiKeybind::Down(UiKey::Single(KeyCode::Space), UiEvent::ShowBaseLayer),
-    UiKeybind::Down(UiKey::Single(KeyCode::D), UiEvent::ShowDifference),
+    UiKeybind::Down(UiKey::Single(KeyCode::KeyD), UiEvent::ShowDifference),
     UiKeybind::Down(
-        UiKey::Double((KeyCode::LeftShift, KeyCode::D)),
+        UiKey::Double((KeyCode::ShiftLeft, KeyCode::KeyD)),
         UiEvent::ShowDifferenceNormalized,
     ),
     UiKeybind::Pressed(
@@ -59,10 +57,10 @@ pub const KEYBINDS: &[UiKeybind] = &[
         UiKey::Single(KEYCODE_PREVIOUS_PARTITIONING_METHOD),
         UiEvent::PreviousPartitioningMethod,
     ),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::Up), UiEvent::PreviousState),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::Down), UiEvent::NextState),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::Left), UiEvent::PreviousDiff),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::Right), UiEvent::NextDiff),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::ArrowUp), UiEvent::PreviousState),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::ArrowDown), UiEvent::NextState),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::ArrowLeft), UiEvent::PreviousDiff),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::ArrowRight), UiEvent::NextDiff),
     UiKeybind::Pressed(
         UiKey::Single(KEYCODE_TOGGLE_METADATA_UI),
         UiEvent::ToggleUi(UiWindow::Metadata),
@@ -71,24 +69,24 @@ pub const KEYBINDS: &[UiKeybind] = &[
         UiKey::Single(KEYCODE_TOGGLE_METRICS_UI),
         UiEvent::ToggleUi(UiWindow::Metrics),
     ),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::V), UiEvent::ShowErodedLayer),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::B), UiEvent::Blur),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::C), UiEvent::EdgeDetect),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::X), UiEvent::BlurEdgeDetect),
-    UiKeybind::Pressed(UiKey::Single(KeyCode::I), UiEvent::Isoline),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyV), UiEvent::ShowErodedLayer),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyB), UiEvent::Blur),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyC), UiEvent::EdgeDetect),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyX), UiEvent::BlurEdgeDetect),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyI), UiEvent::Isoline),
     #[cfg(feature = "export")]
-    UiKeybind::Pressed(UiKey::Single(KeyCode::W), UiEvent::ExportState),
+    UiKeybind::Pressed(UiKey::Single(KeyCode::KeyW), UiEvent::ExportState),
 ];
 
-pub fn poll_ui_keybinds(ui_state: &mut UiState) {
+pub fn poll_ui_keybinds(ui_state: &mut UiState, keys: Res<ButtonInput<KeyCode>>) {
     let mut consumed_keys = HashSet::new();
     for &keybind in KEYBINDS.iter() {
         match keybind {
             UiKeybind::Pressed(keybind, event) => match keybind {
                 UiKey::Single(_) => (),
                 UiKey::Double(key_codes) => {
-                    if is_key_pressed(key_codes.0)
-                        && is_key_pressed(key_codes.1)
+                    if keys.just_pressed(key_codes.0)
+                        && keys.just_pressed(key_codes.1)
                         && !consumed_keys.contains(&key_codes.1)
                     {
                         consumed_keys.insert(key_codes.1);
@@ -99,8 +97,8 @@ pub fn poll_ui_keybinds(ui_state: &mut UiState) {
             UiKeybind::Down(keybind, event) => match keybind {
                 UiKey::Single(_) => (),
                 UiKey::Double(key_codes) => {
-                    if is_key_down(key_codes.0)
-                        && is_key_down(key_codes.1)
+                    if keys.pressed(key_codes.0)
+                        && keys.pressed(key_codes.1)
                         && !consumed_keys.contains(&key_codes.1)
                     {
                         consumed_keys.insert(key_codes.1);
@@ -114,7 +112,7 @@ pub fn poll_ui_keybinds(ui_state: &mut UiState) {
         match keybind {
             UiKeybind::Pressed(keybind, event) => match keybind {
                 UiKey::Single(key_code) => {
-                    if is_key_pressed(key_code) && !consumed_keys.contains(&key_code) {
+                    if keys.just_pressed(key_code) && !consumed_keys.contains(&key_code) {
                         consumed_keys.insert(key_code);
                         ui_state.ui_events.push(event);
                     }
@@ -123,7 +121,7 @@ pub fn poll_ui_keybinds(ui_state: &mut UiState) {
             },
             UiKeybind::Down(keybind, event) => match keybind {
                 UiKey::Single(key_code) => {
-                    if is_key_down(key_code) && !consumed_keys.contains(&key_code) {
+                    if keys.pressed(key_code) && !consumed_keys.contains(&key_code) {
                         consumed_keys.insert(key_code);
                         ui_state.ui_events.push(event);
                     }

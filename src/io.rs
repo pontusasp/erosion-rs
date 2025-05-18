@@ -14,6 +14,7 @@ const ICON_FILE_EXT: &'static str = "png";
 const OUTPUT_DIRECTORY: &'static str = "saves";
 pub const DEFAULT_NAME: &'static str = "Unnamed";
 
+#[allow(warnings)]
 #[derive(Debug)]
 pub enum StateIoError {
     RWError(io::Error),

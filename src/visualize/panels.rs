@@ -4,18 +4,18 @@ use crate::visualize::keybinds::{
     KEYCODE_TOGGLE_KEYBINDS_UI, KEYCODE_TOGGLE_METADATA_UI, KEYCODE_TOGGLE_METRICS_UI,
 };
 use crate::visualize::ui::UiState;
-use egui::Rect;
+use bevy_egui::egui::Rect;
 
 use super::{widgets::*, AppState};
 
 #[cfg(feature = "export")]
 pub fn ui_save_as(
-    egui_ctx: &egui::Context,
+    egui_ctx: &bevy_egui::egui::Context,
     ui_state: &mut UiState,
     state_name: &mut Option<String>,
 ) {
     if ui_state.ui_events.contains(&UiEvent::ExportStateAs) {
-        egui::Window::new("Save As").show(egui_ctx, |ui| {
+        bevy_egui::egui::Window::new("Save As").show(egui_ctx, |ui| {
             ui.label("Save as:");
 
             let mut file_name = if let Some(name) = state_name {
@@ -38,12 +38,12 @@ pub fn ui_save_as(
 }
 
 pub fn ui_top_panel(
-    egui_ctx: &egui::Context,
+    egui_ctx: &bevy_egui::egui::Context,
     ui_state: &mut UiState,
     state_name: &mut Option<String>,
 ) {
-    egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
-        egui::menu::bar(ui, |ui| {
+    bevy_egui::egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
+        bevy_egui::egui::menu::bar(ui, |ui| {
             let heading = if let Some(ref string) = state_name {
                 string.as_str()
             } else {
@@ -178,13 +178,13 @@ pub fn ui_top_panel(
     });
 }
 
-pub fn ui_side_panel(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &mut AppState) {
-    egui::SidePanel::left("left_panel").show_animated(
+pub fn ui_side_panel(egui_ctx: &bevy_egui::egui::Context, ui_state: &mut UiState, state: &mut AppState) {
+    bevy_egui::egui::SidePanel::left("left_panel").show_animated(
         egui_ctx,
         ui_state.show_ui_control_panel,
         |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                egui::CollapsingHeader::new("Controls")
+            bevy_egui::egui::ScrollArea::vertical().show(ui, |ui| {
+                bevy_egui::egui::CollapsingHeader::new("Controls")
                     .default_open(true)
                     .show(ui, |ui| {
                         // Erosion Method Selection
@@ -217,9 +217,9 @@ pub fn ui_side_panel(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &m
     );
 }
 
-pub fn ui_keybinds_window(egui_ctx: &egui::Context, ui_state: &mut UiState) {
+pub fn ui_keybinds_window(egui_ctx: &bevy_egui::egui::Context, ui_state: &mut UiState) {
     if ui_state.show_ui_keybinds {
-        egui::Window::new(format!("Keybinds [{:?}]", KEYCODE_TOGGLE_KEYBINDS_UI)).show(
+        bevy_egui::egui::Window::new(format!("Keybinds [{:?}]", KEYCODE_TOGGLE_KEYBINDS_UI)).show(
             egui_ctx,
             |ui| {
                 for keybind in KEYBINDS {
@@ -261,9 +261,9 @@ pub fn ui_keybinds_window(egui_ctx: &egui::Context, ui_state: &mut UiState) {
     }
 }
 
-pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, state: &mut AppState) {
+pub fn ui_metadata_window(egui_ctx: &bevy_egui::egui::Context, ui_state: &mut UiState, state: &mut AppState) {
     if ui_state.show_ui_metadata {
-        egui::Window::new(format!("Metadata")).show(egui_ctx, |ui| {
+        bevy_egui::egui::Window::new(format!("Metadata")).show(egui_ctx, |ui| {
             ui.heading("Base Heightmap");
             ui.label(format!(
                 "Width x Height: {} x {}",
@@ -358,14 +358,14 @@ pub fn ui_metadata_window(egui_ctx: &egui::Context, ui_state: &mut UiState, stat
 }
 
 pub fn ui_metrics_window(
-    egui_ctx: &egui::Context,
+    egui_ctx: &bevy_egui::egui::Context,
     ui_state: &mut UiState,
     state: &mut AppState,
 ) -> Option<Rect> {
     let mut rect = None;
     if ui_state.show_ui_metrics {
         rect = Some(
-            egui::Window::new(format!("Metrics [{:?}]", KEYCODE_TOGGLE_METRICS_UI))
+            bevy_egui::egui::Window::new(format!("Metrics [{:?}]", KEYCODE_TOGGLE_METRICS_UI))
                 .show(egui_ctx, |ui| {
                     ui.heading("Average Height");
                     plot_height(ui, state);

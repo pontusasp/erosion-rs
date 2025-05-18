@@ -1,7 +1,7 @@
 use std::mem;
 
-use egui::{Color32, Rect};
-use macroquad::prelude::*;
+use bevy_egui::egui::{Color32, Rect};
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::heightmap::HeightmapPrecision;
@@ -74,7 +74,7 @@ pub fn ui_draw(state: &mut State) -> Option<FrameSlots> {
     let state_name = &mut state.state_name;
     if ui_state.show_ui_all {
         let mut central_rect = None;
-        egui_macroquad::ui(|egui_ctx| {
+        bevy_egui::egui::ui(|egui_ctx| {
             // Top Panel
             ui_top_panel(egui_ctx, ui_state, state_name);
 
@@ -83,8 +83,8 @@ pub fn ui_draw(state: &mut State) -> Option<FrameSlots> {
 
             // Central Panel
             central_rect = Some(
-                egui::CentralPanel::default()
-                    .frame(egui::containers::Frame {
+                bevy_egui::egui::CentralPanel::default()
+                    .frame(bevy_egui::egui::containers::Frame {
                         fill: Color32::TRANSPARENT,
                         ..Default::default()
                     })

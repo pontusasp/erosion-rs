@@ -1,8 +1,5 @@
 use crate::{heightmap, State};
 
-use egui::{Pos2, Rect};
-use macroquad::prelude::*;
-
 pub mod app_state;
 pub mod canvas;
 pub mod events;
@@ -23,7 +20,6 @@ pub fn generate_default_state() -> State {
 }
 
 pub async fn run() {
-    prevent_quit();
 
     let mut state = {
         let state = generate_default_state();
@@ -148,7 +144,7 @@ pub fn draw_frame(rect: &Rect, texture: &Texture2D) {
     let margin_top = (rect.height() - side) / 2.0;
     texture.set_filter(FilterMode::Nearest);
     draw_texture_ex(
-        *texture,
+        texture,
         rect.min.x + margin_left,
         rect.min.y + margin_top,
         WHITE,

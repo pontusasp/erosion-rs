@@ -1,5 +1,5 @@
 use bracket_noise::prelude::NoiseType;
-use egui::{Color32, Pos2, Rect, Vec2};
+use bevy_egui::egui::{Color32, Pos2, Rect, Vec2};
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::heightmap::{HeightmapParameters, HeightmapType};
@@ -17,12 +17,12 @@ use crate::{
 
 use super::{canvas::Canvas, AppState, SimulationState};
 
-pub fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
+pub fn plot_height(ui: &mut bevy_egui::egui::Ui, state: &mut AppState) {
     let width = 800.0;
     let height = 800.0;
     let mut canvas = Canvas::new(
         Vec2::new(width, height),
-        egui::Stroke::new(1.0, Color32::WHITE),
+        bevy_egui::egui::Stroke::new(1.0, Color32::WHITE),
     );
     canvas.draw(ui);
 
@@ -69,7 +69,7 @@ pub fn plot_height(ui: &mut egui::Ui, state: &mut AppState) {
 }
 
 fn draw_polyline(
-    ui: &mut egui::Ui,
+    ui: &mut bevy_egui::egui::Ui,
     points: &Vec<f32>,
     canvas: &Canvas,
     width: f32,
@@ -85,13 +85,13 @@ fn draw_polyline(
     }
 }
 
-pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
-    egui::CollapsingHeader::new("Post Processing")
+pub fn post_processing(ui: &mut bevy_egui::egui::Ui, ui_state: &mut UiState) {
+    bevy_egui::egui::CollapsingHeader::new("Post Processing")
         .default_open(true)
         .show(ui, |ui| {
             if !ui_state.show_ui_presentation_mode {
                 ui.add(
-                    egui::Slider::new(
+                    bevy_egui::egui::Slider::new(
                         &mut ui_state.blur_sigma,
                         GAUSSIAN_BLUR_SIGMA_RANGE_MIN..=GAUSSIAN_BLUR_SIGMA_RANGE_MAX,
                     )
@@ -105,14 +105,14 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                 updated = updated
                     || ui
                         .add(
-                            egui::Slider::new(&mut canny_low, 0.0001..=canny_high)
+                            bevy_egui::egui::Slider::new(&mut canny_low, 0.0001..=canny_high)
                                 .text("Lower Threshold"),
                         )
                         .changed();
                 updated = updated
                     || ui
                         .add(
-                            egui::Slider::new(&mut canny_high, canny_low..=120.0)
+                            bevy_egui::egui::Slider::new(&mut canny_high, canny_low..=120.0)
                                 .text("Upper Threshold"),
                         )
                         .changed();
@@ -131,11 +131,11 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
             let mut updated = false;
             updated = updated
                 || ui
-                    .add(egui::Slider::new(&mut props.height, 0.0..=1.0).text("Isoline value"))
+                    .add(bevy_egui::egui::Slider::new(&mut props.height, 0.0..=1.0).text("Isoline value"))
                     .changed();
             updated = updated
                 || ui
-                    .add(egui::Slider::new(&mut props.error, 0.0..=0.1).text("Isoline error"))
+                    .add(bevy_egui::egui::Slider::new(&mut props.error, 0.0..=0.1).text("Isoline error"))
                     .changed();
             if ui.button("Show isoline").clicked() {
                 updated = true;
@@ -182,21 +182,21 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
                 updated = updated
                     || ui
                         .add(
-                            egui::Slider::new(&mut props.blur_augmentation.1, 0.0..=5.0)
+                            bevy_egui::egui::Slider::new(&mut props.blur_augmentation.1, 0.0..=5.0)
                                 .text("Blur amount"),
                         )
                         .changed();
                 updated = updated
                     || ui
                         .add(
-                            egui::Slider::new(&mut props.blur_augmentation.2, 0..=10)
+                            bevy_egui::egui::Slider::new(&mut props.blur_augmentation.2, 0..=10)
                                 .text("Noise Reduction Kernel"),
                         )
                         .changed();
                 updated = updated
                     || ui
                         .add(
-                            egui::Slider::new(&mut props.blur_augmentation.3, 0..=10)
+                            bevy_egui::egui::Slider::new(&mut props.blur_augmentation.3, 0..=10)
                                 .text("Noise Reduction Iterations"),
                         )
                         .changed();
@@ -263,8 +263,8 @@ pub fn post_processing(ui: &mut egui::Ui, ui_state: &mut UiState) {
     ui.separator();
 }
 
-pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
-    egui::CollapsingHeader::new("Erosion Method Selection")
+pub fn erosion_method_selection(ui: &mut bevy_egui::egui::Ui, ui_state: &mut UiState, state: &mut AppState) {
+    bevy_egui::egui::CollapsingHeader::new("Erosion Method Selection")
         .default_open(true)
         .show(ui, |ui| {
             for &method in partitioning::Method::list(
@@ -294,7 +294,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                 }
             }
 
-            egui::CollapsingHeader::new("Partitioning Parameters")
+            bevy_egui::egui::CollapsingHeader::new("Partitioning Parameters")
                 .default_open(true)
                 .show(ui, |ui| {
                     match state.simulation_state_mut().base_mut().erosion_method {
@@ -303,7 +303,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                         // | partitioning::Method::SubdivisionOverlap(ref mut grid_size)
                             => {
                             ui.add(
-                                egui::Slider::new(
+                                bevy_egui::egui::Slider::new(
                                     grid_size,
                                     GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
                                 )
@@ -315,21 +315,21 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                             (ref mut sigma, ref mut thickness),
                         )) => {
                             ui.add(
-                                egui::Slider::new(
+                                bevy_egui::egui::Slider::new(
                                     grid_size,
                                     GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
                                 )
                                 .text("Grid Size"),
                             );
                             ui.add(
-                                egui::Slider::new(
+                                bevy_egui::egui::Slider::new(
                                     sigma,
                                     GAUSSIAN_BLUR_SIGMA_RANGE_MIN..=GAUSSIAN_BLUR_SIGMA_RANGE_MAX,
                                 )
                                 .text("Gaussian Blur Sigma"),
                             );
                             ui.add(
-                                egui::Slider::new(
+                                bevy_egui::egui::Slider::new(
                                     thickness,
                                     GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN
                                         ..=GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX,
@@ -339,7 +339,7 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
                         }
                         partitioning::Method::GridOverlapBlend(ref mut grid_size) => {
                             ui.add(
-                                egui::Slider::new(
+                                bevy_egui::egui::Slider::new(
                                     grid_size,
                                     GRID_SIZE_RANGE_MIN..=GRID_SIZE_RANGE_MAX,
                                 )
@@ -357,15 +357,15 @@ pub fn erosion_method_selection(ui: &mut egui::Ui, ui_state: &mut UiState, state
     ui.separator();
 }
 
-pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
-    egui::CollapsingHeader::new("Erosion Parameters")
+pub fn erosion_parameter_selection(ui: &mut bevy_egui::egui::Ui, state: &mut AppState) {
+    bevy_egui::egui::CollapsingHeader::new("Erosion Parameters")
         .default_open(true)
         .show(ui, |ui| {
-            egui::CollapsingHeader::new("Advanced")
+            bevy_egui::egui::CollapsingHeader::new("Advanced")
                 .default_open(false)
                 .show(ui, |ui| {
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.erosion_radius,
                             0..=5,
                         )
@@ -373,12 +373,12 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(&mut state.parameters.erosion_params.inertia, 0.0..=5.5)
+                        bevy_egui::egui::Slider::new(&mut state.parameters.erosion_params.inertia, 0.0..=5.5)
                             .text("Inertia"),
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.sediment_capacity_factor,
                             0.0..=5.5,
                         )
@@ -386,7 +386,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.min_sediment_capacity,
                             0.0..=5.5,
                         )
@@ -394,7 +394,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.erode_speed,
                             0.0..=5.5,
                         )
@@ -402,7 +402,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.deposit_speed,
                             0.0..=5.5,
                         )
@@ -410,7 +410,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.evaporate_speed,
                             0.0..=5.5,
                         )
@@ -418,12 +418,12 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(&mut state.parameters.erosion_params.gravity, 0.0..=5.5)
+                        bevy_egui::egui::Slider::new(&mut state.parameters.erosion_params.gravity, 0.0..=5.5)
                             .text("Gravity"),
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.max_droplet_lifetime,
                             0..=5,
                         )
@@ -431,7 +431,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.initial_water_volume,
                             0.0..=5.5,
                         )
@@ -439,7 +439,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     )
                     .changed();
                     ui.add(
-                        egui::Slider::new(
+                        bevy_egui::egui::Slider::new(
                             &mut state.parameters.erosion_params.initial_speed,
                             0.0..=5.5,
                         )
@@ -448,7 +448,7 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
                     .changed();
                 });
             ui.add(
-                egui::Slider::new(
+                bevy_egui::egui::Slider::new(
                     &mut state.parameters.erosion_params.num_iterations,
                     0..=20_000_000,
                 )
@@ -463,8 +463,8 @@ pub fn erosion_parameter_selection(ui: &mut egui::Ui, state: &mut AppState) {
 
     ui.separator();
 }
-pub fn layer_selection(ui: &mut egui::Ui, state: &AppState) {
-    egui::CollapsingHeader::new("Layers")
+pub fn layer_selection(ui: &mut bevy_egui::egui::Ui, state: &AppState) {
+    bevy_egui::egui::CollapsingHeader::new("Layers")
         .default_open(true)
         .show(ui, |ui| {
             let selected_diff: Option<usize> =
@@ -507,17 +507,17 @@ pub fn layer_selection(ui: &mut egui::Ui, state: &AppState) {
 
 fn heightmap_parameters(
     params: &mut HeightmapParameters,
-    ui: &mut egui::Ui,
+    ui: &mut bevy_egui::egui::Ui,
     ui_state: &mut UiState,
     state: &mut AppState,
 ) {
     let mut size = params.size;
     let mut updated = ui
-        .add(egui::Slider::new(&mut size, 2usize.pow(6)..=2usize.pow(12)).text("Resolution"))
+        .add(bevy_egui::egui::Slider::new(&mut size, 2usize.pow(6)..=2usize.pow(12)).text("Resolution"))
         .changed();
     params.size = size;
 
-    ui.add(egui::Checkbox::new(
+    ui.add(bevy_egui::egui::Checkbox::new(
         &mut state.parameters.auto_apply,
         "Auto Apply",
     ));
@@ -540,7 +540,7 @@ fn heightmap_parameters(
 
 fn procedural_generation_settings(
     settings: &mut ProceduralHeightmapSettings,
-    ui: &mut egui::Ui,
+    ui: &mut bevy_egui::egui::Ui,
     ui_state: &mut UiState,
     state: &mut AppState,
 ) {
@@ -548,11 +548,11 @@ fn procedural_generation_settings(
 
     updated = updated
         || ui
-            .add(egui::Slider::new(&mut settings.seed, 0..=10000000000).text("Seed"))
+            .add(bevy_egui::egui::Slider::new(&mut settings.seed, 0..=10000000000).text("Seed"))
             .changed();
 
     let noise_type = settings.noise_type;
-    egui::ComboBox::from_label("Noise Type")
+    bevy_egui::egui::ComboBox::from_label("Noise Type")
         .selected_text(format!("{:?}", settings.noise_type))
         .show_ui(ui, |ui| {
             ui.selectable_value(&mut settings.noise_type, NoiseType::Value.into(), "Value");
@@ -599,24 +599,24 @@ fn procedural_generation_settings(
 
     updated = updated
         || ui
-            .add(egui::Slider::new(&mut settings.fractal_octaves, 0..=28).text("Fractal Octaves"))
+            .add(bevy_egui::egui::Slider::new(&mut settings.fractal_octaves, 0..=28).text("Fractal Octaves"))
             .drag_released();
     updated = updated
         || ui
-            .add(egui::Slider::new(&mut settings.fractal_gain, 0.0..=2.0).text("Fractal Gain"))
+            .add(bevy_egui::egui::Slider::new(&mut settings.fractal_gain, 0.0..=2.0).text("Fractal Gain"))
             .changed();
     updated = updated
         || ui
             .add(
-                egui::Slider::new(&mut settings.fractal_lacunarity, 0.0..=7.0)
+                bevy_egui::egui::Slider::new(&mut settings.fractal_lacunarity, 0.0..=7.0)
                     .text("Fractal Lacunarity"),
             )
             .drag_released();
     updated = updated
         || ui
-            .add(egui::Slider::new(&mut settings.frequency, 0.0..=5.0).text("Frequency"))
+            .add(bevy_egui::egui::Slider::new(&mut settings.frequency, 0.0..=5.0).text("Frequency"))
             .changed();
-    ui.add(egui::Checkbox::new(
+    ui.add(bevy_egui::egui::Checkbox::new(
         &mut state.parameters.auto_apply,
         "Auto Apply",
     ));
@@ -637,18 +637,18 @@ fn procedural_generation_settings(
     }
 }
 pub fn heightmap_generation_settings(
-    ui: &mut egui::Ui,
+    ui: &mut bevy_egui::egui::Ui,
     ui_state: &mut UiState,
     state: &mut AppState,
 ) {
-    egui::CollapsingHeader::new("Heightmap Generation")
+    bevy_egui::egui::CollapsingHeader::new("Heightmap Generation")
         .default_open(true)
         .show(ui, |ui| {
             if state.simulation_state().eroded().is_none()
                 && state.simulation_state().id() == state.simulation_base_indices.len() - 1
             {
                 let mut heightmap_type = state.parameters.heightmap_type;
-                egui::ComboBox::from_label("Heightmap Type")
+                bevy_egui::egui::ComboBox::from_label("Heightmap Type")
                     .selected_text(format!("{}", heightmap_type))
                     .show_ui(ui, |ui| {
                         for ref mut t in HeightmapType::iterator() {
