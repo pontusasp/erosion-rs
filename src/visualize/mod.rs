@@ -1,3 +1,6 @@
+use bevy::image::Image;
+use bevy::render::render_resource::Texture;
+
 use crate::{heightmap, State};
 
 pub mod app_state;
@@ -250,9 +253,9 @@ pub fn layered_heightmaps_to_texture(
     layers: &Vec<&HeightmapLayer>,
     normalize_on_overflow: bool,
     max_height: f32,
-) -> Texture2D {
+) -> Texture {
     let image = layered_heightmaps_to_image(size, layers, normalize_on_overflow, max_height);
-    Texture2D::from_image(&image)
+    Texture::from_image(&image)
 }
 
 pub fn layered_heightmaps_to_image(

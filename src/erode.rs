@@ -116,7 +116,7 @@ pub struct State {
 
 impl State {
     fn random_in_range(&mut self, min: f32, max: f32) -> f32 {
-        self.rng.gen::<f32>() * (max - min) + min
+        self.rng.r#gen::<f32>() * (max - min) + min
     }
 }
 

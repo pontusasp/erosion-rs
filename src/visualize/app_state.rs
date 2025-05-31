@@ -1,3 +1,4 @@
+use bevy::render::render_resource::Texture;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -218,7 +219,7 @@ impl SimulationState {
         Rc::clone(&self.get_active_heightmap_texture().heightmap)
     }
 
-    pub fn get_active_texture(&self) -> Rc<Texture2D> {
+    pub fn get_active_texture(&self) -> Rc<Texture> {
         if let Some(texture) = &self.get_active_heightmap_texture().texture {
             Rc::clone(texture)
         } else {
@@ -249,7 +250,7 @@ impl SimulationState {
         }
     }
 
-    pub fn get_active_grid_texture(&self, app_parameters: &AppParameters) -> Texture2D {
+    pub fn get_active_grid_texture(&self, app_parameters: &AppParameters) -> Texture {
         let grid = if let Some(state) = self.eroded() {
             state.erosion_method.get_grid(
                 state.heightmap_eroded.heightmap.width,
