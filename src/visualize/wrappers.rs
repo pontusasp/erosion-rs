@@ -1,8 +1,7 @@
-use crate::heightmap::io::save_heightmap_as_image;
 use crate::heightmap::Heightmap;
-use crate::visualize::{heightmap_to_image_rgb, heightmap_to_texture};
+use crate::visualize::heightmap_to_image;
 use bracket_noise::prelude::{FractalType, NoiseType};
-use macroquad::texture::{Image, Texture2D};
+use egui::ColorImage;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
@@ -84,71 +83,38 @@ impl From<FractalTypeWrapper> for FractalType {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HeightmapTexture {
     #[serde(skip)]
-    pub image: Option<Rc<Image>>,
-    #[serde(skip)]
-    pub texture: Option<Rc<Texture2D>>,
+    pub image: Option<Rc<ColorImage>>,
     pub heightmap: Rc<Heightmap>,
 }
 
 impl HeightmapTexture {
-    pub fn new(heightmap: Rc<Heightmap>, image: Option<Rc<Image>>) -> Self {
-        let texture = image
-            .as_ref()
-            .and_then(|img| Some(Rc::new(Texture2D::from_image(&img))));
+    pub fn new(heightmap: Rc<Heightmap>, image: Option<Rc<ColorImage>>) -> Self {
         Self {
             image,
             heightmap,
-            texture,
         }
     }
 
-    pub fn get_or_generate(&self) -> Rc<Texture2D> {
-        if let Some(texture) = &self.texture {
-            Rc::clone(texture)
+    pub fn get_or_generate(&self) -> Rc<ColorImage> {
+        if let Some(image) = &self.image {
+            Rc::clone(image)
         } else {
-            Rc::new(heightmap_to_texture(&self.heightmap))
+            Rc::new(heightmap_to_image(&self.heightmap))
         }
     }
 
-    pub fn get_and_generate_cache(&mut self) -> Rc<Texture2D> {
-        let texture = self.get_or_generate();
-        self.texture = Some(Rc::clone(&texture));
-        texture
-    }
-
-    #[cfg(feature = "export")]
-    pub fn export_image(&self, filename: &str) -> Option<()> {
-        if let Some(ref image) = self.image {
-            image.export_png(&format!("{}.png", filename));
-            Some(())
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "export")]
-    pub fn export_heightmap(&self, filename: &str) -> Option<()> {
-        save_heightmap_as_image(&self.heightmap, filename).ok()
-    }
-
-    #[cfg(feature = "export")]
-    pub fn export(&self, filename: &str) -> Option<()> {
-        if let Some(_) = self.image {
-            self.export_image(filename)?;
-        } else {
-            self.export_heightmap(filename)?;
-        }
-        Some(())
+    pub fn get_and_generate_cache(&mut self) -> Rc<ColorImage> {
+        let image = self.get_or_generate();
+        self.image = Some(Rc::clone(&image));
+        image
     }
 }
 
 impl From<&Rc<Heightmap>> for HeightmapTexture {
     fn from(value: &Rc<Heightmap>) -> Self {
-        let image = heightmap_to_image_rgb(value);
-        let texture = Texture2D::from_image(&image);
+        let image = heightmap_to_image(value);
         Self {
             image: Some(Rc::new(image)),
-            texture: Some(Rc::new(texture)),
             heightmap: Rc::clone(value),
         }
     }
@@ -156,20 +122,18 @@ impl From<&Rc<Heightmap>> for HeightmapTexture {
 
 impl From<Heightmap> for HeightmapTexture {
     fn from(value: Heightmap) -> Self {
-        let image = heightmap_to_image_rgb(&value);
-        let texture = Texture2D::from_image(&image);
+        let image = heightmap_to_image(&value);
         Self {
             image: Some(Rc::new(image)),
-            texture: Some(Rc::new(texture)),
             heightmap: Rc::new(value),
         }
     }
 }
 
-impl From<HeightmapTexture> for Rc<Texture2D> {
+impl From<HeightmapTexture> for Rc<ColorImage> {
     fn from(value: HeightmapTexture) -> Self {
-        if let Some(texture) = value.texture {
-            texture
+        if let Some(image) = value.image {
+            image
         } else {
             value.get_or_generate()
         }

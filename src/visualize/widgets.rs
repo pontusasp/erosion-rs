@@ -600,7 +600,7 @@ fn procedural_generation_settings(
     updated = updated
         || ui
             .add(egui::Slider::new(&mut settings.fractal_octaves, 0..=28).text("Fractal Octaves"))
-            .drag_released();
+            .drag_stopped();
     updated = updated
         || ui
             .add(egui::Slider::new(&mut settings.fractal_gain, 0.0..=2.0).text("Fractal Gain"))
@@ -611,7 +611,7 @@ fn procedural_generation_settings(
                 egui::Slider::new(&mut settings.fractal_lacunarity, 0.0..=7.0)
                     .text("Fractal Lacunarity"),
             )
-            .drag_released();
+            .drag_stopped();
     updated = updated
         || ui
             .add(egui::Slider::new(&mut settings.frequency, 0.0..=5.0).text("Frequency"))

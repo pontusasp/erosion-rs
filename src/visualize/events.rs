@@ -12,7 +12,7 @@ use crate::partitioning;
 use crate::visualize::ui::{IsolineProperties, UiState};
 use crate::visualize::wrappers::HeightmapTexture;
 #[cfg(feature = "export")]
-use crate::State;
+use crate::erosion::ErosionApp;
 
 use super::{
     layered_heightmaps_to_image, mix_heightmap_to_image, rgba_color_channel, AppState,
@@ -136,11 +136,11 @@ impl UiEvent {
             }
             UiEvent::Isoline => "Show isoline".to_string(),
             #[cfg(feature = "export")]
-            UiEvent::ExportState => "Export State".to_string(),
+            UiEvent::ExportState => "Export ErosionApp".to_string(),
             #[cfg(feature = "export")]
-            UiEvent::ReadState(_) => "Read State from Disk".to_string(),
+            UiEvent::ReadState(_) => "Read ErosionApp from Disk".to_string(),
             #[cfg(feature = "export")]
-            UiEvent::ExportStateAs => "Export State As".to_string(),
+            UiEvent::ExportStateAs => "Export ErosionApp As".to_string(),
             #[cfg(feature = "export")]
             UiEvent::ExportActiveHeightmap => "Export Visible Image".to_string(),
         }
@@ -500,7 +500,7 @@ pub fn poll_ui_events(
                     crate::io::DEFAULT_NAME
                 };
                 crate::io::export_json(
-                    &State {
+                    &ErosionApp {
                         state_name: state_name.clone(),
                         app_state: app_state.clone(),
                         ui_state: ui_state.clone(),
@@ -509,7 +509,7 @@ pub fn poll_ui_events(
                 )
                 .expect("Failed to export state!");
                 crate::io::export_binary(
-                    &State {
+                    &ErosionApp {
                         state_name: state_name.clone(),
                         app_state: app_state.clone(),
                         ui_state: ui_state.clone(),
@@ -518,7 +518,7 @@ pub fn poll_ui_events(
                 )
                 .expect("Failed to export state!");
                 crate::io::export_icon(
-                    &State {
+                    &ErosionApp {
                         state_name: state_name.clone(),
                         app_state: app_state.clone(),
                         ui_state: ui_state.clone(),
@@ -534,7 +534,7 @@ pub fn poll_ui_events(
                     .get(*index)
                     .expect("Something went wrong when loading the file.");
                 let mut result = crate::io::import(&state_file.0);
-                if let Ok(State {
+                if let Ok(ErosionApp {
                     state_name: ref mut state_name_,
                     app_state: ref mut app_state_,
                     ui_state: ref mut ui_state_,

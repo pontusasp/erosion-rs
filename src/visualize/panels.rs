@@ -61,7 +61,7 @@ pub fn ui_top_panel(
             #[cfg(feature = "export")]
             {
                 ui.menu_button("File", |ui| {
-                    ui.menu_button("Load State", |ui| {
+                    ui.menu_button("Load ErosionApp", |ui| {
                         for (i, state_file) in ui_state.saves.iter().enumerate() {
                             if ui.button(format!("{}", state_file.0)).clicked() {
                                 ui_state.ui_events.push(UiEvent::ReadState(i));
@@ -69,11 +69,11 @@ pub fn ui_top_panel(
                             }
                         }
                     });
-                    if state_name.is_some() && ui.button("Save State").clicked() {
+                    if state_name.is_some() && ui.button("Save ErosionApp").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportState);
                         ui.close_menu();
                     }
-                    if ui.button("Save State as").clicked() {
+                    if ui.button("Save ErosionApp as").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportStateAs);
                         ui.close_menu();
                     }
@@ -233,8 +233,8 @@ pub fn ui_keybinds_window(egui_ctx: &egui::Context, ui_state: &mut UiState) {
                                     UiKey::Single(key_code) => {
                                         ui.label(format!("[{:?}]", key_code))
                                     }
-                                    UiKey::Double(key_codes) => {
-                                        ui.label(format!("[{:?}-{:?}]", key_codes.0, key_codes.1))
+                                    UiKey::Shift(key_codes) => {
+                                        ui.label(format!("[Shift-{:?}]", key_codes))
                                     }
                                 };
                             });
@@ -249,8 +249,8 @@ pub fn ui_keybinds_window(egui_ctx: &egui::Context, ui_state: &mut UiState) {
                             }
                             match keys {
                                 UiKey::Single(key_code) => ui.label(format!("({:?})", key_code)),
-                                UiKey::Double(key_codes) => {
-                                    ui.label(format!("({:?}-{:?})", key_codes.0, key_codes.1))
+                                UiKey::Shift(key_codes) => {
+                                    ui.label(format!("(Shift-{:?})", key_codes))
                                 }
                             };
                         }

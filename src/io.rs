@@ -2,7 +2,7 @@ use crate::heightmap::io::heightmap_to_image;
 use crate::visualize::app_state::AppState;
 use crate::visualize::ui::UiState;
 use crate::visualize::wrappers::HeightmapTexture;
-use crate::State;
+use crate::erosion::ErosionApp;
 use image::imageops::FilterType;
 use image::ImageError;
 use std::cell::RefCell;
@@ -15,38 +15,38 @@ const OUTPUT_DIRECTORY: &'static str = "saves";
 pub const DEFAULT_NAME: &'static str = "Unnamed";
 
 #[derive(Debug)]
-pub enum StateIoError {
+pub enum ErosionAppIoError {
     RWError(io::Error),
     InvalidBinary(bincode::Error),
     InvalidJson(serde_json::Error),
     IconError(ImageError),
 }
 
-impl From<io::Error> for StateIoError {
+impl From<io::Error> for ErosionAppIoError {
     fn from(err: io::Error) -> Self {
-        StateIoError::RWError(err)
+        ErosionAppIoError::RWError(err)
     }
 }
 
-impl From<serde_json::Error> for StateIoError {
+impl From<serde_json::Error> for ErosionAppIoError {
     fn from(err: serde_json::Error) -> Self {
-        StateIoError::InvalidJson(err)
+        ErosionAppIoError::InvalidJson(err)
     }
 }
 
-impl From<bincode::Error> for StateIoError {
+impl From<bincode::Error> for ErosionAppIoError {
     fn from(err: bincode::Error) -> Self {
-        StateIoError::InvalidBinary(err)
+        ErosionAppIoError::InvalidBinary(err)
     }
 }
 
-impl From<ImageError> for StateIoError {
+impl From<ImageError> for ErosionAppIoError {
     fn from(err: ImageError) -> Self {
-        StateIoError::IconError(err)
+        ErosionAppIoError::IconError(err)
     }
 }
 
-pub fn export_icon(state: &State, filename: &str) -> Result<(), StateIoError> {
+pub fn export_icon(state: &State, filename: &str) -> Result<(), ErosionAppIoError> {
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
     let icon = heightmap_to_image(&state.app_state.simulation_state().get_heightmap());
     let icon = image::imageops::resize(&icon, 64, 64, FilterType::Nearest);
@@ -57,7 +57,7 @@ pub fn export_icon(state: &State, filename: &str) -> Result<(), StateIoError> {
     Ok(())
 }
 
-pub fn export_json(state: &State, filename: &str) -> Result<(), StateIoError> {
+pub fn export_json(state: &State, filename: &str) -> Result<(), ErosionAppIoError> {
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
     let result = serde_json::to_string(state)?;
     fs::write(
@@ -67,7 +67,7 @@ pub fn export_json(state: &State, filename: &str) -> Result<(), StateIoError> {
     Ok(())
 }
 
-pub fn export_binary(state: &State, filename: &str) -> Result<(), StateIoError> {
+pub fn export_binary(state: &State, filename: &str) -> Result<(), ErosionAppIoError> {
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
     let result = bincode::serialize(state)?;
     fs::write(
@@ -77,7 +77,7 @@ pub fn export_binary(state: &State, filename: &str) -> Result<(), StateIoError> 
     Ok(())
 }
 
-pub fn import(file_name: &str) -> Result<State, StateIoError> {
+pub fn import(file_name: &str) -> Result<ErosionApp, ErosionAppIoError> {
     let binary_result = import_binary(file_name);
     let result = if let Err(_) = binary_result {
         import_json(file_name)
@@ -87,23 +87,23 @@ pub fn import(file_name: &str) -> Result<State, StateIoError> {
     result
 }
 
-pub fn import_json(file_name: &str) -> Result<State, StateIoError> {
+pub fn import_json(file_name: &str) -> Result<ErosionApp, ErosionAppIoError> {
     let data = fs::read_to_string(format!(
         "{}/{}.{}.json",
         OUTPUT_DIRECTORY, file_name, STATE_FILE_EXT
     ))?;
-    let mut result: State = serde_json::from_str(&data)?;
+    let mut result: ErosionApp = serde_json::from_str(&data)?;
     repair_app_state(&mut result.app_state);
     repair_ui_state(&mut result.ui_state);
     Ok(result)
 }
 
-pub fn import_binary(file_name: &str) -> Result<State, StateIoError> {
+pub fn import_binary(file_name: &str) -> Result<ErosionApp, ErosionAppIoError> {
     let data = fs::read(format!(
         "{}/{}.{}",
         OUTPUT_DIRECTORY, file_name, STATE_FILE_EXT
     ))?;
-    let mut result: State = bincode::deserialize(&data)?;
+    let mut result: ErosionApp = bincode::deserialize(&data)?;
     repair_app_state(&mut result.app_state);
     repair_ui_state(&mut result.ui_state);
     Ok(result)
@@ -145,13 +145,13 @@ fn repair_app_state(app_state: &mut AppState) {
     }
 }
 
-pub type StateFile = (String, Option<String>);
+pub type ErosionAppFile = (String, Option<String>);
 
-pub fn list_state_files() -> Result<Vec<StateFile>, StateIoError> {
+pub fn list_state_files() -> Result<Vec<ErosionAppFile>, ErosionAppIoError> {
     list_state_files_custom_path(OUTPUT_DIRECTORY)
 }
 
-pub fn list_state_files_custom_path(path: &str) -> Result<Vec<StateFile>, StateIoError> {
+pub fn list_state_files_custom_path(path: &str) -> Result<Vec<ErosionAppFile>, ErosionAppIoError> {
     let mut files = Vec::new();
     let paths = fs::read_dir(path)?;
 

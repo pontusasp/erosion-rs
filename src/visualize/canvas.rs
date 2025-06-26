@@ -44,11 +44,11 @@ impl Canvas {
 
     pub fn draw_rectangle(&self, ui: &mut egui::Ui, rect: Rect, color: Color32) {
         let rect = Rect::from_min_size(self.position + Canvas::vec(rect.min), rect.size());
-        ui.painter().rect(rect, 0.0, color, self.stroke);
+        ui.painter().rect(rect, 0.0, color, self.stroke, egui::StrokeKind::Middle);
     }
 
     pub fn draw_rectangle_lines(&self, ui: &mut egui::Ui, rect: Rect) {
         let rect = Rect::from_min_size(self.position + Canvas::vec(rect.min), rect.size());
-        ui.painter().rect_stroke(rect, 0.0, self.stroke);
+        ui.painter().rect_stroke(rect, 0.0, self.stroke, egui::StrokeKind::Middle);
     }
 }

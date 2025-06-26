@@ -105,7 +105,7 @@ impl DropZone {
     }
 }
 
-pub struct State {
+pub struct ErosionApp {
     params: Parameters,
     current_map_size: usize,
     current_erosion_radius: usize,
@@ -114,7 +114,7 @@ pub struct State {
     rng: rand::rngs::ThreadRng,
 }
 
-impl State {
+impl ErosionApp {
     fn random_in_range(&mut self, min: f32, max: f32) -> f32 {
         self.rng.gen::<f32>() * (max - min) + min
     }
@@ -125,7 +125,7 @@ fn index_to_position(index: usize, width: usize) -> (usize, usize) {
 }
 
 pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: &DropZone) {
-    let mut state = State {
+    let mut state = ErosionApp {
         params: *params,
         current_map_size: 0,
         current_erosion_radius: 0,
@@ -229,7 +229,7 @@ pub fn erode(heightmap: &mut Heightmap, params: &Parameters, drop_zone: &DropZon
     }
 }
 
-fn initialize(state: &mut State, map_size: usize) {
+fn initialize(state: &mut ErosionApp, map_size: usize) {
     state.current_map_size = map_size;
 
     if state.erosion_brush_indices.is_empty()
@@ -273,7 +273,7 @@ fn calculate_height_and_gradient(
     }
 }
 
-fn initialize_brush_indices(state: &mut State, map_size: usize, radius: usize) {
+fn initialize_brush_indices(state: &mut ErosionApp, map_size: usize, radius: usize) {
     let radius: i32 = radius.try_into().unwrap();
 
     let erosion_brush_indices_size = map_size * map_size;

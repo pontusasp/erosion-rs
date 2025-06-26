@@ -1,15 +1,14 @@
 use std::mem;
 
 use egui::{Color32, Rect};
-use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::heightmap::HeightmapPrecision;
 use crate::visualize::events::UiEvent;
-use crate::State;
+use crate::erosion::ErosionApp;
 
 #[cfg(feature = "export")]
-use crate::io::StateFile;
+use crate::io::ErosionAppFile;
 
 use super::panels::{
     ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
@@ -48,7 +47,7 @@ pub struct UiState {
     pub isoline: IsolineProperties,
     #[cfg(feature = "export")]
     #[serde(skip)]
-    pub saves: Vec<StateFile>,
+    pub saves: Vec<ErosionAppFile>,
     pub screenshots: usize,
 }
 
@@ -68,7 +67,7 @@ pub struct FrameSlots {
     pub canvas: Option<Rect>,
 }
 
-pub fn ui_draw(state: &mut State) -> Option<FrameSlots> {
+pub fn ui_draw(state: &mut ErosionApp) -> Option<FrameSlots> {
     let ui_state = &mut state.ui_state;
     let app_state = &mut state.app_state;
     let state_name = &mut state.state_name;

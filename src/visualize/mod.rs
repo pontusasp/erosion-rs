@@ -1,7 +1,6 @@
-use crate::{heightmap, State};
+use crate::{heightmap, erosion::ErosionApp};
 
-use egui::{Pos2, Rect};
-use macroquad::prelude::*;
+use egui::{Color32, ColorImage, Pos2, Rect};
 
 pub mod app_state;
 pub mod canvas;
@@ -14,166 +13,164 @@ pub mod wrappers;
 
 use crate::heightmap::Heightmap;
 use crate::visualize::app_state::{AppState, SimulationState};
-use crate::visualize::events::poll_ui_events;
-use crate::visualize::keybinds::poll_ui_keybinds;
-use crate::visualize::ui::*;
+// use crate::visualize::events::poll_ui_events;
+// use crate::visualize::keybinds::poll_ui_keybinds;
+// use crate::visualize::ui::*;
 
-pub fn generate_default_state() -> State {
-    State::default()
+pub fn generate_default_state() -> ErosionApp {
+    ErosionApp::default()
 }
 
 pub async fn run() {
-    prevent_quit();
+    // let mut state = {
+    //     let state = generate_default_state();
+    //     let autoload_default: Option<ErosionApp> = {
+    //         #[cfg(feature = "export")]
+    //         {
+    //             let default = state
+    //                 .ui_state
+    //                 .saves
+    //                 .iter()
+    //                 .find(|&save| save.0 == "default");
+    //             if let Some(state_file) = default {
+    //                 crate::io::import(&state_file.0).ok()
+    //             } else {
+    //                 None
+    //             }
+    //         }
+    //         #[cfg(not(feature = "export"))]
+    //         {
+    //             None
+    //         }
+    //     };
 
-    let mut state = {
-        let state = generate_default_state();
-        let autoload_default: Option<State> = {
-            #[cfg(feature = "export")]
-            {
-                let default = state
-                    .ui_state
-                    .saves
-                    .iter()
-                    .find(|&save| save.0 == "default");
-                if let Some(state_file) = default {
-                    crate::io::import(&state_file.0).ok()
-                } else {
-                    None
-                }
-            }
-            #[cfg(not(feature = "export"))]
-            {
-                None
-            }
-        };
+    //     if let Some(default) = autoload_default {
+    //         default
+    //     } else {
+    //         state
+    //     }
+    // };
 
-        if let Some(default) = autoload_default {
-            default
-        } else {
-            state
-        }
-    };
+    // let mut launching = true;
 
-    let mut launching = true;
-
-    let mut corrected_size = false;
+    // let mut corrected_size = false;
 
     // Update heightmap data
-    while launching || state.ui_state.simulation_clear && !state.ui_state.application_quit {
-        launching = false;
-        if state.ui_state.simulation_clear {
-            state = generate_default_state();
-        }
-        state.ui_state.simulation_clear = false;
+    // while launching || state.ui_state.simulation_clear && !state.ui_state.application_quit {
+    //     launching = false;
+    //     if state.ui_state.simulation_clear {
+    //         state = generate_default_state();
+    //     }
+    //     state.ui_state.simulation_clear = false;
 
-        if state.ui_state.simulation_regenerate {
-            state
-                .app_state
-                .simulation_states
-                .push(SimulationState::get_new_base(
-                    state.app_state.simulation_states.len(),
-                    &state.app_state.parameters.heightmap_type,
-                    &state.app_state.parameters.erosion_params,
-                ));
-            state
-                .app_state
-                .simulation_base_indices
-                .push(state.app_state.simulation_states.len() - 1);
-            state.ui_state.simulation_regenerate = false;
-        }
+        // XXXXXXXXXXXXX
+        // if state.ui_state.simulation_regenerate {
+        //     state
+        //         .app_state
+        //         .simulation_states
+        //         .push(SimulationState::get_new_base(
+        //             state.app_state.simulation_states.len(),
+        //             &state.app_state.parameters.heightmap_type,
+        //             &state.app_state.parameters.erosion_params,
+        //         ));
+        //     state
+        //         .app_state
+        //         .simulation_base_indices
+        //         .push(state.app_state.simulation_states.len() - 1);
+        //     state.ui_state.simulation_regenerate = false;
+        // }
+        // XXXXXXXXXXXXX
 
         // Update UI
-        while !is_quit_requested()
-            && !state.ui_state.simulation_clear
-            && !state.ui_state.application_quit
-        {
-            clear_background(BLACK);
+    //     while !is_quit_requested()
+    //         && !state.ui_state.simulation_clear
+    //         && !state.ui_state.application_quit
+    //     {
+    //         clear_background(BLACK);
 
-            let canvas_rect = state
-                .ui_state
-                .frame_slots
-                .as_ref()
-                .and_then(|slots| slots.canvas)
-                .unwrap_or(Rect {
-                    min: Pos2 { x: 0.0, y: 0.0 },
-                    max: Pos2 {
-                        x: screen_width(),
-                        y: screen_height(),
-                    },
-                });
+    //         let canvas_rect = state
+    //             .ui_state
+    //             .frame_slots
+    //             .as_ref()
+    //             .and_then(|slots| slots.canvas)
+    //             .unwrap_or(Rect {
+    //                 min: Pos2 { x: 0.0, y: 0.0 },
+    //                 max: Pos2 {
+    //                     x: screen_width(),
+    //                     y: screen_height(),
+    //                 },
+    //             });
 
-            if !corrected_size {
-                let fit = canvas_rect.width().min(canvas_rect.height());
-                request_new_screen_size(
-                    crate::WIDTH as f32 + canvas_rect.height() - fit,
-                    crate::HEIGHT as f32 + canvas_rect.width() - fit,
-                );
-                corrected_size = true;
-            }
-            draw_frame(
-                &canvas_rect,
-                &state.app_state.simulation_state().get_active_texture(),
-            );
-            if state.ui_state.show_grid {
-                draw_frame(
-                    &canvas_rect,
-                    &state
-                        .app_state
-                        .simulation_state()
-                        .get_active_grid_texture(&state.app_state.parameters),
-                );
-            }
+    //         if !corrected_size {
+    //             let fit = canvas_rect.width().min(canvas_rect.height());
+    //             request_new_screen_size(
+    //                 crate::WIDTH as f32 + canvas_rect.height() - fit,
+    //                 crate::HEIGHT as f32 + canvas_rect.width() - fit,
+    //             );
+    //             corrected_size = true;
+    //         }
+    //         draw_frame(
+    //             &canvas_rect,
+    //             &state.app_state.simulation_state().get_active_texture(),
+    //         );
+    //         if state.ui_state.show_grid {
+    //             draw_frame(
+    //                 &canvas_rect,
+    //                 &state
+    //                     .app_state
+    //                     .simulation_state()
+    //                     .get_active_grid_texture(&state.app_state.parameters),
+    //             );
+    //         }
 
-            state.ui_state.frame_slots = ui_draw(&mut state);
+    //         state.ui_state.frame_slots = ui_draw(&mut state);
 
-            #[cfg(feature = "export")]
-            let state_name = &mut state.state_name;
-            let app_state = &mut state.app_state;
-            let ui_state = &mut state.ui_state;
-            poll_ui_events(
-                #[cfg(feature = "export")]
-                state_name,
-                ui_state,
-                app_state,
-            );
-            poll_ui_keybinds(&mut state.ui_state);
-            next_frame().await;
-        }
-    }
+    //         #[cfg(feature = "export")]
+    //         let state_name = &mut state.state_name;
+    //         let app_state = &mut state.app_state;
+    //         let ui_state = &mut state.ui_state;
+    //         poll_ui_events(
+    //             #[cfg(feature = "export")]
+    //             state_name,
+    //             ui_state,
+    //             app_state,
+    //         );
+    //         poll_ui_keybinds(&mut state.ui_state);
+    //         next_frame().await;
+    //     }
+    // }
 }
 
-pub fn draw_frame(rect: &Rect, texture: &Texture2D) {
-    let side = rect.width().min(rect.height());
-    let margin_left = (rect.width() - side) / 2.0;
-    let margin_top = (rect.height() - side) / 2.0;
-    texture.set_filter(FilterMode::Nearest);
-    draw_texture_ex(
-        *texture,
-        rect.min.x + margin_left,
-        rect.min.y + margin_top,
-        WHITE,
-        DrawTextureParams {
-            dest_size: Some(vec2(side, side)),
-            ..Default::default()
-        },
-    );
-}
+// pub fn draw_frame(rect: &Rect, texture: &Texture2D) {
+//     let side = rect.width().min(rect.height());
+//     let margin_left = (rect.width() - side) / 2.0;
+//     let margin_top = (rect.height() - side) / 2.0;
+//     texture.set_filter(FilterMode::Nearest);
+//     draw_texture_ex(
+//         *texture,
+//         rect.min.x + margin_left,
+//         rect.min.y + margin_top,
+//         WHITE,
+//         DrawTextureParams {
+//             dest_size: Some(vec2(side, side)),
+//             ..Default::default()
+//         },
+//     );
+// }
 
-fn heightmap_to_image_rgb(heightmap: &heightmap::Heightmap) -> Image {
+fn heightmap_to_image(heightmap: &heightmap::Heightmap) -> ColorImage {
     let buffer = heightmap.to_u8_rgba();
+    
+    let [width, height] = [heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap()];
 
-    let image = Image {
-        bytes: buffer,
-        width: heightmap.width.try_into().unwrap(),
-        height: heightmap.height.try_into().unwrap(),
-    };
-
-    image
+    heightmap_from_buffer(width, height, buffer)
 }
 
-fn heightmap_to_texture(heightmap: &heightmap::Heightmap) -> Texture2D {
-    let image = heightmap_to_image_rgb(heightmap);
-    Texture2D::from_image(&image)
+fn heightmap_from_buffer(width: usize, height: usize, buffer: Vec<u8>) -> ColorImage {
+    ColorImage {
+        size: [width, height],
+        pixels: buffer.iter().map(|&v| Color32::from_rgb(v, v, v)).collect(),
+    }
 }
 
 fn mix_heightmap_to_image(
@@ -182,7 +179,7 @@ fn mix_heightmap_to_image(
     channel: u8,
     invert: bool,
     round: bool,
-) -> Image {
+) -> ColorImage {
     let overlay = overlay.to_u8();
     let mut buffer = heightmap.to_u8_rgba();
 
@@ -206,13 +203,7 @@ fn mix_heightmap_to_image(
         }
     }
 
-    let image = Image {
-        bytes: buffer,
-        width: heightmap.width.try_into().unwrap(),
-        height: heightmap.height.try_into().unwrap(),
-    };
-
-    image
+    heightmap_from_buffer(heightmap.width.try_into().unwrap(), heightmap.height.try_into().unwrap(), buffer)
 }
 
 pub enum LayerMixMethod {
@@ -240,6 +231,7 @@ pub mod rgba_color_channel {
     pub const RB: Channel = R | B;
     pub const GB: Channel = G | B;
 }
+
 pub struct HeightmapLayer<'a> {
     pub heightmap: &'a Heightmap,
     pub channel: rgba_color_channel::Channel,
@@ -254,9 +246,9 @@ pub fn layered_heightmaps_to_texture(
     layers: &Vec<&HeightmapLayer>,
     normalize_on_overflow: bool,
     max_height: f32,
-) -> Texture2D {
+) -> ColorImage {
     let image = layered_heightmaps_to_image(size, layers, normalize_on_overflow, max_height);
-    Texture2D::from_image(&image)
+    image
 }
 
 pub fn layered_heightmaps_to_image(
@@ -264,7 +256,7 @@ pub fn layered_heightmaps_to_image(
     layers: &Vec<&HeightmapLayer>,
     normalize_on_overflow: bool,
     max_height: f32,
-) -> Image {
+) -> ColorImage {
     let mut buffer: Vec<f32> = vec![0.0; 4 * size * size];
     let mut highest = 0f32;
 
@@ -343,8 +335,10 @@ pub fn layered_heightmaps_to_image(
         }
     }
 
-    let image = Image {
-        bytes: buffer
+    let image = heightmap_from_buffer(
+        size as usize,
+        size as usize,
+        buffer
             .iter()
             .map(|&float| {
                 let value = if normalize_on_overflow && highest > max_height {
@@ -355,9 +349,7 @@ pub fn layered_heightmaps_to_image(
                 (value / max_height * 255.0).trunc() as u8
             })
             .collect(),
-        width: size as u16,
-        height: size as u16,
-    };
+    );
 
     image
 }
