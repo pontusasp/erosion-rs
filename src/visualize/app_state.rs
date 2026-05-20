@@ -1,3 +1,4 @@
+use egui::ColorImage;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -218,12 +219,12 @@ impl SimulationState {
         Rc::clone(&self.get_active_heightmap_texture().heightmap)
     }
 
-    pub fn get_active_texture(&self) -> Rc<Texture2D> {
-        if let Some(texture) = &self.get_active_heightmap_texture().texture {
-            Rc::clone(texture)
+    pub fn get_active_image(&self) -> Rc<ColorImage> {
+        if let Some(image) = &self.get_active_heightmap_texture().image {
+            Rc::clone(image)
         } else {
-            eprintln!("WARN: get_active_texture(&self) called without any active texture set!");
-            Rc::clone(&self.get_active_heightmap_texture().get_or_generate())
+            eprintln!("WARN: get_active_image(&self) called without any active image set!");
+            self.get_active_heightmap_texture().get_or_generate()
         }
     }
 
@@ -231,7 +232,7 @@ impl SimulationState {
         self.base_mut().set_active(heightmap_texture);
     }
 
-    pub fn set_active_separate(&mut self, heightmap: Rc<Heightmap>, image: Rc<Image>) {
+    pub fn set_active_separate(&mut self, heightmap: Rc<Heightmap>, image: Rc<ColorImage>) {
         self.set_active(Rc::new(HeightmapTexture::new(heightmap, Some(image))))
     }
 
@@ -249,7 +250,7 @@ impl SimulationState {
         }
     }
 
-    pub fn get_active_grid_texture(&self, app_parameters: &AppParameters) -> Texture2D {
+    pub fn get_active_grid_texture(&self, app_parameters: &AppParameters) -> ColorImage {
         let grid = if let Some(state) = self.eroded() {
             state.erosion_method.get_grid(
                 state.heightmap_eroded.heightmap.width,

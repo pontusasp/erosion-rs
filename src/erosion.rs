@@ -1,9 +1,9 @@
 use crate::erode::Parameters;
 use crate::heightmap::HeightmapType;
 use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
-use crate::visualize::events::UiEvent;
-use crate::visualize::ui::{IsolineProperties, UiState};
-use crate::io;
+use crate::visualize::events::{poll_ui_events, UiEvent};
+use crate::visualize::keybinds::poll_ui_keybinds;
+use crate::visualize::ui::{ui_draw, IsolineProperties, UiState};
 
 
 impl Default for ErosionApp {
@@ -12,23 +12,31 @@ impl Default for ErosionApp {
     }
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct ErosionApp {
     pub state_name: Option<String>,
-    // #[serde(skip)] // This how you opt-out of serialization of a field
     pub app_state: AppState,
     pub ui_state: UiState,
+
+    /// Cached texture handle for displaying the active heightmap.
+    #[serde(skip)]
+    texture_handle: Option<egui::TextureHandle>,
+    /// Cached texture handle for the grid overlay.
+    #[serde(skip)]
+    grid_texture_handle: Option<egui::TextureHandle>,
+    /// Pointer value of the last ColorImage we uploaded, used for invalidation.
+    #[serde(skip)]
+    last_image_ptr: usize,
+    /// Whether the grid texture needs to be regenerated.
+    #[serde(skip)]
+    grid_dirty: bool,
 }
 
 impl ErosionApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // This is also where you can customize the look and feel of egui using
-        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-
         // Load previous app state (if any).
-        // Note that you must enable the `persistence` feature for this to work.
         if let Some(storage) = cc.storage {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
@@ -42,7 +50,7 @@ impl ErosionApp {
             app_state: AppState {
                 simulation_states: vec![SimulationState::get_new_base(
                     0,
-                    &heightmap_type,
+                    heightmap_type,
                     &Parameters::default(),
                 )],
                 simulation_base_indices: vec![0],
@@ -79,93 +87,156 @@ impl ErosionApp {
                     flooded_errors: None,
                 },
                 #[cfg(feature = "export")]
-                saves: io::list_state_files()
+                saves: crate::io::list_state_files()
                     .ok()
                     .or_else(|| Some(Vec::new()))
                     .expect("Failed to access saved states."),
                 screenshots: 0,
             },
+            texture_handle: None,
+            grid_texture_handle: None,
+            last_image_ptr: 0,
+            grid_dirty: true,
+        }
+    }
+
+    /// Create an ErosionApp instance for serialization/export purposes only.
+    pub fn for_export(
+        state_name: Option<String>,
+        app_state: AppState,
+        ui_state: UiState,
+    ) -> Self {
+        Self {
+            state_name,
+            app_state,
+            ui_state,
+            texture_handle: None,
+            grid_texture_handle: None,
+            last_image_ptr: 0,
+            grid_dirty: true,
         }
     }
 }
 
 
 impl eframe::App for ErosionApp {
-    /// Called by the frame work to save state before shutdown.
+    /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
-        // For inspiration and more examples, go to https://emilk.github.io/egui
-
+        // Handle regeneration
         if self.ui_state.simulation_regenerate {
-            self
-                .app_state
+            self.app_state
                 .simulation_states
                 .push(SimulationState::get_new_base(
                     self.app_state.simulation_states.len(),
                     &self.app_state.parameters.heightmap_type,
                     &self.app_state.parameters.erosion_params,
                 ));
-            self
-                .app_state
+            self.app_state
                 .simulation_base_indices
                 .push(self.app_state.simulation_states.len() - 1);
             self.ui_state.simulation_regenerate = false;
+            self.grid_dirty = true;
         }
 
+        // Handle clear (reset state)
+        if self.ui_state.simulation_clear {
+            let new_state = Self::default_with_heightmap_type(&self.app_state.parameters.heightmap_type);
+            self.app_state = new_state.app_state;
+            self.ui_state.simulation_clear = false;
+            self.texture_handle = None;
+            self.grid_texture_handle = None;
+            self.last_image_ptr = 0;
+            self.grid_dirty = true;
+        }
 
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-
-            egui::menu::bar(ui, |ui| {
-                // NOTE: no File->Quit on web pages!
-                let is_web = cfg!(target_arch = "wasm32");
-                if !is_web {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    });
-                    ui.add_space(16.0);
-                }
-
-                egui::widgets::global_theme_preference_buttons(ui);
-            });
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("Erosion-RS");
-
-            ui.separator();
-
-            ui.add(egui::github_link_file!(
-                "https://github.com/pontusasp/erosion-rs/blob/main/",
-                "Source code. :D"
-            ));
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                powered_by_egui_and_eframe(ui);
-                egui::warn_if_debug_build(ui);
-            });
-        });
-    }
-}
-
-fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.label("Powered by ");
-        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        ui.label(" and ");
-        ui.hyperlink_to(
-            "eframe",
-            "https://github.com/emilk/egui/tree/master/crates/eframe",
+        // Draw UI panels and windows
+        ui_draw(
+            ctx,
+            &mut self.ui_state,
+            &mut self.app_state,
+            &mut self.state_name,
         );
-        ui.label(".");
-    });
+
+        // Central panel with heightmap rendering
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let active_image = self.app_state.simulation_state().get_active_image();
+            let image_ptr = std::rc::Rc::as_ptr(&active_image) as usize;
+
+            // Update texture if image changed
+            if image_ptr != self.last_image_ptr || self.texture_handle.is_none() {
+                self.texture_handle = Some(ctx.load_texture(
+                    "heightmap",
+                    (*active_image).clone(),
+                    egui::TextureOptions::NEAREST,
+                ));
+                self.last_image_ptr = image_ptr;
+                self.grid_dirty = true;
+            }
+
+            // Update grid texture if needed
+            if self.ui_state.show_grid && self.grid_dirty {
+                let grid_image = self
+                    .app_state
+                    .simulation_state()
+                    .get_active_grid_texture(&self.app_state.parameters);
+                self.grid_texture_handle = Some(ctx.load_texture(
+                    "grid_overlay",
+                    grid_image,
+                    egui::TextureOptions::NEAREST,
+                ));
+                self.grid_dirty = false;
+            }
+
+            // Render heightmap
+            if let Some(ref texture) = self.texture_handle {
+                let available = ui.available_size();
+                let side = available.x.min(available.y);
+                let size = egui::vec2(side, side);
+                ui.centered_and_justified(|ui| {
+                    ui.image(egui::load::SizedTexture::new(texture.id(), size));
+                });
+
+                // Render grid overlay on top
+                if self.ui_state.show_grid {
+                    if let Some(ref grid_tex) = self.grid_texture_handle {
+                        let rect = ui.min_rect();
+                        let margin_x = (rect.width() - side) / 2.0;
+                        let margin_y = (rect.height() - side) / 2.0;
+                        let img_rect = egui::Rect::from_min_size(
+                            egui::pos2(rect.min.x + margin_x, rect.min.y + margin_y),
+                            size,
+                        );
+                        ui.painter().image(
+                            grid_tex.id(),
+                            img_rect,
+                            egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                            egui::Color32::WHITE,
+                        );
+                    }
+                }
+            }
+        });
+
+        // Poll keybinds
+        poll_ui_keybinds(ctx, &mut self.ui_state);
+
+        // Process events
+        poll_ui_events(
+            #[cfg(feature = "export")]
+            &mut self.state_name,
+            &mut self.ui_state,
+            &mut self.app_state,
+        );
+
+        // Handle quit
+        if self.ui_state.application_quit {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            self.ui_state.application_quit = false;
+        }
+    }
 }

@@ -22,6 +22,28 @@ pub enum ErosionAppIoError {
     IconError(ImageError),
 }
 
+impl std::fmt::Display for ErosionAppIoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErosionAppIoError::RWError(e) => write!(f, "IO error: {}", e),
+            ErosionAppIoError::InvalidBinary(e) => write!(f, "Binary decode error: {}", e),
+            ErosionAppIoError::InvalidJson(e) => write!(f, "JSON error: {}", e),
+            ErosionAppIoError::IconError(e) => write!(f, "Image error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for ErosionAppIoError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ErosionAppIoError::RWError(e) => Some(e),
+            ErosionAppIoError::InvalidBinary(e) => Some(e.as_ref()),
+            ErosionAppIoError::InvalidJson(e) => Some(e),
+            ErosionAppIoError::IconError(e) => Some(e),
+        }
+    }
+}
+
 impl From<io::Error> for ErosionAppIoError {
     fn from(err: io::Error) -> Self {
         ErosionAppIoError::RWError(err)
@@ -46,7 +68,7 @@ impl From<ImageError> for ErosionAppIoError {
     }
 }
 
-pub fn export_icon(state: &State, filename: &str) -> Result<(), ErosionAppIoError> {
+pub fn export_icon(state: &ErosionApp, filename: &str) -> Result<(), ErosionAppIoError> {
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
     let icon = heightmap_to_image(&state.app_state.simulation_state().get_heightmap());
     let icon = image::imageops::resize(&icon, 64, 64, FilterType::Nearest);
@@ -57,7 +79,7 @@ pub fn export_icon(state: &State, filename: &str) -> Result<(), ErosionAppIoErro
     Ok(())
 }
 
-pub fn export_json(state: &State, filename: &str) -> Result<(), ErosionAppIoError> {
+pub fn export_json(state: &ErosionApp, filename: &str) -> Result<(), ErosionAppIoError> {
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
     let result = serde_json::to_string(state)?;
     fs::write(
@@ -67,7 +89,7 @@ pub fn export_json(state: &State, filename: &str) -> Result<(), ErosionAppIoErro
     Ok(())
 }
 
-pub fn export_binary(state: &State, filename: &str) -> Result<(), ErosionAppIoError> {
+pub fn export_binary(state: &ErosionApp, filename: &str) -> Result<(), ErosionAppIoError> {
     fs::create_dir_all(OUTPUT_DIRECTORY)?;
     let result = bincode::serialize(state)?;
     fs::write(

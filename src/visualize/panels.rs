@@ -43,7 +43,7 @@ pub fn ui_top_panel(
     state_name: &mut Option<String>,
 ) {
     egui::TopBottomPanel::top("top_panel").show(egui_ctx, |ui| {
-        egui::menu::bar(ui, |ui| {
+        egui::MenuBar::new().ui(ui, |ui| {
             let heading = if let Some(ref string) = state_name {
                 string.as_str()
             } else {
@@ -65,21 +65,21 @@ pub fn ui_top_panel(
                         for (i, state_file) in ui_state.saves.iter().enumerate() {
                             if ui.button(format!("{}", state_file.0)).clicked() {
                                 ui_state.ui_events.push(UiEvent::ReadState(i));
-                                ui.close_menu();
+                                ui.close();
                             }
                         }
                     });
                     if state_name.is_some() && ui.button("Save ErosionApp").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportState);
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui.button("Save ErosionApp as").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportStateAs);
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui.button("Export Screenshot").clicked() {
                         ui_state.ui_events.push(UiEvent::ExportActiveHeightmap);
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui
                         .button(if ui_state.show_ui_presentation_mode {
@@ -90,11 +90,11 @@ pub fn ui_top_panel(
                         .clicked()
                     {
                         ui_state.show_ui_presentation_mode = !ui_state.show_ui_presentation_mode;
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui.button("Quit").clicked() {
                         ui_state.ui_events.push(UiEvent::Quit);
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
                 ui.separator();

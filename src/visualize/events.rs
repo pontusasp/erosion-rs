@@ -499,33 +499,17 @@ pub fn poll_ui_events(
                 } else {
                     crate::io::DEFAULT_NAME
                 };
-                crate::io::export_json(
-                    &ErosionApp {
-                        state_name: state_name.clone(),
-                        app_state: app_state.clone(),
-                        ui_state: ui_state.clone(),
-                    },
-                    filename,
-                )
-                .expect("Failed to export state!");
-                crate::io::export_binary(
-                    &ErosionApp {
-                        state_name: state_name.clone(),
-                        app_state: app_state.clone(),
-                        ui_state: ui_state.clone(),
-                    },
-                    filename,
-                )
-                .expect("Failed to export state!");
-                crate::io::export_icon(
-                    &ErosionApp {
-                        state_name: state_name.clone(),
-                        app_state: app_state.clone(),
-                        ui_state: ui_state.clone(),
-                    },
-                    filename,
-                )
-                .expect("Failed to export icon!");
+                let export_state = ErosionApp::for_export(
+                    state_name.clone(),
+                    app_state.clone(),
+                    ui_state.clone(),
+                );
+                crate::io::export_json(&export_state, filename)
+                    .expect("Failed to export state!");
+                crate::io::export_binary(&export_state, filename)
+                    .expect("Failed to export state!");
+                crate::io::export_icon(&export_state, filename)
+                    .expect("Failed to export icon!");
             }
             #[cfg(feature = "export")]
             UiEvent::ReadState(index) => {
@@ -533,16 +517,11 @@ pub fn poll_ui_events(
                     .saves
                     .get(*index)
                     .expect("Something went wrong when loading the file.");
-                let mut result = crate::io::import(&state_file.0);
-                if let Ok(ErosionApp {
-                    state_name: ref mut state_name_,
-                    app_state: ref mut app_state_,
-                    ui_state: ref mut ui_state_,
-                }) = result
-                {
-                    mem::swap(state_name, state_name_);
-                    mem::swap(app_state, app_state_);
-                    mem::swap(ui_state, ui_state_);
+                let result = crate::io::import(&state_file.0);
+                if let Ok(mut loaded) = result {
+                    mem::swap(state_name, &mut loaded.state_name);
+                    mem::swap(app_state, &mut loaded.app_state);
+                    mem::swap(ui_state, &mut loaded.ui_state);
                 } else {
                     eprintln!("Failed to read state! {:?}", result.err().unwrap());
                 }

@@ -1,13 +1,6 @@
 //#![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::erode::Parameters;
-use crate::heightmap::HeightmapType;
-use crate::visualize::app_state::{AppParameters, AppState, SimulationState};
-use crate::visualize::events::UiEvent;
-use crate::visualize::ui::{IsolineProperties, UiState};
-use serde::{Deserialize, Serialize};
-
 pub mod erode;
 pub mod heightmap;
 #[cfg(feature = "export")]
@@ -28,10 +21,6 @@ const GAUSSIAN_BLUR_SIGMA_RANGE_MAX: f32 = 20.0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MIN: u16 = 0;
 const GAUSSIAN_BLUR_BOUNDARY_THICKNESS_MAX: u16 = 10;
 
-fn main_old() {
-    visualize::run();
-}
-
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
@@ -39,7 +28,7 @@ fn main() -> eframe::Result {
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([400.0, 300.0])
+            .with_inner_size([WIDTH as f32, HEIGHT as f32])
             .with_min_inner_size([300.0, 220.0])
             .with_icon(
                 // NOTE: Adding an icon is optional

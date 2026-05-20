@@ -359,7 +359,7 @@ struct HeightAndGradient {
     gradient_y: f32,
 }
 
-pub fn add_metadata(state: &State, heightmap: &mut Heightmap) {
+pub fn add_metadata(state: &ErosionApp, heightmap: &mut Heightmap) {
     heightmap.metadata_add("EROSION_RADIUS", state.params.erosion_radius.to_string());
     heightmap.metadata_add("INERTIA", state.params.inertia.to_string());
     heightmap.metadata_add(

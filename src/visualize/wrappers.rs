@@ -108,6 +108,12 @@ impl HeightmapTexture {
         self.image = Some(Rc::clone(&image));
         image
     }
+
+    #[cfg(feature = "export")]
+    pub fn export(&self, filename: &str) -> Option<()> {
+        use crate::heightmap::io::save_heightmap_as_image;
+        save_heightmap_as_image(&self.heightmap, filename).ok().map(|_| ())
+    }
 }
 
 impl From<&Rc<Heightmap>> for HeightmapTexture {

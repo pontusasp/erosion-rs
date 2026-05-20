@@ -1,15 +1,15 @@
 use std::mem;
 
-use egui::{Color32, Rect};
+use egui::Rect;
 use serde::{Deserialize, Serialize};
 
 use crate::heightmap::HeightmapPrecision;
 use crate::visualize::events::UiEvent;
-use crate::erosion::ErosionApp;
 
 #[cfg(feature = "export")]
 use crate::io::ErosionAppFile;
 
+use super::app_state::AppState;
 use super::panels::{
     ui_keybinds_window, ui_metadata_window, ui_metrics_window, ui_side_panel, ui_top_panel,
 };
@@ -67,40 +67,25 @@ pub struct FrameSlots {
     pub canvas: Option<Rect>,
 }
 
-pub fn ui_draw(state: &mut ErosionApp) -> Option<FrameSlots> {
-    let ui_state = &mut state.ui_state;
-    let app_state = &mut state.app_state;
-    let state_name = &mut state.state_name;
+/// Draw the UI panels and windows. Returns the rect of the central panel area.
+pub fn ui_draw(
+    egui_ctx: &egui::Context,
+    ui_state: &mut UiState,
+    app_state: &mut AppState,
+    state_name: &mut Option<String>,
+) -> Option<FrameSlots> {
     if ui_state.show_ui_all {
-        let mut central_rect = None;
-        egui_macroquad::ui(|egui_ctx| {
-            // Top Panel
-            ui_top_panel(egui_ctx, ui_state, state_name);
+        // Top Panel
+        ui_top_panel(egui_ctx, ui_state, state_name);
 
-            // Side Panel
-            ui_side_panel(egui_ctx, ui_state, app_state);
+        // Side Panel
+        ui_side_panel(egui_ctx, ui_state, app_state);
 
-            // Central Panel
-            central_rect = Some(
-                egui::CentralPanel::default()
-                    .frame(egui::containers::Frame {
-                        fill: Color32::TRANSPARENT,
-                        ..Default::default()
-                    })
-                    .show(egui_ctx, |_| {})
-                    .response
-                    .rect,
-            );
+        ui_keybinds_window(egui_ctx, ui_state);
+        ui_metadata_window(egui_ctx, ui_state, app_state);
+        ui_metrics_window(egui_ctx, ui_state, app_state);
 
-            ui_keybinds_window(egui_ctx, ui_state);
-            ui_metadata_window(egui_ctx, ui_state, app_state);
-            ui_metrics_window(egui_ctx, ui_state, app_state);
-        });
-
-        egui_macroquad::draw();
-        Some(FrameSlots {
-            canvas: central_rect,
-        })
+        None
     } else {
         None
     }
